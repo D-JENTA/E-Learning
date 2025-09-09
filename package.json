@@ -1,0 +1,26 @@
+{
+  "name": "elearning-backend",
+  "version": "1.0.0",
+  "description": "projek elearning",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/D-JENTA/elearning-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/D-JENTA/elearning-backend/issues"
+  },
+  "homepage": "https://github.com/D-JENTA/elearning-backend#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "mysql2": "^3.14.5",
+    "nodemon": "^3.1.10"
+  }
+}
