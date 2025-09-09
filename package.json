@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/D-JENTA/elearning-backend#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "express": "^5.1.0",
     "mysql2": "^3.14.5",
     "nodemon": "^3.1.10"
