@@ -1,14 +1,17 @@
+const Sequelize = require("sequelize");
+require("dotenv").config()
+const sequelize = new Sequelize(
+    process.env.DB_NAME,
+     process.env.DB_USER ,
+      process.env.DB_PW, 
+      {
+    host:process.env.BD_HOST,
+    dialect:"mysql",
+    logging: false,
+      });
 
-const mysql = require("mysql2/promise");
+sequelize.authenticate()
+.then(()=> console.log("successfully connected to the database"))
+.catch(err => console.log("unable to connect to database", err));
 
-const db = mysql.createPool({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "elearning_db",
-    waitForConnection: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-});
-
-module.exports = db;
+module.exports = sequelize;
