@@ -1,8 +1,6 @@
 const {DataTypes} = require("sequelize");
 const sequelize = require("../config/db");
-const Tugas = require("./assignment");
-const Teacher = require("./teacher");
-const Assignment = require("./assignment");
+
 
 const Class = sequelize.define ("Class",{
     id_class: {

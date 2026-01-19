@@ -30,7 +30,8 @@ const storageStudent = multer.diskStorage({
 
 const uploadTeacher = multer({storage :storageTeacher});
 const uploadStudent = multer({storage :storageStudent});
-// POST mehtod assignment
+
+// POST method assignment
 const uploadAssignment = async ( req, res) => {
     try {
         const {id_teacher} = req.params;
@@ -72,7 +73,7 @@ const uploadAssignmentStudent = async ( req, res) => {
         res.status(500).json({message :"server failed to upload assignment"})
     }
 };
-//GET method assingment
+//GET method assignment
 
 const getAssignments = async (req, res) => {
     try {

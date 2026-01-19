@@ -81,9 +81,9 @@ const getAllClass = async (req, res) =>{
 }
 // get by id
 const getByIdClass = async ( req, res) => {
-    try {const clas = await Class.findByPk(req.params.id)
-        if (!clas) return res.status(400).json({message : "can't find class"})
-            res.json(clas)
+    try {const classId = await Class.findByPk(req.params.id)
+        if (!classId) return res.status(400).json({message : "can't find class"})
+            res.json(classId)
     }catch (err){
     console.error (err)
     return res.status(500).json({message : "server error while get class by id"})
@@ -108,6 +108,7 @@ const updateClass = async (req, res) => {
         return res.status(500).json({message : "server error while run update method"})
     }
 }
+
 //join class
 
 const joinClassByCode = async (req, res ) => {

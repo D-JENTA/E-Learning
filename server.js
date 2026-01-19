@@ -6,18 +6,22 @@ const PORT = process.env.PORT;
 const authRoutes = require("./routes/auth");
 const tugasRoutes = require("./routes/tugasRoute");
 const classRoutes = require("./routes/classRoute");
-const getStudentDasboard = require("./routes/studentRoute");
+// const studentRoutes = require("./routes/studentRoute");
 require("dotenv").config();
 
-// midleware
+// middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors({
+  origin: "http://localhost:5173"
+}));
 
-// gunakan router
+
+// use router
 app.use("/api", authRoutes);    
 app.use("/api", tugasRoutes);    
 app.use("/api", classRoutes);
-app.use("/api",getStudentDasboard);
+// app.use("/api",studentRoutes);
 
 sequelize.sync()
 

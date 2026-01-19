@@ -10,20 +10,20 @@ const register = async (req, res)=>{
     try {
         const { username, email, password, role, nis, nip } = req.body;
         if (!username || !email || !password) 
-            return res.status(400).json({message:"semua kolom wajib di isi"});
+            return res.status(400).json({message:"all fields must be filled in"});
 
         if (!["student", "teacher", "admin"].includes(role))
-            return res.status(400).json({message : "role wajib diisi"});
+            return res.status(400).json({message : "role must be filled"});
 
         if(role === "student" && (!nis || nis.trim() === ""))
-            return res.status(400).json({message : "NIS wajib diisi"});
+            return res.status(400).json({message : "NIS must be filled in"});
 
         if(role === "teacher" && (!nip || nip.trim() === ""))
-            return res.status(400).json({message : "NIP wajib diisi"});
+            return res.status(400).json({message : "NIP must be filled in"});
 
         const existingUser = await User.findOne({where:{email}})
         if (existingUser)
-            return res.status(400).json({message:"email sudah terdaftar"});
+            return res.status(400).json({message:"email is registered"});
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -83,7 +83,7 @@ const getUser = async ( req, res) => {
         res.json(users);
     }catch (err) {
         console.error(err)
-        res.status(500).json({message : " cannot run GET method"})
+        res.status(500).json({message : "cannot run GET method"})
     }
 };
 
