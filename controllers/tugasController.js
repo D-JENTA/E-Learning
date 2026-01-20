@@ -34,7 +34,7 @@ const uploadStudent = multer({storage :storageStudent});
 // POST method assignment
 const uploadAssignment = async ( req, res) => {
     try {
-        const {id_teacher} = req.params;
+        const id_teacher = req.user.id;
         const { assignment_title, description, id_assignment, id_class} = req.body;
 
        const fileUrl = `uploads/teacher/${req.file.filename}`;
@@ -56,7 +56,7 @@ const uploadAssignment = async ( req, res) => {
 
 const uploadAssignmentStudent = async ( req, res) => {
     try {
-        const {id_student} = req.params;
+        const id_student = req.user.id;
         const { title, id_class} = req.body;
 
        const fileUrl = `uploads/student/${req.file.filename}`;
@@ -100,6 +100,8 @@ const getAssignments = async (req, res) => {
 
 const deleteAssignment = async (req, res) => {
     try {
+        
+
         const assignment = await Assignment.findByPk(req.params.id);
         if(!assignment){
             return res.status(400).json({message : "assignment not found"});

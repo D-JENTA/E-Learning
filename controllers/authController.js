@@ -9,9 +9,10 @@ const SECRET_KEY = process.env.JWT_SECRET;
 const register = async (req, res)=>{
     try {
         const { username, email, password, role, nis, nip } = req.body;
-        if (!username || !email || !password) 
+        if (!username || !email ) 
             return res.status(400).json({message:"all fields must be filled in"});
-
+        if (!password || password.length < 8)
+            return res.status(400).json({message:"password must be more then 8 characters"})
         if (!["student", "teacher", "admin"].includes(role))
             return res.status(400).json({message : "role must be filled"});
 
@@ -41,7 +42,7 @@ const register = async (req, res)=>{
         }
 
         res.status(201).json({
-            message:"ser logged in successfully",
+            message:"register successfully",
             User : {id : newUser.id_user, username : newUser.username, email : newUser.email, role : newUser.role}
         });
     } catch (err){
@@ -62,7 +63,7 @@ const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({message:"wrong password"});
 
-        const token = jwt.sign({id : user.id, role : user.role}, SECRET_KEY, {expiresIn : "1d"});
+        const token = jwt.sign({id : user.id_user, role : user.role}, SECRET_KEY, {expiresIn : "1d"});
 
         res.json ({
             message : "login success",
@@ -91,7 +92,7 @@ const getUser = async ( req, res) => {
 // GET BY ID
 const getUserById = async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id, {attributes : {exclude : ["password"]}});
+        const user = await User.findByPk(req.user.id, {attributes : {exclude : ["password"]}});
         if (!user) return res.status(400).json({message : "user not found"});
         res.json(user);
 
@@ -104,15 +105,16 @@ const getUserById = async (req, res) => {
 // UPDATE USER
 const updateUser = async (req, res) => {
     try {
-        const user = await User.findByPk(req.params.id);
-        if (!user) return res.status(400).json({message : " User not found"});
-
-        const {username, email, password, role} = req.body;
-        let hashedPassword = user.password;
+        const userId = await User.findByPk(req.user.id);
+        console.log("req.user : " ,req.user);
+        if (!userId) return res.status(404).json({message : " User not found"});
+        
+        const {username, email, password} = req.body;
+        let hashedPassword = userId.password;
         if (password) hashedPassword = await bcrypt.hash(password, 10);
 
-        await user.update({username, email, password : hashedPassword, role});
-        res.json({message : "User data updated successfully.", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
+        await userId.update({username, email, password : hashedPassword});
+        res.json({message : "User data updated successfully.", data : { id : userId.id, username : userId.username, email : userId.email}});
     } catch (err) {
         console.error(err)
         res.status(500).json({message : "cannot run method UPDATE"})

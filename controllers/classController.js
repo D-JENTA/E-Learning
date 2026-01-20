@@ -7,7 +7,7 @@ const { Student, Class, Teacher, studentClass } = require("../models");
 //create class
 const createClass = async (req, res) => {
   try {
-    const { id_teacher } = req.params;
+    const  id_teacher  = req.user.id;
     const { class_name } = req.body;
 
     if (!class_name) {
@@ -172,7 +172,7 @@ const getClassByStudent = async (req, res) => {
 
 const getClassByTeacher = async(req, res) => {
     try{
-        const {id_teacher} = req.params;
+        const id_teacher = req.user.id;
 
         const classes = await Class.findAll({
             where :{id_teacher},
