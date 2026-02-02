@@ -31,6 +31,10 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
             model : "class_tb",
             key : "id_class"
         }
+    },
+    score :{
+        type : DataTypes.INTEGER,
+        allowNull : true
     }
 },{
     tableName : "assignmentstudent_tb",

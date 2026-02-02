@@ -4,6 +4,7 @@ const Class = require("./class");
 const Assignment = require("./assignment");
 const User = require("./user")
 const studentClass = require("./studentClass");
+const emailOtp = require("./emailOtps");
 
 //Relation m2m student class
 Student.belongsToMany(Class, {
@@ -30,11 +31,29 @@ Class.hasMany(Assignment, {foreignKey: "id_class", onDelete : "CASCADE"});
 Assignment.belongsTo(Class, { foreignKey: "id_class"});
 
 //Relation user student
-Student.belongsTo(User,{foreignKey: "id_user"});
-User.hasOne(Student, {foreignKey: "id_user"})
+Student.belongsTo(User,{foreignKey: "id_student"});
+User.hasOne(Student, {foreignKey: "id_student"})
 
 //Relation User Teacher
-Teacher.belongsTo(User, {foreignKey : "id_user"});
-User.hasOne(Teacher, {foreignKey: "id_user"});
+Teacher.belongsTo(User, {foreignKey : "id_teacher"});
+User.hasOne(Teacher, {foreignKey: "id_teacher"});
 
-module.exports = {User, Student, Class, Teacher,Assignment, studentClass};
+//Relation emailOtp User
+User.hasMany(emailOtp,{
+    foreignKey: "user_id",
+    sourceKey:"id_user",
+    onDelete:"CASCADE"
+});
+
+emailOtp.belongsTo(User, {
+    foreignKey :"user_id",
+    targetKey:"id_user"
+});
+
+User.hasMany(emailOtp, {
+  foreignKey: "user_id",
+  sourceKey: "id_user"
+});
+
+
+module.exports = {User, Student, Class, Teacher,Assignment, studentClass, emailOtp};

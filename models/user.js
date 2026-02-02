@@ -22,6 +22,14 @@ const User = sequelize.define("User", {
     role :{
         type : DataTypes.ENUM("student", "teacher", "admin")
         , allowNull:false
+    },
+    is_verified:{
+        type:DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    create_at:{
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
     }
 },{
     tableName : "user_tb",

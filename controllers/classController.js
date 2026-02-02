@@ -1,7 +1,8 @@
 const Assignment = require("../models/assignment");
 const generateCode = require("../models/generateCode");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs/promises");
+const sequelize = require("../config/db")
 const { Student, Class, Teacher, studentClass } = require("../models");
 
 //create class
@@ -12,12 +13,7 @@ const createClass = async (req, res) => {
 
     if (!class_name) {
       return res.status(400).json({ message: "class name required" });
-    }
-
-    const teacher = await Teacher.findByPk(id_teacher);
-    if (!teacher) {
-      return res.status(400).json({ message: "invalid teacher id" });
-    }
+    }   
 
     const classCode = generateCode(6);
 
@@ -39,40 +35,43 @@ const createClass = async (req, res) => {
 
 //delete class
 const deleteClass = async (req, res) => {
-    try {
-        const delClass = await Class.findByPk(req.params.id);
-         if (!delClass)
-            return res.status(400).json({message : " failed to find class"});
+    let t;
+  try {
+    const delClass = await Class.findByPk(req.params.id);
+    if (!delClass)
+      return res.status(404).json({ message: "class not found" });
 
-        const assignments = await Assignment.findAll({
-            where : {id_class: delClass.id_class}
-        });
+    const assignments = await Assignment.findAll({
+      where: { id_class: delClass.id_class },
+      attributes: ["file_url"]
+    });
 
-        for (const item of assignments) {
-            if (item.file_url){
-                const filePath = path.resolve(__dirname, "..", item.file_url);
-                if (fs.existsSync(filePath)){
-                    fs.unlinkSync(filePath);
-                    console.log(`class delete : ${filePath}`);
-                }else {
-                    console.warn(`class not found : ${filePath}`);
-                }
-            }
-        }
+    t = await sequelize.transaction();
 
-        await delClass.destroy();
-        
-        res.status(200).json({message : " successful delete"});
-    } catch (err) {
-        console.error(err)
-        return res.status(500).json({message : " server error"});
+    await delClass.destroy({ transaction: t });
+
+    await t.commit();
+
+    for (const item of assignments) {
+      if (!item.file_url) continue;
+
+      const filePath = path.resolve(__dirname, "..", item.file_url);
+      fs.unlink(filePath).catch(() => {});
     }
+
+    res.json({ message: "class deleted successfully" });
+
+  } catch (err) {
+    if (t && !t.finished) await t.rollback();
+    console.error(err);
+    res.status(500).json({ message: "server error" });
+  }
 };
 
 //get all
 const getAllClass = async (req, res) =>{
     try {
-        const classes = await Class.findAll()
+        const classes = await Class.findAll({attributes : ["id_class","class_name","classCode"]})
         res.json(classes);
     }catch (err){
         console.error(err)
@@ -102,7 +101,7 @@ const updateClass = async (req, res) => {
         return res.status(400).json({ message: "you must fill class name" });
         }
         await updClass.update({class_name});
-        res.status(201).json({message: "successful update class"})
+        res.status(200).json({message: "successful update class"})
     }catch (err){
         console.error(err)
         return res.status(500).json({message : "server error while run update method"})
@@ -113,7 +112,8 @@ const updateClass = async (req, res) => {
 
 const joinClassByCode = async (req, res ) => {
     try {
-        const {code, id_student} = req.body;
+        const {code} = req.body;
+        const id_student = req.user.id
         const codeFound = await Class.findOne({where : {classCode : code}});
         if (!codeFound) {
             return res.status(404).json({message : "class not found"})
