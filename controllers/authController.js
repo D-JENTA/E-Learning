@@ -1,5 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const path = require("path");
 const User = require("../models/user");
 const Student = require("../models/student");
 const Teacher = require("../models/teacher");
@@ -83,6 +85,8 @@ const register = async (req, res)=>{
 };
 
 //verify otp
+
+
 const verifyOtp = async (req,res) => {
     const t = await sequelize.transaction();
     try {
