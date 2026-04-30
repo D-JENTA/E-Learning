@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs/promises");
 const sequelize = require("../config/db")
 const { Student, Class, Teacher, studentClass } = require("../models");
+const { data } = require("autoprefixer");
 
 //create class
 const createClass = async (req, res) => {
@@ -67,8 +68,26 @@ const deleteClass = async (req, res) => {
     res.status(500).json({ message: "server error" });
   }
 };
+// delete class student joined
+    const deleteClassStudent = async (req, res) => {
+        try{
+            const delClassStudent = await studentClass.findOne({
+                where : {id_student : req.user.id, id_class : req.params.id}
+            })
+            if (!delClassStudent){
+            return res.status(404).json({message:"class not found"})
+        }
+        await delClassStudent.destroy();
+        res.json({message : "successfully delete class that joined"})
+        } catch (err){
+            console.error(err)
+            res.status(500).json({message : "server error while delete class that joined"})
+        }
+    };
 
-//get all
+
+
+
 const getAllClass = async (req, res) =>{
     try {
         const classes = await Class.findAll({attributes : ["id_class","class_name","classCode"]})
@@ -113,11 +132,15 @@ const updateClass = async (req, res) => {
 const joinClassByCode = async (req, res ) => {
     try {
         const {code} = req.body;
-        const id_student = req.user.id
+        const id_student = req.user.id;
+
         const codeFound = await Class.findOne({where : {classCode : code}});
         if (!codeFound) {
             return res.status(404).json({message : "class not found"})
         }
+
+        const classId = codeFound.id_class;
+
         const alreadyJoined =  await studentClass.findOne({where : {
             id_student : id_student,
             id_class : codeFound.id_class
@@ -127,30 +150,30 @@ const joinClassByCode = async (req, res ) => {
         return res.status(400).json({message : "you already joined "})
     }
 
-    const joinData = await studentClass.create({
+    const joined = await studentClass.create({
         id_student :  id_student,
         id_class :  codeFound.id_class
     });
 
-    res.status(201).json({message : "success"})
+    console.log("student joined class : ", joined.toJSON());
+    res.status(201).json({message : "success", data : joined})
     }catch (err) {
-        console.error(err)
+        console.error("detail error : ", err)
         return res.status(500).json({message : "server error while join to class by id"});
     }
 }
 
-//get class by student (menampilkan class yang sudah di ikuti )
-
+//get class by student
 const getClassByStudent = async (req, res) => {
     try{
-        const {id_student} =  req.params;
+        const id_student = req.user.id;
 
         const studentClasses = await studentClass.findAll({
             where : {id_student},
             include : [
                 {
                 model : Class,
-                attributes : ["class_name"],
+                attributes : ["class_name","classCode","id_class"],
             }
         ]
         });
@@ -190,4 +213,4 @@ const getClassByTeacher = async(req, res) => {
 };
 
 
-module.exports = {createClass, deleteClass, getAllClass, updateClass, getByIdClass, joinClassByCode, getClassByStudent, getClassByTeacher};
+module.exports = {createClass, deleteClass, getAllClass, updateClass, getByIdClass, joinClassByCode, getClassByStudent, getClassByTeacher, deleteClassStudent};
