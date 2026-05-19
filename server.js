@@ -1,34 +1,52 @@
+require("dotenv").config();
 const express = require("express");
 const sequelize = require("./config/db");
-const app = express();
 const cors = require("cors");
-const PORT = process.env.PORT;
+const http = require("http");
+const { initSocket } = require("./socket/index");
+const cookieParser = require("cookie-parser")
+const app = express();
+const server = http.createServer(app);
+const cronCleaner = require("./middleware/cronCleaner")
+const PORT =5000; 
 const authRoutes = require("./routes/auth");
 const tugasRoutes = require("./routes/tugasRoute");
 const classRoutes = require("./routes/classRoute");
-// const studentRoutes = require("./routes/studentRoute");
-require("dotenv").config();
+const path = require('path');
 
-// middleware
+
+initSocket(server);
+app.set("trust proxy", 1);
+
+app.use(cors({
+    origin:true,
+    credentials:true
+})); 
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({
-  origin: "http://localhost:5173"
-}));
 
+app.use(cookieParser());
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // use router
 app.use("/api", authRoutes);    
 app.use("/api", tugasRoutes);    
 app.use("/api", classRoutes);
-// app.use("/api",studentRoutes);
 
-sequelize.sync()
+app.use((err, req, res, next) => {
+    console.error('ERROR:', err.message);
+    res.status(400).json({ message: err.message });
+});
+sequelize.sync();
 
 app.get("/", (req, res) => {
-    res.send("server express running") 
-})
+    res.send("server express running");
+});
 
-app.listen(PORT, () => {
-    console.log(`server running on port ${PORT}`);
+cronCleaner();
+
+server.listen(PORT, '0.0.0.0', () => { 
+    console.log(`server running on http://192.168.41.103:${PORT}`);
 });

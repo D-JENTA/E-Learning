@@ -68,11 +68,12 @@ const deleteClass = async (req, res) => {
     res.status(500).json({ message: "server error" });
   }
 };
+
 // delete class student joined
-    const deleteClassStudent = async (req, res) => {
+const deleteClassStudent = async (req, res) => {
         try{
             const delClassStudent = await studentClass.findOne({
-                where : {id_student : req.user.id, id_class : req.params.id}
+                where : {id_student : req.user.id, id_class : req.params.id_class}
             })
             if (!delClassStudent){
             return res.status(404).json({message:"class not found"})
@@ -83,11 +84,9 @@ const deleteClass = async (req, res) => {
             console.error(err)
             res.status(500).json({message : "server error while delete class that joined"})
         }
-    };
+};
 
-
-
-
+//get all class
 const getAllClass = async (req, res) =>{
     try {
         const classes = await Class.findAll({attributes : ["id_class","class_name","classCode"]})
@@ -96,7 +95,8 @@ const getAllClass = async (req, res) =>{
         console.error(err)
         return res.status(500).json({message : "server error"})
     }
-}
+};
+
 // get by id
 const getByIdClass = async ( req, res) => {
     try {const classId = await Class.findByPk(req.params.id)
@@ -106,9 +106,9 @@ const getByIdClass = async ( req, res) => {
     console.error (err)
     return res.status(500).json({message : "server error while get class by id"})
 }
-}
-//update
+};
 
+//update
 const updateClass = async (req, res) => {
     try {
         const updClass = await Class.findByPk(req.params.id);
@@ -125,10 +125,9 @@ const updateClass = async (req, res) => {
         console.error(err)
         return res.status(500).json({message : "server error while run update method"})
     }
-}
+};
 
 //join class
-
 const joinClassByCode = async (req, res ) => {
     try {
         const {code} = req.body;
@@ -161,7 +160,7 @@ const joinClassByCode = async (req, res ) => {
         console.error("detail error : ", err)
         return res.status(500).json({message : "server error while join to class by id"});
     }
-}
+};
 
 //get class by student
 const getClassByStudent = async (req, res) => {
@@ -189,10 +188,9 @@ const getClassByStudent = async (req, res) => {
         console.error(err)
         return res.status(500).json({message : "server error while get class by student"})
     }
-}
+};
 
 //get class by teacher
-
 const getClassByTeacher = async(req, res) => {
     try{
         const id_teacher = req.user.id;
@@ -212,5 +210,38 @@ const getClassByTeacher = async(req, res) => {
     }
 };
 
+// delete student from class that joined by teacher
+const deleteStudentFromClass = async (req, res) => {
+    try{
+        const {id_class} = req.params;
+        const {id_student} = req.body;
 
-module.exports = {createClass, deleteClass, getAllClass, updateClass, getByIdClass, joinClassByCode, getClassByStudent, getClassByTeacher, deleteClassStudent};
+        const delStudent = await studentClass.findOne({ 
+            where : {
+                id_student,
+                id_class
+            }
+        });
+        if (!delStudent){
+            return res.status(404).json({message : "student not found in this class"})
+        }
+        await delStudent.destroy();
+        res.status(200).json({message : "successfully delete student from class that joined by teacher"})
+    }catch (err){
+    console.error(err)
+    res.status(500).json({message : "server error while delete student from class that joined by teacher"})
+}
+};
+
+module.exports = {
+    createClass, 
+    deleteClass, 
+    getAllClass, 
+    updateClass,
+    getByIdClass, 
+    joinClassByCode, 
+    getClassByStudent, 
+    getClassByTeacher, 
+    deleteClassStudent, 
+    deleteStudentFromClass
+    };

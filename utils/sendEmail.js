@@ -20,20 +20,29 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (to, otp) => {
-    const rawHtml = loadTemplate()
-    const finalHtml = fillOtp(rawHtml, otp)
- 
-    await transporter.sendMail({
-        from: `"E-Learning" <${process.env.EMAIL_USER}>`,
-        to,
-        subject: "your otp code",
-        html : finalHtml,
-        attachments : [{
-            filename : "logo_png",
-            path : path.join(__dirname, "../assets/eduLogo.png"),
-            cid : "logo"
-        }]
-    });
+    try {
+        const rawHtml = loadTemplate();
+        const finalHtml = fillOtp(rawHtml, otp);
+
+        console.log(`Mengirim email ke: ${to}...`);
+
+        const info = await transporter.sendMail({
+            from: `"E-Learning" <${process.env.EMAIL_USER}>`,
+            to,
+            subject: "Your OTP Code",
+            html: finalHtml,
+            attachments: [{
+                filename: "eduLogo.png",
+                path: path.join(__dirname, "../assets/eduLogo.png"),
+                cid: "logo"
+            }]
+        });
+
+        console.log("Email berhasil dikirim: ", info.messageId);
+    } catch (error) {
+        console.error("Gagal mengirim email detail:", error);
+        throw error; 
+    }
 };
 
 module.exports = sendEmail;

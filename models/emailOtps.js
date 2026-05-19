@@ -14,11 +14,11 @@ const emailOtp = sequelize.define("emailOtp",{
     },
     otp:{
         type: DataTypes.STRING(6),
-        allowNUll: false
+        allowNull: false
     },
     expires_at:{
         type:DataTypes.DATE,
-        allowNUll:false
+        allowNull:false
     },
     created_at:{
         type: DataTypes.DATE,

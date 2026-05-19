@@ -1,22 +1,29 @@
 const isAdmin = (req, res, next) => {
-        if (req.user.role !== "admin") {
-            return res.status(403).json({message:"admin only"});
-            }
-        next()
+    if (req.user.role === "admin" || req.user.role === "superAdmin") {
+        return next();
+    }
+    return res.status(403).json({ message:"Access denied: Admin only" });
+};
+
+const isSuperAdmin = (req, res, next) => {
+    if (req.user && req.user.role === "superAdmin") {
+        return next();
+    }
+    return res.status(403).json({ message: "Access denied: Super Admin only" });
 };
 
 const isStudent = (req, res, next) => {
-    if(req.user.role !== "student"){
-        return res.status(403).json({message:"student only"})
+    if (req.user.role === "student" || req.user.role === "superAdmin") {
+        return next();
     }
-    next()
+    return res.status(403).json({ message: "Access denied: student only" });
 };
 
 const isTeacher = (req, res, next) => {
-    if(req.user.role !== "teacher") {
-        return res.status(403).json({message:"teacher only"})
+    if (req.user.role === "teacher" || req.user.role === "superAdmin") {
+        return next();
     }
-    next()
+    return res.status(403).json({ message: "Access denied: Teacher only" });
 };
 
-module.exports = {isAdmin, isStudent, isTeacher};
+module.exports = { isAdmin, isSuperAdmin, isStudent, isTeacher };

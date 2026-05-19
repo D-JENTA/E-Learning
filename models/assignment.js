@@ -43,6 +43,14 @@ const Assignment = sequelize.define("Assignment", {
       key:"id_class"
     },
     onDelete :"CASCADE"
+  },
+  file_public_id: {
+    type: DataTypes.STRING,
+    allowNull: true
+},
+  file_extension: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   tableName: "assignment_tb",           

@@ -32,12 +32,28 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
             key : "id_class"
         }
     },
+    id_assignment : {
+        type : DataTypes.INTEGER(11),
+        allowNull : false,
+        references : {
+            model : "assignment_tb",
+            key : "id_assignment"
+        }
+    },
     score :{
         type : DataTypes.INTEGER,
         allowNull : true
-    }
+    },
+    file_public_id: {
+    type: DataTypes.STRING,
+    allowNull: true  
+    },
+    file_extension: {
+    type: DataTypes.STRING,
+    allowNull: true
+}
 },{
-    tableName : "assignmentstudent_tb",
+    tableName : "assignmentStudent_tb",
     timestamps : true
 } );
 

@@ -20,8 +20,8 @@ const User = sequelize.define("User", {
         allowNull:false
     },
     role :{
-        type : DataTypes.ENUM("student", "teacher", "admin")
-        , allowNull:false
+        type : DataTypes.ENUM("student", "teacher", "admin"),
+        allowNull:false
     },
     is_verified:{
         type:DataTypes.BOOLEAN,
@@ -30,6 +30,10 @@ const User = sequelize.define("User", {
     create_at:{
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
+    },
+    profile_picture_url :{
+        type: DataTypes.STRING(255),
+        allowNull: true
     }
 },{
     tableName : "user_tb",
