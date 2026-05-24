@@ -4,9 +4,9 @@ const fs = require("fs")
 const Assignment = require("../models/assignment");
 const assignmentStudent = require("../models/assignmentStudent");
 const Student_classes = require("../models/studentClass")
-const  {Op} = require("sequelize");
-const NotificationService = require("../service/notification");
+const  {Op, Model} = require("sequelize");
 const {cloudinary, uploadStudent, uploadTeacher} = require("../config/cloudinary");
+const { json } = require("body-parser");
 
 
 
@@ -16,6 +16,7 @@ const uploadAssignment = async (req, res) => {
         const id_teacher = req.user.id;
         const { assignment_title, description } = req.body;
         const id_class = req.params.id_class;
+        const deadline = req.body.deadline ? new Date(req.body.deadline) : null;
 
         if (!assignment_title || !id_class) {
             return res.status(400).json({ message: 'assignment title and id class are required' });
@@ -32,7 +33,8 @@ const uploadAssignment = async (req, res) => {
             file_url: req.file.path,         
             file_public_id: req.file.filename, 
             id_class,
-            id_teacher
+            id_teacher,
+            deadline
         });
 
         res.status(201).json({ message: 'Assignment uploaded successfully', data: assignment });
@@ -42,7 +44,6 @@ const uploadAssignment = async (req, res) => {
     }
 };
 
-
 // POST method assignment student
 const uploadAssignmentStudent = async (req, res) => {
     try {
@@ -50,9 +51,23 @@ const uploadAssignmentStudent = async (req, res) => {
         const id_assignment = req.params.id_assignment;
         const { title, id_class } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ message: 'File wajib diupload' });
+        const assignmentData = await Assignment.findOne({
+            where : { id_assignment: id_assignment },
+            attributes : ["deadline"]
+        });
+
+        if (assignmentData.deadline) {
+            const now = new Date().getTime(); 
+            const assignmentDeadline = new Date(assignmentData.deadline).getTime(); 
+            const apakahLewat = now > assignmentDeadline;
+
+            if (apakahLewat) {
+                return res.status(400).json({ message: 'Deadline sudah lewat. Tidak bisa mengumpulkan tugas.' });
+            }
+        } else {
+            console.log("Tugas ini tidak memiliki deadline (null). Maka bebas upload.");
         }
+
 
         const assignmentS = await assignmentStudent.create({
             title,
@@ -198,8 +213,6 @@ const getMySubmissions = async (req, res) => {
     }
 };
 
-// Jangan lupa di-export
-
 const getCloudinaryResourceType = (fileUrl = "") => {
     const url = String(fileUrl).toLowerCase();
 
@@ -241,9 +254,13 @@ const deleteAssignment = async (req, res) => {
 const deleteAssignmentStudent = async (req, res) => {
     try {
         const assignment = await assignmentStudent.findByPk(req.params.id);
-
+    
         if (!assignment) {
             return res.status(404).json({ message: "Assignment not found" });
+        }
+
+        if (assignment.score > 0) {
+            return res.status(400).json({ message: "Cannot delete assignment that has been scored" });
         }
 
         if (assignment.file_public_id) {
