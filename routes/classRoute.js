@@ -1,5 +1,17 @@
 const express = require("express");
-const {createClass, deleteClass, getAllClass, updateClass,getByIdClass, joinClassByCode, getClassByStudent, getClassByTeacher, deleteClassStudent, deleteStudentFromClass} = require("../controllers/classController");
+const {createClass,
+     deleteClass,
+      getAllClass,
+       updateClass,
+       getByIdClass,
+        joinClassByCode,
+         getClassByStudent,
+          getClassByTeacher,
+           deleteClassStudent,
+            deleteStudentFromClass,
+        getUserClassDetails} = require("../controllers/classController");
+
+
 const verifyToken = require("../middleware/verifyToken")
 const {isStudent, isTeacher,isAdmin,isSuperAdmin} = require ("../middleware/roleMiddleware");
 const { verify } = require("jsonwebtoken");
@@ -19,6 +31,8 @@ router.delete("/students/me/classes/:id_class",verifyToken,isStudent, deleteClas
 router.post("/teachers/me/classes",verifyToken,isTeacher, createClass);
 router.get("/teachers/me/classes",verifyToken, getClassByTeacher)
 router.get("/classes/:id", getByIdClass);
+
+router.get("/users/:id_user/class-details", verifyToken, isAdmin, getUserClassDetails);
 
 router.delete("/teachers/me/classes/:id_class",verifyToken,isTeacher, deleteStudentFromClass);
 

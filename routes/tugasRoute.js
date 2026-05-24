@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { uploadTeacher, uploadStudent, uploadAssignment, uploadAssignmentStudent, getAssignments,
+const { uploadTeacher, uploadStudent, uploadAssignment, uploadAssignmentStudent, 
      deleteAssignment, deleteAssignmentStudent, inputScore, totalScore, getAssignmentStudent, getAssignmentTeacher,
       getAssignmentStudentById, getMySubmissions } = require("../controllers/tugasController");
 const verifyToken = require("../middleware/verifyToken");
-const { isTeacher, isAdmin, isStudent, isSuperAdmin } = require("../middleware/roleMiddleware");
+const { isTeacher, isAdmin, isStudent } = require("../middleware/roleMiddleware");
 
 
 const uploadHandler = (uploadMiddleware) => (req, res, next) => {
@@ -24,7 +24,6 @@ router.post("/students/:id_assignment/assignments", verifyToken, isStudent,
     uploadAssignmentStudent
 );
 
-router.get("/assignments", verifyToken, getAssignments);
 router.get("/me/class/:id_class/assignmentsTeacher", verifyToken, getAssignmentTeacher);
 router.get("/me/class/:id_class/assignmentsStudent", verifyToken, isTeacher, getAssignmentStudent);
 router.get("/students/assignments", verifyToken, isStudent, getMySubmissions);

@@ -2,6 +2,7 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs"); // Tambahkan module FS untuk mengelola file lokal
 
 cloudinary.config({
   cloud_name: process.env.cloudinary_cloud_name,
@@ -9,6 +10,7 @@ cloudinary.config({
   api_secret: process.env.cloudinary_api_secret,
 });
 
+// 1. Profile tetap (karena file gambar profil kecil, tidak masalah sinkronus)
 const profileStorage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -17,59 +19,22 @@ const profileStorage = new CloudinaryStorage({
     transformation: [{ width: 500, height: 500, crop: "fill" }],
   },
 });
+const uploadCloud = multer({ storage: profileStorage });
 
-const cleanBaseName = (originalname) => {
-  return (
-    path
-      .parse(originalname)
-      .name
-      .replace(/\s+/g, "-")
-      .replace(/[^a-zA-Z0-9-_]/g, "") || "file"
-  );
-};
 
-const getResourceType = (mimetype) => {
-  if (mimetype === "application/pdf") return "image";
-  if (mimetype.startsWith("image/")) return "image";
-  if (mimetype.startsWith("video/")) return "video";
-  return "raw";
-};
+// 2. MODIFIKASI: Sediakan folder temporary di server BE untuk menampung file tugas besar
+const tempDir = path.join(__dirname, "temp_uploads");
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+}
 
-const makePublicId = (file, resourceType) => {
-  const baseName = cleanBaseName(file.originalname);
-  const ext = path.extname(file.originalname).toLowerCase();
-
-  if (resourceType === "raw") {
-    return `${Date.now()}-${baseName}${ext}`;
-  }
-
-  return `${Date.now()}-${baseName}`;
-};
-
-const storageTeacher = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    const resourceType = getResourceType(file.mimetype);
-
-    return {
-      folder: "e-learning_assignments/teacher",
-      resource_type: resourceType,
-      public_id: makePublicId(file, resourceType),
-    };
-  },
-});
-
-const storageStudent = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    const resourceType = getResourceType(file.mimetype);
-
-    return {
-      folder: "e-learning_assignments/student",
-      resource_type: resourceType,
-      public_id: makePublicId(file, resourceType),
-    };
-  },
+const localStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, tempDir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
 });
 
 const sharedFileFilter = (req, file, cb) => {
@@ -93,18 +58,52 @@ const sharedFileFilter = (req, file, cb) => {
     : cb(new Error("Format tidak didukung. Gunakan PDF, DOCX, PPT, MP4, JPG, PNG, WEBP, atau GIF"), false);
 };
 
-const uploadCloud = multer({ storage: profileStorage });
+// Fungsi helper bawaan Anda tetap dipertahankan
+const cleanBaseName = (originalname) => {
+  return (
+    path
+      .parse(originalname)
+      .name
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9-_]/g, "") || "file"
+  );
+};
 
+const getResourceType = (mimetype) => {
+  if (mimetype === "application/pdf") return "image";
+  if (mimetype.startsWith("image/")) return "image";
+  if (mimetype.startsWith("video/")) return "video";
+  return "raw";
+};
+
+const makePublicId = (file, resourceType) => {
+  const baseName = cleanBaseName(file.originalname);
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (resourceType === "raw") {
+    return `${Date.now()}-${baseName}${ext}`;
+  }
+  return `${Date.now()}-${baseName}`;
+};
+
+// Gunakan localStorage untuk Guru dan Siswa
 const uploadTeacher = multer({
-  storage: storageTeacher,
+  storage: localStorage,
   fileFilter: sharedFileFilter,
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
 });
 
 const uploadStudent = multer({
-  storage: storageStudent,
+  storage: localStorage,
   fileFilter: sharedFileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
 });
 
-module.exports = { cloudinary, uploadCloud, uploadTeacher, uploadStudent };
+// Export juga helper fungsinya agar bisa digunakan di controller
+module.exports = { 
+  cloudinary, 
+  uploadCloud, 
+  uploadTeacher, 
+  uploadStudent, 
+  getResourceType, 
+  makePublicId 
+};

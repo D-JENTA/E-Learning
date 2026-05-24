@@ -2,6 +2,7 @@ const Student = require("./student");
 const Teacher = require("./teacher");
 const Class = require("./class");
 const Assignment = require("./assignment");
+const assignmentStudent = require("./assignmentStudent");
 const User = require("./user")
 const studentClass = require("./studentClass");
 const emailOtp = require("./emailOtps");
@@ -50,10 +51,11 @@ emailOtp.belongsTo(User, {
     targetKey:"id_user"
 });
 
-User.hasMany(emailOtp, {
-  foreignKey: "user_id",
-  sourceKey: "id_user"
-});
+
+// relation assignmentStudent assignment
+Assignment.hasMany(assignmentStudent, { foreignKey: "id_assignment" });
+assignmentStudent.belongsTo(Assignment, { foreignKey: "id_assignment" });
 
 
-module.exports = {User, Student, Class, Teacher,Assignment, studentClass, emailOtp};
+
+module.exports = {User, Student, Class, Teacher,Assignment, assignmentStudent, studentClass, emailOtp};

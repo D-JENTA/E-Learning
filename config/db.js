@@ -5,9 +5,13 @@ const sequelize = new Sequelize(
      process.env.DB_USER ,
       process.env.DB_PW, 
       {
-    host:process.env.BD_HOST,
-    dialect:"mysql",
-    logging: false,
+   host: process.env.BD_HOST,
+        dialect: "mysql",
+        logging: false,
+        timezone: "+07:00", 
+        dialectOptions: {
+            dateStrings: true,
+        }
       });
 
 sequelize.authenticate()

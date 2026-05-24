@@ -19,14 +19,6 @@ const Assignment = sequelize.define("Assignment", {
     type: DataTypes.STRING,        
     allowNull: false
   }, 
-  id_student : {
-    type: DataTypes.INTEGER,
-    allowNUll: true,
-    references : {
-      model : "student_tb",
-      key : "id_student"
-    }
-  },
   id_teacher: {
     type : DataTypes.INTEGER,
     allowNull : true,
@@ -48,9 +40,9 @@ const Assignment = sequelize.define("Assignment", {
     type: DataTypes.STRING,
     allowNull: true
 },
-  file_extension: {
-    type: DataTypes.STRING,
-    allowNull: true
+  deadline : {
+    type : DataTypes.DATE,
+    allowNull : true
   }
 }, {
   tableName: "assignment_tb",           

@@ -11,7 +11,10 @@ const sequelize = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 const uploadCloud = require("../config/cloudinary").uploadCloud;
 const Class = require("../models/class");
+const assignmentStudent = require("../models/assignmentStudent");
+const studentClass = require("../models/studentClass");
 const cloudinary = require("cloudinary").v2;
+const Assignment = require("../models/assignment");
 
 const loginAdmin = async ( req, res) => {
     try {
@@ -285,7 +288,6 @@ const validateEmail = async (req, res) => {
 };
 
 // input user by superAdmin
-
 const inputUser = async (req, res) => {
     try {
         const { username, email, password, role, nis, nip } = req.body;
@@ -337,6 +339,83 @@ const updatePassword = async (req, res) => {
         res.status(500).json({message : "server error while update password"})
     }
 };
+
+// update user by admin (admin can update name, email, and role but with strict validation if admin want to change role)
+const changeUserRole = async (req, res) => {
+    try {
+        const { id } = req.body; 
+        const { targetRole } = req.body; 
+        const { newNISORNIP } = req.body;
+
+
+        if (targetRole === 'teacher') {
+            const student = await Student.findOne({ where: { id_student: id } });
+            if (!student) return res.status(404).json({ message: "Data siswa tidak ditemukan." });
+
+            const hasClass = await studentClass.findOne({ where: { id_student: id } });
+            const hasSubmission = await assignmentStudent.findOne({ where: { id_student: id } });
+
+            if (hasClass || hasSubmission ) {
+                return res.status(400).json({
+                    message: "Gagal mengubah peran! Siswa ini sudah memiliki riwayat tugas atau kelas."
+                });
+            }
+
+            await Teacher.create({
+                id_teacher: student.id_student,
+                username: student.username,
+                email: student.email,
+                nip: newNISORNIP
+            });
+
+            await User.update({ role: 'teacher' }, { where: { id_user: id } });
+
+            await student.destroy();
+            return res.status(200).json({ message: "Berhasil mengubah peran Siswa menjadi Guru." });
+        }
+
+        if (targetRole === 'student') {
+            const teacher = await Teacher.findOne({ where: { id_teacher: id } });
+            if (!teacher) return res.status(404).json({ message: "Data guru tidak ditemukan." });
+
+ 
+            const ownsClass = await Class.findOne({ where: { id_teacher: id } });
+            if (ownsClass) {
+                return res.status(400).json({
+                    message: "Gagal mengubah peran! Guru ini masih aktif mengajar atau memiliki kelas di aplikasi."
+                });
+            }
+
+
+            const createdAssignment = await Assignment.findOne({ where: { id_teacher: id } });
+            if (createdAssignment) {
+                return res.status(400).json({
+                    message: "Gagal mengubah peran! Guru ini sudah memiliki riwayat membuat tugas."
+                });
+            }
+
+  
+            await Student.create({
+                id_student: teacher.id_teacher,
+                username: teacher.username,
+                email: teacher.email,
+                nis: newNISORNIP
+            });
+            
+            await User.update({ role: 'student' }, { where: { id_user: id } });
+
+            await teacher.destroy();
+            return res.status(200).json({ message: "Berhasil mengubah peran Guru menjadi Siswa." });
+        }
+
+        return res.status(400).json({ message: "Target role tidak valid. Gunakan 'student' atau 'teacher'." });
+
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error", error: error.message });
+    }
+};
+
+
 
 // GET all
 const getUser = async ( req, res) => {
@@ -438,29 +517,6 @@ const updateUsername = async (req, res) => {
     }
 };
 
-// update role for admin and super admin
-const updateRole = async (req, res) => {
-    try {
-        const { id_user, role } = req.body; 
-        if (!id_user) return res.status(404).json({ message: "User not found" });
-        
-        if (!["student", "teacher", "admin"].includes(role)) 
-            return res.status(400).json({ message: "Invalid role" });
-
-        await User.update({ role: role }, { where: { id_user: id_user } });
-
-      
-        const updatedUser = await User.findByPk(id_user);
-
-        res.json({ 
-            message: "User role updated successfully.", 
-            data: updatedUser 
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error while updating role" });
-    }
-};
 // update profile picture
 const updateProfilePicture = async (req, res) => {
     try {
@@ -574,5 +630,5 @@ module.exports = {
     updateEmail,
     updateUsername,
     getProfilePicture,
-    updateRole
+    changeUserRole,
     };

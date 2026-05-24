@@ -97,6 +97,76 @@ const getAllClass = async (req, res) =>{
     }
 };
 
+// get student class details (mengambil data siswa beserta kelas yang diikuti berdasarkan id student)
+const getUserClassDetails = async (req, res) => {
+    try {
+        const { id_user } = req.params; 
+
+        // Langkah 1: Cek apakah user ini adalah SISWA
+        const studentData = await Student.findOne({
+            where: { id_student: id_user },
+            attributes: ["id_student", "username"],
+            include: [
+                {
+                    model: Class,
+                    attributes: ["id_class", "class_name", "classCode"],
+                    through: { attributes: [] }
+                }
+            ]
+        });
+
+        if (studentData) {
+            return res.status(200).json({
+                message: "Berhasil mengambil kelas yang DIKUTI oleh Siswa.",
+                role: "student",
+                data: {
+                    id_user: studentData.id_student,
+                    name: studentData.username,
+                    email: studentData.email,
+                    classes: studentData.Classes // Berisi daftar kelas yang diikuti
+                }
+            });
+        }
+
+        // Langkah 2: Jika bukan siswa, cek apakah user ini adalah GURU
+        const teacherData = await Teacher.findOne({
+            where: { id_teacher: id_user },
+            attributes: ["id_teacher", "username"]
+        });
+
+        if (teacherData) {
+            // Karena relasinya One-to-Many (Guru punya banyak kelas), 
+            // Kita cari kelas yang dibuat oleh id_teacher ini di tabel Class
+            const createdClasses = await Class.findAll({
+                where: { id_teacher: id_user },
+                attributes: ["id_class", "class_name", "classCode"]
+            });
+
+            return res.status(200).json({
+                message: "Berhasil mengambil kelas yang DIBUAT oleh Guru.",
+                role: "teacher",
+                data: {
+                    id_user: teacherData.id_teacher,
+                    name: teacherData.username,
+                    email: teacherData.email,
+                    classes: createdClasses 
+                }
+            });
+        }
+
+        // Langkah 3: Jika di kedua tabel tidak ditemukan
+        return res.status(404).json({ 
+            message: "User tidak ditemukan di data siswa maupun guru." 
+        });
+
+    } catch (error) {
+        return res.status(500).json({ 
+            message: "Internal server error", 
+            error: error.message 
+        });
+    }
+};
+
 // get by id
 const getByIdClass = async ( req, res) => {
     try {const classId = await Class.findByPk(req.params.id)
@@ -243,5 +313,6 @@ module.exports = {
     getClassByStudent, 
     getClassByTeacher, 
     deleteClassStudent, 
-    deleteStudentFromClass
+    deleteStudentFromClass,
+    getUserClassDetails
     };
