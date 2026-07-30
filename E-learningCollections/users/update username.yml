@@ -1,0 +1,18 @@
+info:
+  name: update username
+  type: http
+  seq: 1
+
+http:
+  method: PUT
+  url: http://localhost:5000/api/auth/users/me/username
+  body:
+    type: json
+    data: "{\r\n    \"username\" : \"\"\r\n}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

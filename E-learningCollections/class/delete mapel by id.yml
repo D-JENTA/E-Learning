@@ -1,0 +1,20 @@
+info:
+  name: delete mapel by id
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: http://localhost:5000/api/mapels
+  body:
+    type: json
+    data: "{\r\n    \"id_mapel\" : \"66\"\r\n}"
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

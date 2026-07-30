@@ -1,0 +1,24 @@
+info:
+  name: getClassByStudent
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: https://gmt-cradle-clinic-window.trycloudflare.com/api/students/me/classes
+  body:
+    type: json
+    data: "{\r
+
+      \    \"id_student\" : \"172\"\r
+
+      }"
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

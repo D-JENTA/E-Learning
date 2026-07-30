@@ -1,0 +1,17 @@
+info:
+  name: delete assignment student
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: http://localhost:5000/api/students/assignments/82
+  auth:
+    type: bearer
+    token: "{{auth_secret_03r3}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

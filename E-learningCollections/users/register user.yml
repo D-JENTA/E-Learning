@@ -1,0 +1,36 @@
+info:
+  name: register user
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/auth/register
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: "{\r
+
+      \  \"username\": \"duimy\",\r
+
+      \  \"email\": \"doo@gmail.com\",\r
+
+      \  \"password\": \"1234567\",\r
+
+      \  \"role\": \"student\",\r
+
+      \  \"nis\" : \"239108\",\r
+
+      \  \"nip\" : \"123123\",\r
+
+      \  \"id_class\" : \"2\"\r
+
+      }\r\n"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

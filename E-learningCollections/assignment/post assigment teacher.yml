@@ -1,0 +1,33 @@
+info:
+  name: post assigment teacher
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/teachers/class/60/assignments
+  body:
+    type: multipart-form
+    data:
+      - name: assignment_title
+        type: text
+        value: '"tugas buat video"'
+      - name: description
+        type: text
+        value: '"jadikan tugas berikut menjadi tampilan yang bagus untuk poster"'
+      - name: deadline
+        type: text
+        value: 2026-05-24 11:00:00
+      - name: file
+        type: file
+        value:
+          - /C:/Users/User/OneDrive/Documents/Laporan Hasil Penerimaan Bantuan.pdf
+  auth:
+    type: bearer
+    token: "{{auth_secret_0ssq}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

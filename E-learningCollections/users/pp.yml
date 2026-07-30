@@ -1,0 +1,17 @@
+info:
+  name: pp
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/auth/profile-picture
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTI2LCJyb2xlIjoic3R1ZGVudCIsImlhdCI6MTc3NjA2NjMzNywiZXhwIjoxNzc2MTUyNzM3fQ.w6N4dHeh-jUbym8xsiyIELpUXreL6Pf-nj2kx61areI
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

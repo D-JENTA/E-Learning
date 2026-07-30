@@ -1,0 +1,17 @@
+info:
+  name: delete assignment by id
+  type: http
+  seq: 4
+
+http:
+  method: DELETE
+  url: http://localhost:5000/api/teachers/assignments/47
+  auth:
+    type: bearer
+    token: "{{auth_secret_0vs4}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -1,0 +1,17 @@
+info:
+  name: user get all
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:5000/api/auth/users
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic3R1ZGVudCIsImlhdCI6MTc2ODgwNjIwNiwiZXhwIjoxNzY4ODkyNjA2fQ.gHx1XD9JUcLUMRW6LYxiIrxCSA9cznqbxIXF-P0Vuec
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

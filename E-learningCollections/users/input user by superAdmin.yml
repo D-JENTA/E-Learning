@@ -1,0 +1,37 @@
+info:
+  name: input user by superAdmin
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/superAdmin/input-user
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: "{\r
+
+      \  \"username\":\"admin1\" ,\r
+
+      \  \"email\": \"athallahaqilwesfi@gmail.com\",\r
+
+      \  \"password\": \"adminsmk4\",\r
+
+      \  \"role\": \"admin\",\r
+
+      \  \"nis\" : \"\",\r
+
+      \  \"nip\" :\"\"\r
+
+      }\r\n"
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTQsInJvbGUiOiJzdXBlckFkbWluIiwiaWF0IjoxNzc3MjU2MjAwLCJleHAiOjE3NzczNDI2MDB9.DUOtyUyE6XSwKa65Wv35hdWXS7D-YecWJSn4ZwBNJhg
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

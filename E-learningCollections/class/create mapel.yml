@@ -1,0 +1,26 @@
+info:
+  name: create mapel
+  type: http
+  seq: 8
+
+http:
+  method: POST
+  url: http://localhost:5000/api/admin/me/mapels
+  body:
+    type: json
+    data: "{\r
+
+      \    \"mapel_name\" : \"PAI\",\r
+
+      \    \"id_teacher\" : \"\",\r
+
+      \    \"id_class\" : \"2\"\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

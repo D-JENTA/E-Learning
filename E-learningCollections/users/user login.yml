@@ -1,0 +1,26 @@
+info:
+  name: user login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/auth/login
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: text
+    data: "{\r
+
+      \  \"email\": \"taufiq.dkstp@gmail.com\",\r
+
+      \  \"password\": \"superlearneradmin\"\r
+
+      }\r\n"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

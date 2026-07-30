@@ -1,0 +1,27 @@
+info:
+  name: post/create class
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:5000/api/admin/me/classes
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: text
+    data: "{\r
+
+      \  \"class_name\": \"XII PPLG 1\"\r
+
+      }\r\n"
+  auth:
+    type: bearer
+    token: "{{auth_secret_1das}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

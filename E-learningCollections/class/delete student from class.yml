@@ -1,0 +1,21 @@
+info:
+  name: delete student from class
+  type: http
+  seq: 6
+
+http:
+  method: DELETE
+  url: http://localhost:5000/api/teachers/me/classes/:id_class
+  params:
+    - name: id_class
+      value: ""
+      type: path
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTI2LCJyb2xlIjoic3R1ZGVudCIsImlhdCI6MTc3NjA2NjMzNywiZXhwIjoxNzc2MTUyNzM3fQ.w6N4dHeh-jUbym8xsiyIELpUXreL6Pf-nj2kx61areI
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

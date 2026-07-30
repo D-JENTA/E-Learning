@@ -1,0 +1,24 @@
+info:
+  name: login admin
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:5000/api/auth/loginAdmin-onlyAdmin
+  body:
+    type: json
+    data: "{\r
+
+      \    \"email\" : \"taufiq.dkstp@gmail.com\",\r
+
+      \    \"password\" : \"superleaneradmin\"\r
+
+      }"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

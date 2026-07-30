@@ -1,0 +1,27 @@
+info:
+  name: input score
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: http://localhost:5000/api/assignment/:iid/score
+  headers:
+    - name: Content-Type
+      value: application/json
+  params:
+    - name: iid
+      value: ""
+      type: path
+  body:
+    type: json
+    data: "{\r\n    \"score\":\"70\"\r\n}\r\n"
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTU2LCJyb2xlIjoidGVhY2hlciIsImlhdCI6MTc3OTI2MjcwNSwiZXhwIjoxNzc5MzQ5MTA1fQ.8lMwZt9iBK204uMT8xCpSAnvhLTChIpMqfCHNkahtIM
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

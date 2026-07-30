@@ -1,0 +1,24 @@
+info:
+  name: getMapelByTeacher
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: http://localhost:5000/api/teachers/me/mapels
+  body:
+    type: json
+    data: "{\r
+
+      \    \"id_teacher\" : \"158\"\r
+
+      }"
+  auth:
+    type: bearer
+    token: ""
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
