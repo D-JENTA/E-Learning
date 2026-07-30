@@ -47,6 +47,7 @@ app.get("/", (req, res) => {
 
 cronCleaner();
 
+
 server.listen(PORT, '0.0.0.0', () => { 
-    console.log(`server running on http://192.168.41.103:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });

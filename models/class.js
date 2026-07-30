@@ -1,35 +1,20 @@
 const {DataTypes} = require("sequelize");
-const sequelize = require("../config/db");
+const sequelize  = require("../config/db");
 
-
-const Class = sequelize.define ("Class",{
+const Class = sequelize.define("Class", {
     id_class: {
-        type: DataTypes.INTEGER,
+        type : DataTypes.INTEGER,
         primaryKey : true,
-        autoIncrement : true
-    },
-    class_name: {
-        type : DataTypes.STRING(25),
+        autoIncrement : true,
         allowNull : false
     },
-    classCode : {
-        type : DataTypes.STRING(6),
-        allowNull : false,
-    },
-    id_teacher : {
-        type : DataTypes.INTEGER,
-        allowNull : false,
-        references : {
-            model : "teacher_tb",
-            key : "id_teacher"
-        }
+    class_name : {
+        type : DataTypes.STRING(80),
+        allowNull : false
     }
 },{
     tableName : "class_tb",
     timestamps : false
-}
-);
-
-
+})
 
 module.exports = Class;

@@ -1,35 +1,37 @@
 const Student = require("./student");
 const Teacher = require("./teacher");
-const Class = require("./class");
+const Mapel = require("./mapel");
 const Assignment = require("./assignment");
 const assignmentStudent = require("./assignmentStudent");
 const User = require("./user")
-const studentClass = require("./studentClass");
+const studentMapel = require("./studentMapel");
 const emailOtp = require("./emailOtps");
+const Class = require("./class");
+const classMapel = require("./classMapel");
 
-//Relation m2m student class
-Student.belongsToMany(Class, {
-    through: studentClass,
+//Relation m2m student Mapel
+Student.belongsToMany(Mapel, {
+    through: studentMapel,
     foreignKey: "id_student",
-    otherKey: "id_class"
+    otherKey: "id_Mapel"
 });
 
-Class.belongsToMany(Student, {
-    through: studentClass,
-    foreignKey: "id_class",
+Mapel.belongsToMany(Student, {
+    through: studentMapel,
+    foreignKey: "id_Mapel",
     otherKey: "id_student"
 });
 
-studentClass.belongsTo(Student, { foreignKey: "id_student" });
-studentClass.belongsTo(Class, { foreignKey: "id_class" });
+studentMapel.belongsTo(Student, { foreignKey: "id_student" });
+studentMapel.belongsTo(Mapel, { foreignKey: "id_Mapel" });
 
-//Relation teacher class
-Teacher.hasMany(Class, { foreignKey: "id_teacher" });
-Class.belongsTo(Teacher, { foreignKey: "id_teacher" });
+//Relation teacher Mapel
+Teacher.hasMany(Mapel, { foreignKey: "id_teacher" });
+Mapel.belongsTo(Teacher, { foreignKey: "id_teacher" });
 
-//Relation class Assignment
-Class.hasMany(Assignment, {foreignKey: "id_class", onDelete : "CASCADE"});
-Assignment.belongsTo(Class, { foreignKey: "id_class"});
+//Relation Mapel Assignment
+Mapel.hasMany(Assignment, {foreignKey: "id_Mapel", onDelete : "CASCADE"});
+Assignment.belongsTo(Mapel, { foreignKey: "id_Mapel"});
 
 //Relation user student
 Student.belongsTo(User,{foreignKey: "id_student"});
@@ -57,5 +59,27 @@ Assignment.hasMany(assignmentStudent, { foreignKey: "id_assignment" });
 assignmentStudent.belongsTo(Assignment, { foreignKey: "id_assignment" });
 
 
+// relation class mapel
+Mapel.belongsToMany(Class, {
+  through: classMapel,
+  foreignKey: "id_mapel",
+  otherKey: "id_class"
+});
 
-module.exports = {User, Student, Class, Teacher,Assignment, assignmentStudent, studentClass, emailOtp};
+Class.belongsToMany(Mapel, {
+  through: classMapel,
+  foreignKey: "id_class",
+  otherKey: "id_mapel"
+});
+
+
+classMapel.belongsTo(Mapel, { foreignKey: "id_mapel" });
+classMapel.belongsTo(Class, { foreignKey: "id_class" });
+
+//relation student class
+Student.belongsTo(Class, { foreignKey: "id_class" });
+Class.hasMany(Student, { foreignKey: "id_class" });
+
+
+
+module.exports = {User, Student, Mapel, Teacher,Assignment, assignmentStudent, studentMapel, emailOtp, Class, classMapel};

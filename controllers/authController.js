@@ -10,65 +10,30 @@ const emailOtp = require("../models/emailOtps");
 const sequelize = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
 const uploadCloud = require("../config/cloudinary").uploadCloud;
+const Mapel = require("../models/mapel");
 const Class = require("../models/class");
 const assignmentStudent = require("../models/assignmentStudent");
-const studentClass = require("../models/studentClass");
+const studentClass = require("../models/studentMapel");
 const cloudinary = require("cloudinary").v2;
 const Assignment = require("../models/assignment");
 
-const loginAdmin = async ( req, res) => {
-    try {
-        const{email , password} = req.body;
-
-        const admin = await User.findOne({where : {email, role : ["admin", "superAdmin"]}});
-        if (!admin) return res.status(400).json({message : "admin not found"});
-
-        const isMatch = await bcrypt.compare(password, admin.password);
-        if (!isMatch) return res.status(400).json({message : "wrong password"});
-
-        await emailOtp.destroy({ where: { user_id: admin.id_user }});
-        
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiredAt = new Date(Date.now() + 5 * 60000);
-
-        await emailOtp.create({
-        user_id: admin.id_user,
-        otp: generatedOtp,
-        expires_at:expiredAt
-        })
-
-        setImmediate(() => {
-            sendEmail(email, generatedOtp).catch(console.error);
-        });
-        const token = jwt.sign({id : admin.id_user, role : admin.role}, SECRET_KEY, {expiresIn : "1d"});
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax"
-        })
-        
-        res.status(200).json({message : "login success",token : token, user: { id: admin.id_user, role: admin.role }});
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({message : "server error"});
-    }
-}
 
 // register
 const register = async (req, res) => {
     let t;
     const SALT_ROUNDS = 5;
     try {
-        const { username, email, password, role, nis, nip } = req.body;
+        const { username, email, password, role, nis, nip, id_class } = req.body;
 
         // Validation Input
         if (!username || !email) return res.status(400).json({ message: "all fields must be filled in" });
+        
         if (!password || password.length < 6) return res.status(400).json({ message: "password must be more then 8 characters" });
         if (!["student", "teacher", "admin"].includes(role)) return res.status(400).json({ message: "role must be filled" });
 
         if (role === "student" && (!nis || nis.trim() === "")) return res.status(400).json({ message: "NIS must be filled in" });
         if (role === "teacher" && (!nip || nip.trim() === "")) return res.status(400).json({ message: "NIP must be filled in" });
+        // if (role === "student" && (!id_class || String.trim() === "")) return res.status(400).json({ message: "id_class must be filled in" });
 
         const existingUser = await User.findOne({ where: { email }, attributes: ["id_user"] });
         if (existingUser) return res.status(400).json({ message: "email is registered, please log in" });
@@ -98,20 +63,13 @@ const register = async (req, res) => {
         }, { transaction: t });
 
         if (role === "student") {
-            await Student.create({ id_student: newUser.id_user, nis, username: newUser.username }, { transaction: t });
+            await Student.create({ id_student: newUser.id_user, nis, id_class, username: newUser.username }, { transaction: t });
         } else if (role === "teacher") {
             await Teacher.create({ id_teacher: newUser.id_user, nip, username: newUser.username }, { transaction: t });
         }
 
         await t.commit();
 
-        const token = jwt.sign({id : newUser.id_user, role : newUser.role}, SECRET_KEY, {expiresIn : "1d"});
-        
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax"
-        })
 
         setImmediate(() => {
             sendEmail(email, generatedOtp).catch(console.error);
@@ -119,13 +77,11 @@ const register = async (req, res) => {
 
         res.status(201).json({
             message: "registration successful, check your email for otp",
-            token,
             user_id: newUser.id_user,
             user: {
                 id_user: newUser.id_user,
                 username: newUser.username,
-                role: newUser.role,
-                token: token
+                role: newUser.role
             }
         });
 
@@ -137,92 +93,153 @@ const register = async (req, res) => {
 };
 
 //verify otp
-const verifyOtp = async (req,res) => {
+const verifyOtpLogin = async (req, res) => {
     const t = await sequelize.transaction();
     try {
-        const {user_id, otp} =req.body;
-        if(!user_id || !otp) {
-            return res.status(400).json({message : "user_id and otp are required"});
+        const { user_id, otp } = req.body;
+        
+        if (!user_id || !otp) {
+            return res.status(400).json({ message: "user_id and otp are required" });
         }
 
-        const user = await User.findByPk(user_id, {transaction : t});
+        const user = await User.findByPk(user_id, { transaction: t });
         if (!user) {
-            return res.status(404).json({message: "user not found"})
+            await t.rollback(); 
+            return res.status(404).json({ message: "user not found" });
         }
 
         const otpData = await emailOtp.findOne({
-        where: { user_id: Number(user_id) },
-        order: [['created_at', 'DESC']],
-        transaction: t
+            where: { user_id: Number(user_id) },
+            order: [['created_at', 'DESC']],
+            transaction: t
         });
 
-       if (!otpData || otpData.otp !== otp.trim()) {
-                await t.rollback();
-                return res.status(400).json({ message: "invalid otp" });
-            }
-
-        if(otpData.expires_at < new Date()) {
-            await otpData.destroy({transaction : t});
-            await t.commit();
-            return res.status(400).json({message: "otp expired"})
+        if (!otpData || otpData.otp !== otp.trim()) {
+            await t.rollback();
+            return res.status(400).json({ message: "invalid otp" });
         }
 
-        await user.update(
-            {is_verified : true},
-            {transaction : t}
-        );
 
-        await otpData.destroy({transaction : t});
+        if (otpData.expires_at < new Date()) {
+            await otpData.destroy({ transaction: t });
+            await t.commit();
+            return res.status(400).json({ message: "otp expired" });
+        }
+
+
+        await otpData.destroy({ transaction: t });
+        
 
         await t.commit();
 
-        return res.json({message : "OTP verified successfully",
-        user : {id_user : user.id_user,
-        username : user.username,
-        email : user.email,
-        role : user.role 
-        }})
-    }catch (err){
-        if(!t.finished){await t.rollback()};
-        console.error(err)
-        return res.status(500).json({message : "server error"})
+
+        const token = jwt.sign(
+            { id: user.id_user, role: user.role }, 
+            process.env.JWT_SECRET || "SECRET_KEY", 
+            { expiresIn: "1d" }
+        );
+
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax"
+        });
+
+
+        return res.json({
+            message: "login success",
+            token,
+            user_id: user.id_user,
+            user: { 
+                id_user: user.id_user, 
+                username: user.username, 
+                role: user.role 
+            }
+        });
+
+    } catch (err) {
+        if (!t.finished) { 
+            await t.rollback(); 
+        }
+        console.error(err);
+        return res.status(500).json({ message: "server error" });
     }
 };
 
 // login
 const login = async (req, res) => {
     try {
-        const { email, password} = req.body;
+        const { email, password } = req.body;
 
-        const user = await User.findOne({where:{email, role : ["student", "teacher"]}});
-        if (!user) return res.status(400).json({message:"email not found"});
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.status(400).json({ message: "email not found" });
         
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({message:"wrong password"});
+        if (!isMatch) return res.status(400).json({ message: "wrong password" });
 
-        await emailOtp.destroy({ where: { user_id: user.id_user }});
-
-        const token = jwt.sign({id : user.id_user, role : user.role}, SECRET_KEY, {expiresIn : "1d"});
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax"
-        })
-        
-        res.json({
-        message: "login success, check your email for otp",
-        token,
-        user_id: user.id_user,
-        user: { 
-            id_user: user.id_user, 
-            username: user.username, 
-            role: user.role 
+        if (!user.is_verified) {
+            return res.status(403).json({ message: "Account not verified yet" });
         }
-});
+
+        if (user.role === 'admin') {
+ 
+            await emailOtp.destroy({ where: { user_id: user.id_user } });
+
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+            const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+            await emailOtp.create({
+                user_id: user.id_user,
+                otp: otpCode,
+                expires_at: expiresAt
+            });
+
+
+            setImmediate(() => {
+            sendEmail(email, otpCode).catch(console.error);
+            });
+
+
+            return res.status(200).json({
+                message: 'Login tahap pertama berhasil. Silakan cek email Anda untuk kode OTP.',
+                requiresTwoFactor: true,
+                user_id: user.id_user, 
+                email: user.email 
+            });
+
+        } else {
+            await emailOtp.destroy({ where: { user_id: user.id_user } });
+
+
+            const token = jwt.sign(
+                { id: user.id_user, role: user.role }, 
+                process.env.JWT_SECRET || "SECRET_KEY", 
+                { expiresIn: "1d" }
+            );
+
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax"
+            });
+            
+            return res.status(200).json({
+                message: "login success",
+                token,
+                user_id: user.id_user,
+                user: { 
+                    id_user: user.id_user, 
+                    username: user.username, 
+                    role: user.role 
+                }
+            });
+        }
+
     } catch (err) {
-        console.error (err)
-        res.status(500).json({message : "server error"})
+        console.error(err);
+        return res.status(500).json({ message: "server error" });
     }
 };
 
@@ -415,8 +432,6 @@ const changeUserRole = async (req, res) => {
     }
 };
 
-
-
 // GET all
 const getUser = async ( req, res) => {
     try{
@@ -438,27 +453,6 @@ const getUserById = async (req, res) => {
     } catch (err){
         console.error (err) 
         res.status(500).json({message :"cannot run method GET BY ID"})
-    }
-};
-
-// GET PROFILE PICTURE URL
-const getProfilePicture = async (req, res) => {
-    try {
-        const user = await User.findByPk(req.user.id, {
-            attributes: ["profile_picture_url"],
-            raw: true
-        });
-        
-        if (!user) return res.status(400).json({ message: "user not found" });
-        
-        res.json({ 
-            profile_picture_url: user.profile_picture_url || null,
-            message: user.profile_picture_url ? "profile picture found" : "no profile picture set"
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "server error" });
     }
 };
 
@@ -488,6 +482,18 @@ const getStudentByIdClass = async (req, res) => {
     }
 };
 
+//get all teachers
+const getAllTeachers = async (req, res) => {
+    try{
+        const teachers = await Teacher.findAll({
+            attributes : ["id_teacher", "username"]
+        })
+        res.json(teachers);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "server error while get all teachers" });
+    }
+};
 
 // update email 
 const updateEmail = async (req, res) => {
@@ -501,7 +507,7 @@ const updateEmail = async (req, res) => {
         console.error(err)
         res.status(500).json({message : "server error while update email"})
     }
-}
+};
 
 // update username
 const updateUsername = async (req, res) => {
@@ -554,22 +560,9 @@ const updateProfilePicture = async (req, res) => {
     }
 };
 
-// DELETE for super admin only
-const deleteUser = async ( req, res) => {
-    try {
-        const user = await User.findByPk(req.params.id);
-        if(!user) return res.status(400).json({message : " User not found"});
-
-        await user.destroy();
-        res.json({message: "success delete user ", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
-    } catch (err) {
-        console.error (err)
-        res.status(500).json({message : " cannot run method DELETE for super admin only"})
-    }
-};
 
 // delete for admin
-const deleteForAdmin = async ( req , res) => {
+const deleteUser = async ( req , res) => {
     try {
         const id_user = req.params.id;
         const user = await User.findByPk(id_user);
@@ -581,7 +574,7 @@ const deleteForAdmin = async ( req , res) => {
     console.error(error)
     res.status(500).json({message : "cannot run method Delete for admin"})
 }
-}
+};
 // check me
 const checkMe = async (req, res) => {
     try {
@@ -611,14 +604,12 @@ const logout = (req, res) => {
 
 
 module.exports = {
-    loginAdmin,
     register, 
     login, 
     getUser, 
     getUserById, 
     deleteUser, 
-    deleteForAdmin, 
-    verifyOtp, 
+    verifyOtpLogin, 
     checkMe, 
     logout,
     updateProfilePicture,
@@ -627,8 +618,8 @@ module.exports = {
     updatePassword,
     inputUser,
     getStudentByIdClass,
+    getAllTeachers,
     updateEmail,
     updateUsername,
-    getProfilePicture,
     changeUserRole,
     };

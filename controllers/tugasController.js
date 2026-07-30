@@ -3,7 +3,7 @@ const path = require("path");
 const fs = require("fs")
 const Assignment = require("../models/assignment");
 const assignmentStudent = require("../models/assignmentStudent");
-const Student_classes = require("../models/studentClass")
+// const Student_mapel = require("../models/studentMapel");
 const  {Op, Model} = require("sequelize");
 const { uploadTeacher,uploadStudent, getResourceType, makePublicId, cloudinary } = require("../config/cloudinary");
 

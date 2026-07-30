@@ -3,25 +3,24 @@ const generateCode = require("../models/generateCode");
 const path = require("path");
 const fs = require("fs/promises");
 const sequelize = require("../config/db")
-const { Student, Class, Teacher, studentClass } = require("../models");
+const { Student, Teacher, } = require("../models");
+const studentMapel = require("../models/studentMapel");
+const classMapel = require("../models/classMapel");
+const Class = require("../models/class");
+const Mapel = require("../models/mapel");
 const { data } = require("autoprefixer");
 
 //create class
 const createClass = async (req, res) => {
   try {
-    const  id_teacher  = req.user.id;
     const { class_name } = req.body;
 
     if (!class_name) {
       return res.status(400).json({ message: "class name required" });
     }   
 
-    const classCode = generateCode(6);
-
     const newClass = await Class.create({
-      class_name,
-      classCode,
-      id_teacher
+      class_name
     });
 
     res.status(201).json({
@@ -34,22 +33,93 @@ const createClass = async (req, res) => {
   }
 };
 
-//delete class
-const deleteClass = async (req, res) => {
+//create mapel
+const createMapel = async (req, res) => {
+    try{
+        const {mapel_name, id_teacher, id_class} = req.body;
+
+        if (!mapel_name) {
+            return res.status(400).json({message : "mapel name must be filled"})
+        }
+
+        const teacherIdValue = (id_teacher && String(id_teacher).trim() !== "") ? Number(id_teacher) : null;
+        if (!id_class) {
+            return res.status(400).json({message : "class ID must be filled"})
+        }
+        const newMapel =await Mapel.create({
+            mapel_name,
+            id_teacher : teacherIdValue
+        })
+
+        await classMapel.create({
+            id_class,
+            id_mapel : newMapel.id_mapel,
+            id_teacher : teacherIdValue
+        })
+
+        res.status(201).json({message : "mapel created successfully"})
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "server error" });
+    }
+}
+
+//add teacher to mapel
+const addTeacherToMapel = async (req, res) => {
+    try {
+        const { id_mapel, id_teacher, id_class } = req.body;
+
+        if (!id_mapel || !id_teacher) {
+            return res.status(400).json({ message: "id_mapel and id_teacher are required" });
+        }
+
+        const teacherIdValue = Number(id_teacher);
+        const mapelIdValue = Number(id_mapel);
+
+        const mapel = await Mapel.findByPk(mapelIdValue);
+        if (!mapel) {
+            return res.status(404).json({ message: "mapel not found" });
+        }
+
+        mapel.id_teacher = teacherIdValue;
+        await mapel.save();
+
+        const whereClause = { id_mapel: mapelIdValue };
+        
+        if (id_class) {
+            whereClause.id_class = Number(id_class);
+        }
+
+        await classMapel.update(
+            { id_teacher: teacherIdValue },
+            { where: whereClause }
+        );
+
+        return res.status(200).json({ message: "successfully added teacher to mapel and class_mapel" });
+
+    } catch (err) {
+        console.error("Error addTeacherToMapel:", err);
+        return res.status(500).json({ message: "server error" });
+    }
+};
+
+//delete mapel
+const deleteMapel = async (req, res) => {
     let t;
   try {
-    const delClass = await Class.findByPk(req.params.id);
-    if (!delClass)
-      return res.status(404).json({ message: "class not found" });
+    const {id_mapel} = req.body;
+    const delMapel = await Mapel.findByPk(id_mapel);
+    if (!delMapel)
+      return res.status(404).json({ message: "mapel not found" });
 
     const assignments = await Assignment.findAll({
-      where: { id_class: delClass.id_class },
+      where: { id_mapel: delMapel.id_mapel },
       attributes: ["file_url"]
     });
 
     t = await sequelize.transaction();
 
-    await delClass.destroy({ transaction: t });
+    await delMapel.destroy({ transaction: t });
 
     await t.commit();
 
@@ -60,7 +130,7 @@ const deleteClass = async (req, res) => {
       fs.unlink(filePath).catch(() => {});
     }
 
-    res.json({ message: "class deleted successfully" });
+    res.json({ message: "mapel deleted successfully" });
 
   } catch (err) {
     if (t && !t.finished) await t.rollback();
@@ -69,33 +139,41 @@ const deleteClass = async (req, res) => {
   }
 };
 
-// delete class student joined
-const deleteClassStudent = async (req, res) => {
-        try{
-            const delClassStudent = await studentClass.findOne({
-                where : {id_student : req.user.id, id_class : req.params.id_class}
-            })
-            if (!delClassStudent){
-            return res.status(404).json({message:"class not found"})
-        }
-        await delClassStudent.destroy();
-        res.json({message : "successfully delete class that joined"})
-        } catch (err){
-            console.error(err)
-            res.status(500).json({message : "server error while delete class that joined"})
-        }
-};
 
 //get all class
 const getAllClass = async (req, res) =>{
     try {
-        const classes = await Class.findAll({attributes : ["id_class","class_name","classCode"]})
+        const classes = await Class.findAll({attributes : ["id_class","class_name"]})
         res.json(classes);
     }catch (err){
         console.error(err)
         return res.status(500).json({message : "server error"})
     }
 };
+
+//get mapel by class id
+const getMapelByClassId = async (req, res) => {
+    try {
+        const {id_class} = req.params;
+        if (!id_class) {
+            return res.status(400).json({message : "class ID must be filled"})
+        }
+        const classMapels = await classMapel.findAll({
+            where : {id_class},
+            include : [
+                {
+                    model : Mapel,
+                    attributes : ["mapel_name","id_mapel"],
+                }
+            ]
+        });
+        res.json(classMapels);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "server error" });
+    }
+};
+
 
 // get student class details (mengambil data siswa beserta kelas yang diikuti berdasarkan id student)
 const getUserClassDetails = async (req, res) => {
@@ -197,63 +275,37 @@ const updateClass = async (req, res) => {
     }
 };
 
-//join class
-const joinClassByCode = async (req, res ) => {
-    try {
-        const {code} = req.body;
-        const id_student = req.user.id;
-
-        const codeFound = await Class.findOne({where : {classCode : code}});
-        if (!codeFound) {
-            return res.status(404).json({message : "class not found"})
-        }
-
-        const classId = codeFound.id_class;
-
-        const alreadyJoined =  await studentClass.findOne({where : {
-            id_student : id_student,
-            id_class : codeFound.id_class
-        }
-    });
-    if(alreadyJoined){
-        return res.status(400).json({message : "you already joined "})
-    }
-
-    const joined = await studentClass.create({
-        id_student :  id_student,
-        id_class :  codeFound.id_class
-    });
-
-    console.log("student joined class : ", joined.toJSON());
-    res.status(201).json({message : "success", data : joined})
-    }catch (err) {
-        console.error("detail error : ", err)
-        return res.status(500).json({message : "server error while join to class by id"});
-    }
-};
-
 //get class by student
-const getClassByStudent = async (req, res) => {
+const getMapelByStudent = async (req, res) => {
     try{
         const id_student = req.user.id;
 
-        const studentClasses = await studentClass.findAll({
-            where : {id_student},
+        const student = await Student.findByPk(id_student, {
+        attributes: ["id_class"], 
+        raw: true                 
+        });
+
+        
+        const idClass = student ? student.id_class : null;
+
+  
+        const classMapels = await classMapel.findAll({
+            where : {id_class : idClass},
             include : [
                 {
-                model : Class,
-                attributes : ["class_name","classCode","id_class"],
+                model : Mapel,
+                attributes : ["mapel_name","id_mapel"],
             }
         ]
         });
 
-        if (studentClasses.length == 0) {
+        if (classMapels.length == 0) {
             return res.status(404).json({message : 'no class joined yet'})
         };
 
-        const joinedClass = studentClasses.map((item)=> item.Class);
+        const joinedMapels = classMapels.map((item)=> item.Mapel);
 
-        res.status(200).json({message : "successfully retrieved joined class", joinedClass});
+        res.status(200).json({message : "successfully retrieved joined class", joinedMapels});
     }catch(err){
         console.error(err)
         return res.status(500).json({message : "server error while get class by student"})
@@ -261,23 +313,48 @@ const getClassByStudent = async (req, res) => {
 };
 
 //get class by teacher
-const getClassByTeacher = async(req, res) => {
-    try{
-        const id_teacher = req.user.id;
+const getMapelByTeacher = async (req, res) => {
+  try {
+    const id_teacher = req.user.id;
 
-        const classes = await Class.findAll({
-            where :{id_teacher},
-            attributes :["id_class", "class_name", "classCode"]
-        });
+   
+    const mapels = await Mapel.findAll({
+      where: { id_teacher },
+      attributes: ["id_mapel", "mapel_name"],
+      include: [
+        {
+          model: Class,
+          attributes: ["id_class", "class_name"],
+          through: { attributes: [] }, 
+          required: true
+        }
+      ]
+    });
 
-        res.status(200).json({
-            message : "success",
-            data :classes
-        });
-    } catch(err) {
-        console.error (err)
-        res.status(500).json({message : "server error while getClassByStudent"})
-    }
+    
+    const formattedData = mapels.map((item) => {
+      const cls = item.Classes[0]; 
+
+      return {
+        id_mapel: item.id_mapel,
+        id_class: cls ? cls.id_class : null,
+        mapel_name: item.mapel_name,
+        class_name: cls ? cls.class_name : "",
+        display_name: cls 
+          ? `${item.mapel_name} - ${cls.class_name}` 
+          : item.mapel_name
+      };
+    });
+
+    return res.status(200).json({
+      message: "success",
+      data: formattedData
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "server error while getMapelByTeacher" });
+  }
 };
 
 // delete student from class that joined by teacher
@@ -305,14 +382,15 @@ const deleteStudentFromClass = async (req, res) => {
 
 module.exports = {
     createClass, 
-    deleteClass, 
+    createMapel,
+    deleteMapel, 
     getAllClass, 
     updateClass,
-    getByIdClass, 
-    joinClassByCode, 
-    getClassByStudent, 
-    getClassByTeacher, 
-    deleteClassStudent, 
+    getByIdClass,
+    addTeacherToMapel,
+    getMapelByStudent, 
+    getMapelByTeacher, 
     deleteStudentFromClass,
-    getUserClassDetails
+    getUserClassDetails,
+    getMapelByClassId
     };

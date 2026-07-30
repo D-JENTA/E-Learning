@@ -15,6 +15,10 @@ const Student = sequelize.define("Student",{
     nis : {
         type : DataTypes.INTEGER(17),
         allowNull : true
+    },
+    id_class : {
+        type : DataTypes.INTEGER(11),
+        allowNull : false
     }
 },{
     tableName : "student_tb",

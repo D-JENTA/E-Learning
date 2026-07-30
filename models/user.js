@@ -13,7 +13,11 @@ const User = sequelize.define("User", {
     },
     email :{
         type: DataTypes.STRING(100), 
-        allowNull:false, unique:true
+        allowNull:false, 
+        unique:true,
+        validate: {
+            isEmail: true
+        }
     },
     password :{
         type: DataTypes.STRING(255), 
@@ -27,7 +31,7 @@ const User = sequelize.define("User", {
         type:DataTypes.BOOLEAN,
         defaultValue: false
     },
-    create_at:{
+    created_at:{
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW
     },

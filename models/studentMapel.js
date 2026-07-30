@@ -1,9 +1,9 @@
 const {DataTypes} = require("sequelize");
 const sequelize = require("../config/db");
-const Student = require("../models/student");
-const Class = require("../models/class");
+const Student = require("./student");
+const Class = require("./mapel");
 
-const studentClass = sequelize.define("student_class",{
+const studentMapel = sequelize.define("student_mapel",{
     id_student : {
         type : DataTypes.INTEGER,
     },
@@ -11,19 +11,19 @@ const studentClass = sequelize.define("student_class",{
             type : DataTypes.INTEGER,
         }
 },{
-    tableName : "student_classes",
+    tableName : "student_mapel",
     timestamps : false
 });
 
 Student.belongsToMany(Class,{
-     through :studentClass, 
+     through :studentMapel, 
      foreignKey : "id_student",
      otherKey : "id_class"
     });
 Class.belongsToMany(Student,{ 
-     through : studentClass, 
+     through : studentMapel, 
      foreignKey : "id_class",
      otherKey : "id_student"
     }); 
 
-module.exports = studentClass;
+module.exports = studentMapel;
