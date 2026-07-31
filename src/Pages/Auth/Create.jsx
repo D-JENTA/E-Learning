@@ -112,47 +112,47 @@ export default function Create() {
   
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
-useEffect(() => {
-  const fetchClasses = async () => {
-    setIsLoadingClasses(true);
-    try {
-      const response = await fetch('/api/classes', {
-        method: 'GET',
-        // ❌ credentials: 'include' TELAH DIHAPUS
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setIsLoadingClasses(true);
+      try {
+        const response = await fetch('/api/classes', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
 
-      if (!response.ok) {
-        let errorMsg = `API Error ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.message || errorMsg;
-        } catch (e) {
-          // Jika response bukan JSON
+        if (!response.ok) {
+          let errorMsg = `API Error ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorMsg;
+          } catch (e) {
+            // If response is not JSON, use status code only
+          }
+          throw new Error(errorMsg);
         }
-        throw new Error(errorMsg);
+
+        const result = await response.json();
+        setClasses(Array.isArray(result) ? result : []);
+        console.log('Kelas berhasil dimuat:', result);
+      } catch (error) {
+        console.error('Error mengambil kelas:', error.message);
+        setAlertInfo({ 
+          show: true, 
+          message: `Gagal memuat daftar kelas: ${error.message}`, 
+          type: 'error' 
+        });
+        setClasses([]);
+      } finally {
+        setIsLoadingClasses(false);
       }
+    };
 
-      const result = await response.json();
-      setClasses(Array.isArray(result) ? result : []);
-      console.log('Kelas berhasil dimuat:', result);
-    } catch (error) {
-      console.error('Error mengambil kelas:', error.message);
-      setAlertInfo({ 
-        show: true, 
-        message: `Gagal memuat daftar kelas: ${error.message}`, 
-        type: 'error' 
-      });
-      setClasses([]);
-    } finally {
-      setIsLoadingClasses(false);
-    }
-  };
-
-  fetchClasses();
-}, []);
+    fetchClasses();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

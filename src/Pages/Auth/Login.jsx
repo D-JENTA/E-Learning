@@ -239,26 +239,39 @@ export default function Login() {
         body: JSON.stringify(formData),
       });
 
-      const contentType = response.headers.get('content-type');
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
 
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server bermasalah atau URL salah (Response bukan JSON)'); 
+      let result = null;
+      let responseText = '';
+
+      try {
+        if (isJson) result = await response.json();
+        else responseText = await response.text();
+      } catch (parseErr) {
+        responseText = await response.text().catch(() => '');
       }
-
-      const result = await response.json();
 
       if (response.status === 429) {
         const retryAfter = getRetryAfterSeconds(response, result);
         startRateLimitCooldown(retryAfter);
         throw new Error(
-          result.message ||
+          result?.message ||
             `Terlalu banyak percobaan login. Coba lagi dalam ${formatCooldown(retryAfter)}.`
         );
       }
 
       if (!response.ok) {
-        // PERUBAHAN: Menggabungkan semua error login (email salah/pass salah) menjadi satu pesan
-        throw new Error('Email atau Password salah');
+        const serverMessage = result?.message || responseText || response.statusText;
+        console.error('Login request failed', {
+          status: response.status,
+          contentType,
+          serverMessage,
+          responseText,
+          result,
+        });
+        const errorMessage = serverMessage || 'Server bermasalah atau URL salah';
+        throw new Error(errorMessage);
       }
 
       localStorage.removeItem(RATE_LIMIT_STORAGE_KEY);
@@ -308,7 +321,7 @@ export default function Login() {
       console.error('Login Error:', error);
       const message = error.message || 'Terjadi kesalahan saat login';
       setErrors({ general: message });
-      showAlert(message,'error'); 
+      showAlert(message, 'error'); 
     } finally {
       setIsLoading(false);
     }
