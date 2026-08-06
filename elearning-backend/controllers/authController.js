@@ -13,7 +13,6 @@ const uploadCloud = require("../config/cloudinary").uploadCloud;
 const Mapel = require("../models/mapel");
 const Class = require("../models/class");
 const assignmentStudent = require("../models/assignmentStudent");
-const studentClass = require("../models/studentMapel");
 const cloudinary = require("cloudinary").v2;
 const Assignment = require("../models/assignment");
 
@@ -369,7 +368,7 @@ const changeUserRole = async (req, res) => {
             const student = await Student.findOne({ where: { id_student: id } });
             if (!student) return res.status(404).json({ message: "Data siswa tidak ditemukan." });
 
-            const hasClass = await studentClass.findOne({ where: { id_student: id } });
+            const hasClass = await User.findOne({ where: { id_student: id } });
             const hasSubmission = await assignmentStudent.findOne({ where: { id_student: id } });
 
             if (hasClass || hasSubmission ) {

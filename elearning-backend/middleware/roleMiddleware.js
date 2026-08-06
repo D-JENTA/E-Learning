@@ -5,6 +5,13 @@ const isAdmin = (req, res, next) => {
     return res.status(403).json({ message:"Access denied: Admin only" });
 };
 
+const isWakakur = (req, res, next) => {
+    if (req.user.role === "wakakur" || req.user.role === "admin") {
+        return next();
+    }
+    return res.status(403).json({ message:"Access denied: Wakakur only" });
+};
+
 const isStudent = (req, res, next) => {
     if (req.user.role === "student" || req.user.role === "admin") {
         return next();
@@ -19,4 +26,4 @@ const isTeacher = (req, res, next) => {
     return res.status(403).json({ message: "Access denied: Teacher only" });
 };
 
-module.exports = { isAdmin, isStudent, isTeacher };
+module.exports = { isAdmin, isStudent, isTeacher, isWakakur };

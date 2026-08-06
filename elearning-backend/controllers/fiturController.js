@@ -1,0 +1,261 @@
+const puppeteer = require("puppeteer");
+// Impor model sesuai relasi yang terdaftar di project Anda
+const { Class, Mapel, ScheduleMapel, Teacher, User } = require("../models");
+
+const printDataJadwalPDF = async (req, res, next) => {
+  try {
+    // 1. Fetch data Class -> Mapel -> ScheduleMapel & Teacher
+    const classesData = await Class.findAll({
+      attributes: ["id_class", "class_name"],
+      include: [
+        {
+          model: Mapel,
+          as: "Mapels", // Sesuaikan alias relasi Class -> Mapel jika berbeda
+          attributes: ["id_mapel", "mapel_name"],
+          include: [
+            {
+              model: ScheduleMapel,
+              as: "Schedules", // Sesuaikan alias relasi Mapel -> ScheduleMapel
+              attributes: ["id_schedule", "day", "jp"]
+            },
+            {
+              model: Teacher,
+              as: "teacher_tb", // Sesuaikan alias relasi Mapel -> Teacher
+              attributes: ["id_teacher"],
+              include: [
+                {
+                  model: User,
+                  as: "User", // Sesuaikan alias relasi Teacher -> User
+                  attributes: ["username"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    // 2. Format Data ke HTML
+    const htmlContent = generateJadwalHTML(classesData);
+
+    // 3. Render ke PDF dengan Puppeteer
+    const browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+    const page = await browser.newPage();
+
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      landscape: true,
+      printBackground: true,
+      margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" }
+    });
+
+    await browser.close();
+
+    // 4. Response File PDF
+    res.contentType("application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=Jadwal_Pelajaran.pdf");
+    res.send(pdfBuffer);
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+const generateJadwalHTML = (classesData) => {
+  const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
+
+  return `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 8mm;
+        }
+
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #111;
+        }
+
+        /* 1 KELAS = 1 HALAMAN KERTAS */
+        .page-kelas {
+          page-break-after: always;
+          break-after: page;
+          box-sizing: border-box;
+        }
+
+        .page-kelas:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+
+        .header {
+          text-align: center;
+          margin-bottom: 12px;
+        }
+
+        .header h2 {
+          margin: 0;
+          font-size: 18pt;
+          text-transform: uppercase;
+        }
+
+        .header h3 {
+          margin: 4px 0 0 0;
+          font-size: 13pt;
+          font-weight: bold;
+          color: #333;
+        }
+
+        /* TABEL JADWAL */
+        table.jadwal-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          text-align: center;
+        }
+
+        table.jadwal-table th, table.jadwal-table td {
+          border: 1px solid #000;
+          padding: 5px 2px;
+          font-size: 8.5pt;
+          word-wrap: break-word;
+          height: 40px;
+        }
+
+        table.jadwal-table th {
+          background-color: #e8e8e8;
+          font-weight: bold;
+        }
+
+        .bg-break {
+          background-color: #d1d1d1;
+          font-weight: bold;
+          font-size: 8pt;
+          width: 35px;
+        }
+
+        .subject-name {
+          font-weight: bold;
+          display: block;
+          color: #000;
+        }
+
+        .teacher-name {
+          font-size: 7.5pt;
+          color: #444;
+          font-style: italic;
+          display: block;
+          margin-top: 2px;
+        }
+      </style>
+    </head>
+    <body>
+      ${classesData.map(cls => {
+        const mapels = cls.Mapels || [];
+
+        return `
+          <div class="page-kelas">
+            <div class="header">
+              <h2>JADWAL PELAJARAN</h2>
+              <h3>KELAS: ${cls.class_name}</h3>
+            </div>
+
+            <table class="jadwal-table">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">Hari</th>
+                  <th>1</th>
+                  <th>2</th>
+                  <th>3</th>
+                  <th>4</th>
+                  <th class="bg-break">Istirahat</th>
+                  <th>5</th>
+                  <th>6</th>
+                  <th>7</th>
+                  <th class="bg-break">Ishoma</th>
+                  <th>8</th>
+                  <th>9</th>
+                  <th>10</th>
+                  <th>11</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${days.map(hari => `
+                  <tr>
+                    <th>${hari}</th>
+                    
+                    <!-- Jam 1 - 4 -->
+                    ${[1, 2, 3, 4].map(jam => renderMapelCell(mapels, hari, jam)).join('')}
+                    
+                    <!-- Istirahat -->
+                    <td class="bg-break">I<br>S<br>T</td>
+                    
+                    <!-- Jam 5 - 7 -->
+                    ${[5, 6, 7].map(jam => renderMapelCell(mapels, hari, jam)).join('')}
+                    
+                    <!-- Ishoma -->
+                    <td class="bg-break">I<br>S<br>H<br>O</td>
+                    
+                    <!-- Jam 8 - 11 -->
+                    ${[8, 9, 10, 11].map(jam => renderMapelCell(mapels, hari, jam)).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }).join('')}
+    </body>
+    </html>
+  `;
+};
+
+// Helper untuk merender isi cell Mapel berdasarkan DAY & JP
+function renderMapelCell(mapels, currentDay, currentJam) {
+  // Standarisasi string hari (misal "Jum'at" / "Jumat" -> "jumat")
+  const targetDay = currentDay.toLowerCase().replace(/[^a-z]/g, '');
+
+  for (const mapel of mapels) {
+    const schedules = mapel.Schedules || [];
+
+    // Cari jadwal di ScheduleMapel yang cocok dengan Hari dan Jam
+    const matchedSchedule = schedules.find(s => {
+      if (!s.day || !s.jp) return false;
+
+      const scheduleDay = s.day.toLowerCase().replace(/[^a-z]/g, '');
+      const jpArray = String(s.jp).split(",").map(j => j.trim());
+
+      return scheduleDay === targetDay && jpArray.includes(String(currentJam));
+    });
+
+    if (matchedSchedule) {
+      const teacherObj = mapel.teacher_tb;
+      const teacherName = 
+        teacherObj?.User?.username || 
+        teacherObj?.user_tb?.username || 
+        teacherObj?.user?.username || 
+        "Tanpa Guru";
+
+      return `
+        <td>
+          <span class="subject-name">${mapel.mapel_name}</span>
+          <span class="teacher-name">${teacherName}</span>
+        </td>
+      `;
+    }
+  }
+
+  return `<td></td>`;
+}
+
+module.exports = { printDataJadwalPDF };

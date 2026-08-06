@@ -11,6 +11,7 @@ const cronCleaner = require("./middleware/cronCleaner")
 const PORT =5000; 
 const authRoutes = require("./routes/auth");
 const tugasRoutes = require("./routes/tugasRoute");
+const fiturRoutes = require("./routes/fiturRoute");
 const classRoutes = require("./routes/classRoute");
 const path = require('path');
 
@@ -34,6 +35,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use("/api", authRoutes);    
 app.use("/api", tugasRoutes);    
 app.use("/api", classRoutes);
+app.use("/api", fiturRoutes);
 
 app.use((err, req, res, next) => {
     console.error('ERROR:', err.message);
