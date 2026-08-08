@@ -103,10 +103,14 @@ export default function SuperAdminManageUsers() {
     // Langsung hapus tanpa konfirmasi bawaan chrome
 
     try {
-      const token = localStorage.getItem("admin_token");
-      const response = await fetch(`/api/auth/users/superAdmin/${user.id_user || user.id}`, {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/admin/users/${user.id_user || user.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
 
       if (response.ok) {

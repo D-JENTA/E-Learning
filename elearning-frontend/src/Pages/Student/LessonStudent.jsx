@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayoutStudent from "../../components/Student/MainLayout";
+import Toast from "../../components/Toast";
 
 const IconArrowLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -32,16 +33,18 @@ const classes = [
 
 export default function LessonStudent() {
   const [openJoin, setOpenJoin] = useState(false);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const navigate = useNavigate();
 
   const handleDeleteClass = (id) => {
-    if(window.confirm("Apakah Anda yakin ingin menghapus kelas ini?")) {
-      alert("Kelas berhasil dihapus (Mock Action).");
-    }
+    setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
   };
 
   return (
     <MainLayoutStudent>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
         
         <div className="flex flex-col gap-4">
@@ -92,7 +95,7 @@ export default function LessonStudent() {
         </div>
       </div>
 
-      {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} />}
+      {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} onNotify={(msg) => setAlertInfo({ show: true, message: msg, type: 'success' })} />}
     </MainLayoutStudent>
   );
 }
@@ -159,20 +162,20 @@ function StudentClassCard({ data, onDelete, onOpen }) {
   );
 }
 
-function JoinClassModal({ onClose }) {
+function JoinClassModal({ onClose, onNotify }) {
   const [code, setCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!code) return;
-    
+
     try {
       setIsJoining(true);
       console.log("Joining with code:", code);
-      
+
       setTimeout(() => {
-        alert("Berhasil bergabung ke kelas!");
+        onNotify?.("Berhasil bergabung ke kelas.");
         onClose();
         setCode("");
       }, 1000);

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
 
-// --- KOMPONEN NOTIFIKASI TOAST (Custom Alert) ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -105,14 +104,8 @@ export default function StudentAdmin() {
       return;
     }
 
-    // Hapus konfirmasi window.confirm bawaan browser agar menggunakan UX yang lebih halus jika diinginkan, 
-    // atau biarkan jika mau. Di sini saya ganti langsung ke proses hapus sesuai pola kode sebelumnya.
-    // Namun, untuk keamanan, biasanya konfirmasi tetap diperlukan. 
-    // Jika Anda ingin tanpa konfirmasi sama sekali, hapus baris if di bawah ini.
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus siswa: ${student.username}?`)) return;
-
     try {
-      const response = await fetch(`${BASE_URL}/admin/${userId}`, {
+      const response = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
         headers: {
           "Accept": "application/json"

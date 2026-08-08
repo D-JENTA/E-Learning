@@ -230,7 +230,7 @@ export default function TaskStudent() {
     if (!id_class) return;
     try {
       setIsLoading(true);
-      const resTeacher = await fetch(`/api/me/class/${id_class}/assignmentsTeacher`, {
+      const resTeacher = await fetch(`/api/me/mapel/${id_class}/assignmentsTeacher`, {
         method: "GET",
         headers: commonHeaders,
         credentials: "include",
@@ -341,7 +341,7 @@ export default function TaskStudent() {
       setUploadLoading(true);
       const formdata = new FormData();
       formdata.append("title", selectedTask.title);
-      formdata.append("id_class", id_class);
+      formdata.append("id_mapel", id_class);
       formdata.append("file", fileToUpload);
 
       const response = await fetch(

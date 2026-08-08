@@ -129,32 +129,15 @@ export default function DashboardTeacher() {
         ) : (
           <>
             <div className="space-y-6">
-              
-              {/* POSISI DITUKAR: Card "Buat Kelas Baru" sekarang di paling atas */}
-              <div className="cursor-pointer group" onClick={() => navigate("/teacher/create-class")}> 
-                <div className="bg-gradient-to-r from-blue-600 to-sky-500 text-white p-6 rounded-3xl shadow-2xl border border-transparent hover:shadow-2xl hover:-translate-y-1 transition-all duration-300">
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-100/80">Buat Kelas Baru</p>
-                      <h3 className="mt-3 text-2xl md:text-3xl font-extrabold leading-tight">Ciptakan kelas baru dengan cepat</h3>
-                      <p className="mt-3 text-sm text-sky-100/90">Tambahkan ruang belajar, atur materi, dan bagikan kode kelas kepada siswa.</p>
-                    </div>
-                    <div className="p-3 bg-white/15 rounded-3xl text-white shadow-lg">
-                      <IconPlusCircle />
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {/* POSISI DITUKAR: Card "Lihat Daftar Kelas" sekarang di bawahnya */}
-              <div className="cursor-pointer group" onClick={() => navigate("/teacher/classes")}> 
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition-all duration-300">
+              <div className="cursor-pointer group" onClick={() => navigate("/teacher/classes")}>
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                       <h3 className="text-2xl md:text-3xl font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
-                        Lihat Daftar Kelas
+                        Lihat Daftar Mapel
                       </h3>
-                      <p className="mt-2 text-sm text-slate-500">Kelola kelas Anda dan akses semua materi dengan mudah.</p>
+                      <p className="mt-2 text-sm text-slate-500">Kelola mapel yang Anda ampu, tugas, dan siswa dengan mudah.</p>
                     </div>
                     <div className="p-3 bg-indigo-50 group-hover:bg-indigo-600 rounded-3xl text-indigo-600 group-hover:text-white transition-colors duration-300">
                       <IconAcademic />

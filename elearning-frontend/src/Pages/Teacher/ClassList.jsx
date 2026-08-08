@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 
-// --- KOMPONEN NOTIFIKASI TOAST (Universal & Bisa di-close) ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,7 +38,6 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// -----------------------------------------------------------
 
 export default function ClassList() {
   const [classes, setClasses] = useState([]);
@@ -56,16 +54,16 @@ export default function ClassList() {
     try {
       setIsLoading(true);
       
-      const response = await fetch('/api/teachers/me/classes', {
+      const response = await fetch('/api/teachers/me/mapels', {
         method: 'GET',
-        credentials: 'include', 
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
       const result = await response.json();
-
+     
       if (response.ok) {
         setClasses(result.data || []);
       } else {
@@ -84,8 +82,6 @@ export default function ClassList() {
   }, []);
 
   const handleDeleteClass = async (id_class) => {
-    // DIHAPUS: window.confirm("Apakah Anda yakin ingin menghapus kelas ini? Semua data materi dan tugas di dalamnya akan ikut terhapus.");
-    // Langsung hapus tanpa konfirmasi bawaan chrome
 
     try {
       const response = await fetch(`/api/classes/${id_class}`, {
@@ -126,7 +122,6 @@ export default function ClassList() {
 
   return (
     <MainLayoutTeacher>
-      {/* Custom Alert */}
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 
@@ -148,22 +143,13 @@ export default function ClassList() {
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
               </svg>
             </button>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Kelas</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Mapel</h1>
           </div>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-11">
              <p className="text-slate-500 text-lg font-medium">
-                Kelola dan pantau perkembangan kelas Anda.
+                Kelola dan pantau perkembangan mapel Anda.
               </p>
-              <button
-                onClick={() => navigate("/Teacher/create-class")}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-[#0d264f] hover:bg-[#1a3a75] shadow-md hover:shadow-xl transition-all font-bold active:scale-95 w-full md:w-auto"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Buat Kelas Baru
-              </button>
           </div>
         </div>
 
@@ -179,14 +165,19 @@ export default function ClassList() {
               ${window.innerWidth >= 768 && itemsPerPage === 6 ? 'grid-rows-2' : 'grid-rows-1'}
             `}>
               {currentClasses.length === 0 ? (
-                <div className="col-span-full text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-                  <div className="mx-auto w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                <div className="col-span-full text-center py-20 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200">
+                  <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 text-slate-400">
                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                       </svg>
                   </div>
-                  <p className="text-slate-400 font-medium">Belum ada kelas yang dibuat.</p>
-                  <button onClick={() => navigate("/Teacher/create-class")} className="text-[#0d264f] font-bold text-sm mt-2 hover:underline">Mulai buat kelas pertama</button>
+                  <p className="text-slate-500 font-medium mb-4">Belum ada kelas terdaftar. Buat kelas baru sekarang.</p>
+                  <button
+                    onClick={() => navigate('/teacher/create-class')}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0d264f] text-white font-bold hover:bg-[#0b1f47] transition-all"
+                  >
+                    Buat Kelas Baru
+                  </button>
                 </div>
               ) : (
                 currentClasses.map((item) => (

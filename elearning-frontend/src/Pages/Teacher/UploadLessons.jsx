@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayoutTeacher from '../../components/Teacher/MainLayout';
+import Toast from '../../components/Toast';
 
 export default function UploadLesson() {
   const [formData, setFormData] = useState({
@@ -9,6 +10,7 @@ export default function UploadLesson() {
     file: null,
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -35,11 +37,14 @@ export default function UploadLesson() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    alert(`Lesson Uploaded!\nTitle: ${formData.title}\nFile: ${formData.file ? formData.file.name : 'None'}`);
+    setAlertInfo({ show: true, message: `Materi "${formData.title}" berhasil diunggah.`, type: 'success' });
   };
 
   return (
     <MainLayoutTeacher>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="animate-fade-in-up max-w-3xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-800 mb-2">Upload Lesson Material</h2>
         <p className="text-gray-500 mb-8">Add learning resources for your students.</p>

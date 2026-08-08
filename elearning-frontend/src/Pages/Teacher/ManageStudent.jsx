@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom'; 
 import MainLayoutTeacher from '../../components/Teacher/MainLayout';
 
-// --- KOMPONEN NOTIFIKASI TOAST ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -40,7 +39,6 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
-// ICONS
 const IconArrowLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
 );
@@ -61,7 +59,6 @@ const IconTrash = () => (
   </svg>
 );
 
-// MODAL DETAIL NILAI
 const ScoreDetailModal = ({ isOpen, onClose, data, studentName }) => {
   if (!isOpen) return null;
 
@@ -114,8 +111,7 @@ const ScoreDetailModal = ({ isOpen, onClose, data, studentName }) => {
   );
 };
 
-// KOMPONEN SEL NILAI
-const TotalScoreCell = ({ id_student, id_class, studentName }) => {
+const TotalScoreCell = ({ id_student, id_mapel, studentName }) => {
   const [scoreData, setScoreData] = useState({ avg: "...", details: [] });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -123,7 +119,7 @@ const TotalScoreCell = ({ id_student, id_class, studentName }) => {
     const fetchScore = async () => {
       try {
         const response = await fetch(
-          `/api/student/totalScore?id_student=${id_student}&id_class=${id_class}`, 
+          `/api/student/totalScore?id_student=${id_student}&id_mapel=${id_mapel}`,
           {
             method: "GET",
             headers: { "ngrok-skip-browser-warning": "69420" },
@@ -134,7 +130,7 @@ const TotalScoreCell = ({ id_student, id_class, studentName }) => {
         const result = await response.json();
         setScoreData({
           avg: result.summary?.average_value ?? 0,
-          details: result.assignments_detail || [] 
+          details: result.assignments_detail || []
         });
       } catch (err) {
         console.error("Gagal ambil detail:", err);
@@ -142,8 +138,8 @@ const TotalScoreCell = ({ id_student, id_class, studentName }) => {
       }
     };
 
-    if (id_student && id_class) fetchScore();
-  }, [id_student, id_class]);
+    if (id_student && id_mapel) fetchScore();
+  }, [id_student, id_mapel]);
 
   return (
     <>
@@ -159,7 +155,7 @@ const TotalScoreCell = ({ id_student, id_class, studentName }) => {
         </span>
         <span 
           className="text-[10px] ml-1 font-bold uppercase opacity-60" 
-          style={{ color: '#1d4ed8' }}
+          style={{ color: '#1d4ed8' }}        
         >
           Rata-rata
         </span>
@@ -175,17 +171,33 @@ const TotalScoreCell = ({ id_student, id_class, studentName }) => {
   );
 };
 
-// KOMPONEN UTAMA
 export default function ManageStudents() {
-  const { id_class } = useParams(); 
+  const { id_class } = useParams();
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
+  const [mapels, setMapels] = useState([]);
+  const [selectedMapel, setSelectedMapel] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // FIX: Melacak id_student yang sedang dihapus secara individual
   const [deletingId, setDeletingId] = useState(null);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
+
+  const fetchMapels = async () => {
+    try {
+      const response = await fetch(`/api/classes/${id_class}/mapels`, {
+        method: "GET",
+        headers: { "ngrok-skip-browser-warning": "69420" },
+        credentials: 'include'
+      });
+      const result = await response.json();
+      const list = Array.isArray(result) ? result : (result.data ?? []);
+      setMapels(list);
+      if (list.length > 0) setSelectedMapel(list[0]);
+    } catch (error) {
+      console.error("Gagal fetch mapel:", error);
+    }
+  };
 
   const fetchStudents = async () => {
     setIsLoading(true);
@@ -206,25 +218,25 @@ export default function ManageStudents() {
       console.error(error);
     } finally {
       setIsLoading(false);
-      // FIX: isRefreshing di-reset setelah fetch selesai
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    if (id_class) fetchStudents();
+    if (id_class) {
+      fetchStudents();
+      fetchMapels();
+    }
   }, [id_class]);
 
   const handleRefresh = () => {
     if (!isRefreshing) {
-      // FIX: isRefreshing di-set true saat tombol ditekan
       setIsRefreshing(true);
       fetchStudents();
     }
   };
 
   const handleDelete = async (id_student) => {
-    // FIX: Gunakan deletingId per-siswa, bukan isLoading global
     setDeletingId(id_student);
     try {
       const response = await fetch(`/api/teachers/me/classes/${id_class}`, {
@@ -283,8 +295,19 @@ export default function ManageStudents() {
             </p>
           </div>
           
-          {/* FIX: Input pencarian yang sebelumnya tidak dirender */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            {mapels.length > 0 && (
+              <select
+                value={selectedMapel?.id_mapel ?? ''}
+                onChange={(e) => setSelectedMapel(mapels.find((m) => String(m.id_mapel) === e.target.value) || null)}
+                className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all w-full sm:w-48 cursor-pointer"
+                title="Pilih mapel untuk nilai"
+              >
+                {mapels.map((m) => (
+                  <option key={m.id_mapel} value={m.id_mapel}>{m.mapel_name}</option>
+                ))}
+              </select>
+            )}
             <input
               type="text"
               placeholder="Cari nama atau NIS..."
@@ -298,7 +321,6 @@ export default function ManageStudents() {
               className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 hover:text-[#0d264f] hover:border-[#0d264f] transition-all disabled:opacity-50"
               title="Refresh Data"
             >
-              {/* FIX: Animasi spin hanya pada icon, bukan wrapper */}
               <span className={isRefreshing ? "animate-spin" : ""}>
                 <IconRefresh />
               </span>
@@ -343,7 +365,7 @@ export default function ManageStudents() {
                       <span className="text-slate-400 font-mono text-xs">{s.nis || '-'}</span>
                     </td>
                     <td className="px-4 md:px-10 py-6 text-center">
-                      <TotalScoreCell id_student={s.id_student} id_class={id_class} studentName={s.username} />
+                      <TotalScoreCell id_student={s.id_student} id_mapel={selectedMapel?.id_mapel} studentName={s.username} />
                     </td>
                     <td className="px-4 md:px-10 py-6 text-right">
                       <button 
@@ -352,7 +374,6 @@ export default function ManageStudents() {
                         className="p-3 text-slate-300 hover:text-red-500 transition-all disabled:opacity-50"
                         title="Hapus Siswa"
                       >
-                        {/* FIX: SVG spinner yang benar menggunakan <circle> bukan <path> dengan atribut cx/cy/r */}
                         {deletingId === s.id_student ? (
                           <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

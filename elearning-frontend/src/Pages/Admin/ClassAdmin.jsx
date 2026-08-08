@@ -1,10 +1,12 @@
   import React, { useState, useEffect } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
+import Toast from "../../components/Toast";
 
 export default function ClassAdmin() {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const loadClasses = async () => {
     setFetchError(null);
@@ -32,7 +34,6 @@ export default function ClassAdmin() {
         ? rawClasses.map((item) => ({
             id: item.id || item.id_class || Date.now(),
             className: item.class_name || item.name || 'Unnamed Class',
-            teacher: item.teacher || item.homeroom_teacher || 'Unknown',
             active: item.active ?? true,
           }))
         : [];
@@ -50,10 +51,62 @@ export default function ClassAdmin() {
     loadClasses();
   }, []);
   const [openModal, setOpenModal] = useState(false);
+  const [editingClass, setEditingClass] = useState(null);
 
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this class?")) {
-      setClasses(classes.filter((item) => item.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/classes', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ id_class: id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || 'Failed to delete class.');
+      }
+
+      setClasses((prev) => prev.filter((item) => item.id !== id));
+      setAlertInfo({ show: true, message: 'Kelas berhasil dihapus.', type: 'success' });
+    } catch (error) {
+      console.error('Delete class error:', error);
+      setAlertInfo({ show: true, message: error.message || 'Kelas tidak dapat dihapus saat ini.', type: 'error' });
+    }
+  };
+
+  const handleUpdateClass = async (updatedData) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/classes/${editingClass.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ class_name: updatedData.className }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || 'Failed to update class.');
+      }
+
+      setClasses((prev) =>
+        prev.map((item) =>
+          item.id === editingClass.id ? { ...item, className: updatedData.className } : item
+        )
+      );
+      setEditingClass(null);
+      setAlertInfo({ show: true, message: 'Kelas berhasil diperbarui.', type: 'success' });
+    } catch (error) {
+      console.error('Update class error:', error);
+      setAlertInfo({ show: true, message: error.message || 'Kelas tidak dapat diperbarui saat ini.', type: 'error' });
     }
   };
 
@@ -70,7 +123,6 @@ export default function ClassAdmin() {
         },
         body: JSON.stringify({
           class_name: newClassData.className,
-          teacher: newClassData.teacher,
         }),
       });
 
@@ -84,27 +136,29 @@ export default function ClassAdmin() {
       const classItem = {
         id: createdClass.id || createdClass.id_class || Date.now(),
         className: createdClass.class_name || createdClass.name || newClassData.className,
-        teacher: createdClass.teacher || createdClass.homeroom_teacher || newClassData.teacher,
         active: createdClass.active ?? true,
       };
 
       setClasses((prev) => [...prev, classItem]);
       setOpenModal(false);
-      alert('Class created successfully.');
+      setAlertInfo({ show: true, message: 'Kelas berhasil dibuat.', type: 'success' });
     } catch (error) {
       console.error('Create class error:', error);
-      alert(error.message || 'Cannot create class right now.');
+      setAlertInfo({ show: true, message: error.message || 'Kelas tidak dapat dibuat saat ini.', type: 'error' });
     }
   };
 
   return (
     <MainLayout>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="animate-fade-in-up">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold text-gray-800">Class Management</h2>
-            <p className="text-gray-500 mt-1">Manage active classes and assign teachers.</p>
+            <p className="text-gray-500 mt-1">Manage active classes.</p>
           </div>
 
           <div className="flex gap-3 mt-4 md:mt-0">
@@ -132,7 +186,6 @@ export default function ClassAdmin() {
                 <tr className="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider border-b border-gray-200">
                   <th className="px-6 py-4 w-[80px]">No</th>
                   <th className="px-6 py-4">Class Name</th>
-                  <th className="px-6 py-4">Homeroom Teacher</th>
                   <th className="px-6 py-4 text-center">Status</th>
                   <th className="px-6 py-4 text-center w-[150px]">Action</th>
                 </tr>
@@ -140,7 +193,7 @@ export default function ClassAdmin() {
               <tbody className="divide-y divide-gray-100">
                 {classes.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-gray-400">No classes found.</td>
+                    <td colSpan="4" className="px-6 py-8 text-center text-gray-400">No classes found.</td>
                   </tr>
                 ) : (
                   classes.map((item, i) => (
@@ -149,7 +202,6 @@ export default function ClassAdmin() {
                       <td className="px-6 py-4">
                         <span className="text-sm font-bold text-gray-800">{item.className}</span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{item.teacher}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
                           item.active
@@ -164,7 +216,7 @@ export default function ClassAdmin() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center gap-2">
-                          <button className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Edit" onClick={() => alert("Edit functionality: Fill modal with " + item.className)}>
+                          <button className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="Edit" onClick={() => setEditingClass(item)}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
@@ -186,18 +238,29 @@ export default function ClassAdmin() {
         </div>
       </div>
 
-      {openModal && <AddClassModal onClose={() => setOpenModal(false)} onSave={handleAddClass} />}
+      {openModal && <AddClassModal onClose={() => setOpenModal(false)} onSave={handleAddClass} onNotify={(msg, type = 'error') => setAlertInfo({ show: true, message: msg, type })} />}
+      {editingClass && (
+        <AddClassModal
+          initialData={editingClass}
+          onClose={() => setEditingClass(null)}
+          onSave={handleUpdateClass}
+          onNotify={(msg, type = 'error') => setAlertInfo({ show: true, message: msg, type })}
+        />
+      )}
     </MainLayout>
   );
 }
 
-function AddClassModal({ onClose, onSave }) {
-  const [formData, setFormData] = useState({ className: "", teacher: "" });
+function AddClassModal({ onClose, onSave, initialData, onNotify }) {
+  const isEdit = Boolean(initialData);
+  const [formData, setFormData] = useState({
+    className: initialData?.className || "",
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.className || !formData.teacher) {
-      alert("Please fill in all fields.");
+    if (!formData.className) {
+      onNotify?.("Nama kelas wajib diisi.", 'error');
       return;
     }
     onSave(formData);
@@ -208,34 +271,22 @@ function AddClassModal({ onClose, onSave }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up overflow-hidden">
         <div className="bg-gradient-to-r from-[#0d264f] to-[#1a3a75] p-6 text-white">
-          <h3 className="text-xl font-bold">Add New Class</h3>
-          <p className="text-blue-200 text-sm mt-1">Enter class details below.</p>
+          <h3 className="text-xl font-bold">{isEdit ? "Edit Class" : "Add New Class"}</h3>
+          <p className="text-blue-200 text-sm mt-1">{isEdit ? "Update class name below." : "Enter class name below."}</p>
         </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
-            <input 
-              type="text" 
-              value={formData.className}
-              onChange={(e) => setFormData({...formData, className: e.target.value})}
-              placeholder="e.g., XI PPLG 2" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#0d264f] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Homeroom Teacher</label>
-            <input 
-              type="text" 
-              value={formData.teacher}
-              onChange={(e) => setFormData({...formData, teacher: e.target.value})}
-              placeholder="Teacher Name" 
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#0d264f] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-            />
-          </div>
+        <div className="p-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Class Name</label>
+          <input
+            type="text"
+            value={formData.className}
+            onChange={(e) => setFormData({...formData, className: e.target.value})}
+            placeholder="e.g., XI PPLG 2"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#0d264f] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+          />
         </div>
         <div className="p-6 pt-0 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl bg-[#0d264f] text-white font-bold hover:bg-[#1a3a75] shadow-lg">Save Class</button>
+          <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl bg-[#0d264f] text-white font-bold hover:bg-[#1a3a75] shadow-lg">{isEdit ? "Update Class" : "Save Class"}</button>
         </div>
       </div>
     </div>

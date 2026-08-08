@@ -12,6 +12,8 @@ import UsersAdmin from "./Pages/Admin/UsersAdmin";
 import StudentAdmin from "./Pages/Admin/StudentAdmin";
 import TeacherAdmin from "./Pages/Admin/TeacherAdmin";
 import ClassAdmin from "./Pages/Admin/ClassAdmin";
+import CreateMapelAdmin from "./Pages/Admin/CreateMapel";
+import MapelAdmin from "./Pages/Admin/MapelAdmin";
 import CalendarAdmin from "./Pages/Admin/CalendarAdmin";
 import SettingsAdmin from "./Pages/Admin/SettingsAdmin";
 import SuperAdminManageUsers from "./Pages/Admin/SuperAdminManageUsers";
@@ -32,7 +34,6 @@ import JoinClass from "./Pages/Student/JoinClass";
 
 import TeacherDashboard from "./Pages/Teacher/TeacherDashboard";
 import ClassList from "./Pages/Teacher/ClassList";
-import CreateClass from "./Pages/Teacher/CreateClass";
 import ManageStudent from "./Pages/Teacher/ManageStudent";
 import UploadLessons from "./Pages/Teacher/UploadLessons";
 import CalendarTeacher from "./Pages/Teacher/CalendarTeacher";
@@ -190,12 +191,11 @@ function App() {
 
       <Route path="/teacher/dashboard" element={<Guard allowedRoles="teacher" user={authState.user}><TeacherDashboard user={authState.user} /></Guard>} />
       <Route path="/teacher/classes" element={<Guard allowedRoles="teacher" user={authState.user}><ClassList user={authState.user} /></Guard>} />
-      <Route path="/teacher/create-class" element={<Guard allowedRoles="teacher" user={authState.user}><CreateClass user={authState.user} /></Guard>} />
+      <Route path="/teacher/manage-class/:id" element={<Guard allowedRoles="teacher" user={authState.user}><ManageClass user={authState.user} /></Guard>} />
       <Route path="/teacher/manage-students/:id_class" element={<Guard allowedRoles="teacher" user={authState.user}><ManageStudent user={authState.user} /></Guard>} />
       <Route path="/teacher/upload-lessons" element={<Guard allowedRoles="teacher" user={authState.user}><UploadLessons user={authState.user} /></Guard>} />
       <Route path="/teacher/calendar" element={<Guard allowedRoles="teacher" user={authState.user}><CalendarTeacher user={authState.user} /></Guard>} />
       <Route path="/teacher/settings" element={<Guard allowedRoles="teacher" user={authState.user}><SettingsTeacher user={authState.user} /></Guard>} />
-      <Route path="/teacher/manage-class/:id" element={<Guard allowedRoles="teacher" user={authState.user}><ManageClass user={authState.user} /></Guard>} />
       <Route path="/teacher/upload-task/:id_class" element={<Guard allowedRoles="teacher" user={authState.user}><UploadTask user={authState.user} /></Guard>} />
       <Route path="/teacher/assignments/:id" element={<Guard allowedRoles="teacher" user={authState.user}><TeacherAssignments user={authState.user} /></Guard>} />
       <Route path="/teacher/submissions/:id/:id_assignment" element={<Guard allowedRoles="teacher" user={authState.user}><StudentSubmissions user={authState.user} /></Guard>} />
@@ -205,6 +205,8 @@ function App() {
       <Route path="/admin/students" element={<Guard allowedRoles="superAdmin" user={authState.user}><StudentAdmin /></Guard>} />
       <Route path="/admin/teachers" element={<Guard allowedRoles="superAdmin" user={authState.user}><TeacherAdmin /></Guard>} />
       <Route path="/admin/classes" element={<Guard allowedRoles="superAdmin" user={authState.user}><ClassAdmin /></Guard>} />
+      <Route path="/admin/create-mapel" element={<Guard allowedRoles="superAdmin" user={authState.user}><CreateMapelAdmin user={authState.user} /></Guard>} />
+      <Route path="/admin/mapels" element={<Guard allowedRoles="superAdmin" user={authState.user}><MapelAdmin /></Guard>} />
       <Route path="/admin/calendar" element={<Guard allowedRoles="superAdmin" user={authState.user}><CalendarAdmin /></Guard>} />
       <Route path="/admin/settings" element={<Guard allowedRoles="superAdmin" user={authState.user}><SettingsAdmin /></Guard>} />
       <Route path="/admin/super-control" element={<Guard allowedRoles="superAdmin" user={authState.user}><SuperAdminManageUsers /></Guard>} />

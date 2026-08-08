@@ -93,10 +93,8 @@ export default function TeacherAdmin() {
       return;
     }
 
-    if (!window.confirm(`Apakah Anda yakin ingin menghapus data pengajar: ${teacher.username}?`)) return;
-
     try {
-      const response = await fetch(`${BASE_URL}/admin/${userId}`, {
+      const response = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
         headers: {
           "Accept": "application/json"

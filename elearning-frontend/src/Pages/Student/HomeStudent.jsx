@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import MainLayoutStudent from "../../components/Student/MainLayout";
+import Toast from "../../components/Toast";
 import { Link } from "react-router-dom";
 
 const IconBook = () => (
@@ -22,12 +23,16 @@ const IconPlus = () => (
 
 export default function StudentDashboard() {
   const [openJoin, setOpenJoin] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);  
+  const [isLoading, setIsLoading] = useState(false);
   const [enrolledCount, setEnrolledCount] = useState(0);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const handleJoinClass = async (code) => {
-    if (!code.trim()) return alert("Silakan masukkan kode kelas yang valid.");
-    
+    if (!code.trim()) {
+      setAlertInfo({ show: true, message: "Silakan masukkan kode kelas yang valid.", type: 'error' });
+      return;
+    }
+
     try {
       setIsLoading(true);
       const response = await fetch('/api/classes/join', {
@@ -36,18 +41,19 @@ export default function StudentDashboard() {
         credentials: 'include',
         body: JSON.stringify({ code: code })
       });
-      
+
       const result = await response.json();
-      
+
       if (response.ok) {
         setEnrolledCount(prev => prev + 1);
         setOpenJoin(false);
+        setAlertInfo({ show: true, message: "Berhasil bergabung ke kelas.", type: 'success' });
       } else {
-        alert(result.message || "Gagal bergabung.");
+        setAlertInfo({ show: true, message: result.message || "Gagal bergabung ke kelas.", type: 'error' });
       }
     } catch (error) {
       console.error("Join error:", error);
-      alert("Terjadi kesalahan pada server.");
+      setAlertInfo({ show: true, message: "Terjadi kesalahan pada server.", type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -55,6 +61,9 @@ export default function StudentDashboard() {
 
   return (
     <MainLayoutStudent>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
         
         <div className="space-y-2">

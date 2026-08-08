@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 
 
-// --- KOMPONEN NOTIFIKASI TOAST (Universal & Bisa di-close) ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -40,8 +39,6 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// -----------------------------------------------------------
-
 
 const IconArrowLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -210,7 +207,7 @@ const DescriptionText = ({ text }) => {
         className="text-blue-600 font-bold text-xs hover:underline focus:outline-none"
       >
         {isExpanded ? "Lebih Sedikit" : "Lebih Banyak"}
-      </button>
+      </button> 
     </div>
   );
 };
@@ -234,7 +231,7 @@ export default function TeacherAssignments() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/me/class/${id}/assignmentsTeacher`, {
+      const response = await fetch(`/api/me/mapel/${id}/assignmentsTeacher`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -287,9 +284,6 @@ export default function TeacherAssignments() {
       return;
     }
     
-    // DIHAPUS: window.confirm("Apakah Anda yakin ingin menghapus tugas ini?")
-    // Langsung hapus tanpa konfirmasi bawaan chrome
-
     try {
       const response = await fetch(`/api/teachers/assignments/${id_assignment}`, {
         method: "DELETE",
@@ -318,7 +312,6 @@ export default function TeacherAssignments() {
 
   return (
     <MainLayoutTeacher>
-      {/* Custom Alert */}
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 

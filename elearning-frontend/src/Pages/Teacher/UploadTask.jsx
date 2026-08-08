@@ -98,14 +98,13 @@ export default function UploadTask() {
       data.append("assignment_title", formData.title);
       data.append("description", formData.description);
       data.append("file", formData.file);
-      data.append("id_class", id_class);
       
       if (formData.date) {
         const deadlineString = new Date(`${formData.date}T${formData.time}`).toISOString();
         data.append("deadline", deadlineString);
       }
 
-      const response = await fetch(`/api/teachers/class/${id_class}/assignments`, {
+      const response = await fetch(`/api/teachers/mapel/${id_class}/assignments`, {
         method: "POST",
         credentials: "include",
         body: data,

@@ -197,7 +197,6 @@ export default function Login() {
   const validate = () => {
     const newErrors = {};
 
-    // Hanya validasi kosong, format email dihilangkan agar fokus error ke "Email atau Password salah"
     if (!formData.email) {
       newErrors.email = 'Email wajib diisi';
     }
@@ -263,6 +262,27 @@ export default function Login() {
 
       if (!response.ok) {
         const serverMessage = result?.message || responseText || response.statusText;
+
+        // 403 dengan pesan "verified" = akun belum diverifikasi, ke halaman verify
+        if (response.status === 403 && /verified/i.test(serverMessage)) {
+          const pendingUserId = result?.user_id || result?.user?.id_user;
+          const pendingEmail = result?.email || formData.email;
+          const pendingRole = normalizeRole(result?.role || 'student');
+
+          localStorage.setItem('pending_email', pendingEmail);
+          localStorage.setItem('pending_role', pendingRole);
+          if (pendingUserId) localStorage.setItem('pending_user_id', pendingUserId.toString());
+
+          showAlert('Akun belum terverifikasi. Silakan masukkan kode OTP.', 'success');
+          setTimeout(() => {
+            navigate('/verify', {
+              state: { email: pendingEmail },
+              replace: true,
+            });
+          }, 1200);
+          return;
+        }
+
         console.error('Login request failed', {
           status: response.status,
           contentType,
@@ -278,10 +298,10 @@ export default function Login() {
       setRateLimitSeconds(0);
 
       const userId = result.user?.id_user || result.user_id || result.id;
-      const rawUserRole =
-        result.user?.role || result.role || (result.requiresTwoFactor ? 'admin' : undefined);
+      const rawUserRole = result.user?.role || result.role || (result.requiresTwoFactor ? 'admin' : undefined);
       const userRole = normalizeRole(rawUserRole);
-      const requiresOtp = result.requiresOTP || result.requiresTwoFactor || false;
+      const requiresOtp = Boolean(result.requiresOTP || result.requiresTwoFactor || false);
+      const dest = ROLE_DEST[userRole];
 
       if (result.user) {
         localStorage.setItem(
@@ -293,6 +313,7 @@ export default function Login() {
         );
       }
 
+      // Admin dengan 2FA: ke verify
       if (userId && requiresOtp) {
         localStorage.setItem('pending_user_id', userId.toString());
         localStorage.setItem('pending_role', userRole || 'admin');
@@ -310,12 +331,11 @@ export default function Login() {
         return;
       }
 
-      const dest = ROLE_DEST[userRole];
-
       if (!dest) {
         throw new Error('Role user tidak dikenali');
       }
 
+      // Login sukses tanpa OTP (guru/siswa verified): langsung ke dashboard
       window.location.replace(dest);
     } catch (error) {
       console.error('Login Error:', error);

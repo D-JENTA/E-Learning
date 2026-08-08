@@ -2,7 +2,6 @@ import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// --- KOMPONEN NOTIFIKASI TOAST (Universal & Bisa di-close) ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,7 +38,6 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// -----------------------------------------------------------
 
 export default function BuatKelas({ user }) {
   const [formData, setFormData] = useState({ 

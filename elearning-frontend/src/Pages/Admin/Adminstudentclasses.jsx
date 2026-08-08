@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
+import Toast from "../../components/Toast";
 
 const IconArrowLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
@@ -26,6 +27,7 @@ export default function AdminStudentClasses() {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const fetchStudentClasses = async () => {
     try {
@@ -79,7 +81,7 @@ export default function AdminStudentClasses() {
     const idClass = classData.id_class || classData.id || classData.classId;
 
     if (!idClass) {
-      alert("ID kelas tidak ditemukan.");
+      setAlertInfo({ show: true, message: "ID kelas tidak ditemukan.", type: 'error' });
       return;
     }
 
@@ -93,6 +95,9 @@ export default function AdminStudentClasses() {
 
   return (
     <MainLayout>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <button

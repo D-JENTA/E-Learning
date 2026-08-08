@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
+import Toast from "../../components/Toast";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -120,6 +121,7 @@ export default function AdminStudentClassTasks() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [previewData, setPreviewData] = useState(null);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const commonHeaders = {
     "ngrok-skip-browser-warning": "69420",
@@ -159,7 +161,7 @@ export default function AdminStudentClassTasks() {
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.message || "Gagal mengambil tugas kelas.");
+        setAlertInfo({ show: true, message: result.message || "Gagal mengambil tugas kelas.", type: 'error' });
         return;
       }
 
@@ -184,7 +186,7 @@ export default function AdminStudentClassTasks() {
       setTasks(mergedTasks);
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan saat mengambil tugas siswa.");
+      setAlertInfo({ show: true, message: "Terjadi kesalahan saat mengambil tugas siswa.", type: 'error' });
     } finally {
       setIsLoading(false);
     }
@@ -196,6 +198,9 @@ export default function AdminStudentClassTasks() {
 
   return (
     <MainLayout>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <button

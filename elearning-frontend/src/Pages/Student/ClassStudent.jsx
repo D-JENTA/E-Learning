@@ -84,7 +84,7 @@ export default function ClassStudent() {
       });
       const result = await response.json();
       if (response.ok) {
-        setClasses(result.joinedMapels || []);
+        setClasses(Array.isArray(result.data) ? result.data : []);
       }
     } catch (error) {
       console.error("Fetch error:", error);
@@ -160,7 +160,6 @@ export default function ClassStudent() {
                     <IconBook /> 
                   </div>
                   <p className="text-slate-400 font-medium">Belum ada mata pelajaran yang diikuti.</p>
-                  <button onClick={() => setOpenJoin(true)} className="text-[#0d264f] font-bold text-sm mt-2 hover:underline">Gabung sekarang</button>
                 </div>
               ) : (
                 currentClasses.map((item) => (

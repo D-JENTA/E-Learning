@@ -3,6 +3,26 @@ import { useNavigate, useLocation } from "react-router-dom";
 import imageBg from "../../assets/Loginimg.png";
 import lockIcon from "../../assets/Salinan lock.png";
 
+const VERIFIED_ACCOUNTS_STORAGE_KEY = 'verified_accounts';
+
+const saveVerifiedAccount = (email, role) => {
+  if (!email) return;
+
+  try {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedRole = String(role || 'student').trim().toLowerCase();
+    const existing = JSON.parse(localStorage.getItem(VERIFIED_ACCOUNTS_STORAGE_KEY) || '[]');
+    const next = existing.filter(
+      (entry) => !(entry?.email === normalizedEmail && entry?.role === normalizedRole)
+    );
+
+    next.push({ email: normalizedEmail, role: normalizedRole });
+    localStorage.setItem(VERIFIED_ACCOUNTS_STORAGE_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.warn('Gagal menyimpan akun terverifikasi:', error);
+  }
+};
+
 // --- KOMPONEN NOTIFIKASI TOAST (Universal & Bisa di-close) ---
 const CustomAlert = ({ message, type, onClose }) => {
   // Auto-close setelah 3 detik
@@ -59,9 +79,31 @@ export default function Verify() {
 
   useEffect(() => {
     const pendingUser = localStorage.getItem("pending_user_id");
+
     if (!emailFromState && !pendingUser) {
       console.warn("Sesi verifikasi tidak ditemukan, mengalihkan...");
       navigate("/forgot");
+      return;
+    }
+
+    if (emailFromState && !pendingUser) {
+      const syncPendingUserId = async () => {
+        try {
+          const response = await fetch('/api/auth/validate-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: emailFromState }),
+          });
+          if (!response.ok) return;
+          const result = await response.json();
+          if (result?.id_user) {
+            localStorage.setItem('pending_user_id', result.id_user.toString());
+          }
+        } catch (err) {
+          console.warn('Gagal sinkronisasi pending_user_id:', err);
+        }
+      };
+      syncPendingUserId();
     }
   }, [emailFromState, navigate]);
 
@@ -95,6 +137,10 @@ export default function Verify() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        if (result?.id_user) {
+          localStorage.setItem('pending_user_id', result.id_user.toString());
+        }
         setCanResend(false);
         setTimer(60); 
         setAlertInfo({ show: true, message: "Kode OTP berhasil dikirim ulang.", type: 'success' });
@@ -154,7 +200,12 @@ export default function Verify() {
       if (authMode === "reset_password") {
         navigate("/reset-password", { state: { email: emailFromState } });
       } else {
-        const normalizedRole = String(savedRole).toLowerCase();
+        const normalizedRole = String(savedRole || "student").toLowerCase();
+        saveVerifiedAccount(emailFromState || localStorage.getItem("pending_email") || "", normalizedRole);
+        localStorage.removeItem("pending_user_id");
+        localStorage.removeItem("pending_role");
+        localStorage.removeItem("pending_email");
+
         if (normalizedRole === "superadmin" || normalizedRole === "admin") {
           window.location.href = "/admin/super-dashboard";
         } else if (normalizedRole === "student") {

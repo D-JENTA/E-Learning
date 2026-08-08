@@ -182,7 +182,7 @@ export default function Create() {
       newErrors.confirmPassword = 'Password tidak cocok';
     }
 
-    if (!formData.classId) {
+    if (formData.role === 'student' && !formData.classId) {
       newErrors.classId = 'Kelas wajib dipilih';
     }
     
@@ -301,25 +301,27 @@ export default function Create() {
               </select>
             </div>
 
-            <div className="mb-3">
-              <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Pilih Kelas</label>
-              <select
-                name="classId"
-                value={formData.classId}
-                onChange={handleChange}
-                disabled={isLoadingClasses}
-                required
-                className={`w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 transition-all cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100 ${errors.classId ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-blue-500'}`}
-              >
-                <option value="">{isLoadingClasses ? 'Memuat kelas...' : 'Pilih kelas'}</option>
-                {classes.map((kelas) => (
-                  <option key={kelas.id_class} value={kelas.id_class}>
-                    {kelas.class_name}
-                  </option>
-                ))}
-              </select>
-              {errors.classId && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{errors.classId}</p>}
-            </div>
+            {formData.role === 'student' && (
+              <div className="mb-3">
+                <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Pilih Kelas</label>
+                <select
+                  name="classId"
+                  value={formData.classId}
+                  onChange={handleChange}
+                  disabled={isLoadingClasses}
+                  required
+                  className={`w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 transition-all cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100 ${errors.classId ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-blue-500'}`}
+                >
+                  <option value="">{isLoadingClasses ? 'Memuat kelas...' : 'Pilih kelas'}</option>
+                  {classes.map((kelas) => (
+                    <option key={kelas.id_class} value={kelas.id_class}>
+                      {kelas.class_name}
+                    </option>
+                  ))}
+                </select>
+                {errors.classId && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{errors.classId}</p>}
+              </div>
+            )}
 
             {formData.role === 'student' ? (
               <InputField

@@ -84,6 +84,18 @@ function SidebarContent() {
       roles: ['superAdmin'],
     },
     {
+      name: 'Create Mapel',
+      icon: 'M12 4v16m8-8H4',
+      path: '/admin/create-mapel',
+      roles: ['superAdmin'],
+    },
+    {
+      name: 'Daftar Mapel',
+      icon: 'M4 6h16M4 10h16M4 14h16M4 18h16',
+      path: '/admin/mapels',
+      roles: ['superAdmin'],
+    },
+    {
       name: 'Calendar',
       icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
       path: '/admin/calendar',

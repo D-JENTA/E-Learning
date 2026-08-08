@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayoutStudent from "../../components/Student/MainLayout";
+import Toast from "../../components/Toast";
 
 const IconArrowLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
@@ -41,12 +42,11 @@ const classInfo = {
 export default function StudentClass() {
   const navigate = useNavigate();
   const [openJoin, setOpenJoin] = useState(false);
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const handleDeleteClass = () => {
-    if(window.confirm("Apakah Anda yakin ingin menghapus kelas ini?")) {
-      alert("Kelas berhasil dihapus (Mock).");
-      navigate("/student/class");
-    }
+    setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
+    navigate("/student/class");
   };
 
   const handleJoinAction = () => {
@@ -55,6 +55,9 @@ export default function StudentClass() {
 
   return (
     <MainLayoutStudent>
+      {alertInfo.show && (
+        <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
+      )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
         
         <div className="flex flex-col gap-4">
@@ -145,21 +148,21 @@ export default function StudentClass() {
 
       </div>
 
-      {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} />}
+      {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} onNotify={(msg, type = 'success') => setAlertInfo({ show: true, message: msg, type })} />}
     </MainLayoutStudent>
   );
 }
 
-function JoinClassModal({ onClose }) {
+function JoinClassModal({ onClose, onNotify }) {
   const [code, setCode] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!code) {
-      alert("Silakan masukkan kode kelas.");
+      onNotify?.("Silakan masukkan kode kelas.", 'error');
       return;
     }
-    alert(`Kode ${code} berhasil disubmit! (Mock)`);
+    onNotify?.(`Berhasil bergabung dengan kode ${code}.`);
     onClose();
   };
 
