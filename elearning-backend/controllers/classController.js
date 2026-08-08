@@ -4,11 +4,11 @@ const path = require("path");
 const fs = require("fs/promises");
 const sequelize = require("../config/db")
 const { Student, Teacher, } = require("../models");
-const studentMapel = require("../models/studentMapel");
-const classMapel = require("../models/classMapel");
 const Class = require("../models/class");
 const Mapel = require("../models/mapel");
 const { data } = require("autoprefixer");
+const ScheduleMapel = require("../models/schedule_mapel");
+const { Op } = require("sequelize");
 
 //create class
 const createClass = async (req, res) => {
@@ -33,38 +33,125 @@ const createClass = async (req, res) => {
   }
 };
 
-//create mapel
+// create mapel
 const createMapel = async (req, res) => {
-    try{
-        const {mapel_name, id_teacher, id_class} = req.body;
+    try {
+        const { mapel_name, id_teacher, id_class, day, jp } = req.body;
 
-        if (!mapel_name) {
-            return res.status(400).json({message : "mapel name must be filled"})
+        // 1. Validasi Input Dasar
+        if (!mapel_name) return res.status(400).json({ message: "mapel name must be filled" });
+        if (!id_class) return res.status(400).json({ message: "class ID must be filled" });
+        if (!day) return res.status(400).json({ message: "day must be filled" });
+        if (!jp) return res.status(400).json({ message: "jp must be filled" });
+
+        // 2. Format Day agar Sesuai Enum Model ("Senin", "Selasa", "Rabu", "Kamis", "Jumat")
+        const formattedDay = day.trim().charAt(0).toUpperCase() + day.trim().slice(1).toLowerCase();
+
+        // 3. Format Input JP menjadi Array Angka & String Gabungan ("4,5,6,7,8")
+        let inputJpArray = [];
+        let formattedJp = "";
+
+        if (Array.isArray(jp)) {
+            inputJpArray = jp.map(Number);
+            formattedJp = inputJpArray.join(",");
+        } else if (typeof jp === "string" && jp.includes("-")) {
+            const [start, end] = jp.split("-").map(Number);
+            for (let i = start; i <= end; i++) {
+                inputJpArray.push(i);
+            }
+            formattedJp = inputJpArray.join(",");
+        } else {
+            formattedJp = String(jp).trim();
+            inputJpArray = formattedJp.split(",").map(j => Number(j.trim()));
         }
 
         const teacherIdValue = (id_teacher && String(id_teacher).trim() !== "") ? Number(id_teacher) : null;
-        if (!id_class) {
-            return res.status(400).json({message : "class ID must be filled"})
+        const classIdValue = Number(id_class);
+        const formattedMapelName = String(mapel_name).trim();
+
+        // 4. Cari atau Buat Master Mapel (Cegah Duplikasi Mapel di Kelas)
+        let mapel = await Mapel.findOne({
+            where: {
+                mapel_name: formattedMapelName,
+                id_class: classIdValue
+            }
+        });
+
+        if (!mapel) {
+            mapel = await Mapel.create({
+                mapel_name: formattedMapelName,
+                id_class: classIdValue,
+                id_teacher: teacherIdValue
+            });
+        } else if (teacherIdValue && mapel.id_teacher !== teacherIdValue) {
+            await mapel.update({ id_teacher: teacherIdValue });
         }
-        const newMapel =await Mapel.create({
-            mapel_name,
-            id_teacher : teacherIdValue
-        })
 
-        await classMapel.create({
-            id_class,
-            id_mapel : newMapel.id_mapel,
-            id_teacher : teacherIdValue
-        })
+        // 5. Cek Bentrok Jam di ScheduleMapel (Cek Irisan JP)
+        const existingSchedules = await ScheduleMapel.findAll({
+            where: {
+                day: formattedDay
+            },
+            include: [
+                {
+                    model: Mapel,
+                    as: "Mapel",
+                    where: {
+                        [Op.or]: [
+                            { id_class: classIdValue },
+                            ...(teacherIdValue ? [{ id_teacher: teacherIdValue }] : [])
+                        ]
+                    }
+                }
+            ]
+        });
 
-        res.status(201).json({message : "mapel created successfully"})
+        for (const schedule of existingSchedules) {
+            if (!schedule.jp) continue;
+
+            const existingJpArray = String(schedule.jp).split(",").map(j => Number(j.trim()));
+            const isConflict = inputJpArray.some(j => existingJpArray.includes(j));
+
+            if (isConflict) {
+                const conflictedMapel = schedule.Mapel;
+
+                if (conflictedMapel.id_class === classIdValue) {
+                    return res.status(400).json({
+                        message: `Jam bentrok! Kelas ini sudah terisi mata pelajaran '${conflictedMapel.mapel_name}' pada hari ${formattedDay} JP (${schedule.jp}).`
+                    });
+                }
+
+                if (teacherIdValue && conflictedMapel.id_teacher === teacherIdValue) {
+                    return res.status(400).json({
+                        message: `Jadwal guru bentrok! Guru tersebut sudah mengajar di kelas lain pada hari ${formattedDay} JP (${schedule.jp}).`
+                    });
+                }
+            }
+        }
+
+        // 6. Simpan Slot Schedule dalam 1 Baris Data
+        const newSchedule = await ScheduleMapel.create({
+            day: formattedDay,
+            jp: formattedJp,
+            id_mapel: mapel.id_mapel
+        });
+
+        return res.status(201).json({
+            message: "Schedule mapel created successfully",
+            data: {
+                mapel,
+                schedule: newSchedule
+            }
+        });
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: "server error" });
+        return res.status(500).json({ message: "Server error" });
     }
-}
+};
 
-//add teacher to mapel
+
+// add teacher to mapel
 const addTeacherToMapel = async (req, res) => {
     try {
         const { id_mapel, id_teacher, id_class } = req.body;
@@ -158,7 +245,7 @@ const getMapelByClassId = async (req, res) => {
         if (!id_class) {
             return res.status(400).json({message : "class ID must be filled"})
         }
-        const classMapels = await classMapel.findAll({
+        const classMapels = await Mapel.findAll({
             where : {id_class},
             include : [
                 {
@@ -175,75 +262,75 @@ const getMapelByClassId = async (req, res) => {
 };
 
 
-// get student class details (mengambil data siswa beserta kelas yang diikuti berdasarkan id student)
-const getUserClassDetails = async (req, res) => {
-    try {
-        const { id_user } = req.params; 
+// // get student class details (mengambil data siswa beserta kelas yang diikuti berdasarkan id student)
+// const getUserClassDetails = async (req, res) => {
+//     try {
+//         const { id_user } = req.params; 
 
-        // Langkah 1: Cek apakah user ini adalah SISWA
-        const studentData = await Student.findOne({
-            where: { id_student: id_user },
-            attributes: ["id_student", "username"],
-            include: [
-                {
-                    model: Class,
-                    attributes: ["id_class", "class_name", "classCode"],
-                    through: { attributes: [] }
-                }
-            ]
-        });
+//         // Langkah 1: Cek apakah user ini adalah SISWA
+//         const studentData = await Student.findOne({
+//             where: { id_student: id_user },
+//             attributes: ["id_student", "username"],
+//             include: [
+//                 {
+//                     model: Class,
+//                     attributes: ["id_class", "class_name", "classCode"],
+//                     through: { attributes: [] }
+//                 }
+//             ]
+//         });
 
-        if (studentData) {
-            return res.status(200).json({
-                message: "Berhasil mengambil kelas yang DIKUTI oleh Siswa.",
-                role: "student",
-                data: {
-                    id_user: studentData.id_student,
-                    name: studentData.username,
-                    email: studentData.email,
-                    classes: studentData.Classes // Berisi daftar kelas yang diikuti
-                }
-            });
-        }
+//         if (studentData) {
+//             return res.status(200).json({
+//                 message: "Berhasil mengambil kelas yang DIKUTI oleh Siswa.",
+//                 role: "student",
+//                 data: {
+//                     id_user: studentData.id_student,
+//                     name: studentData.username,
+//                     email: studentData.email,
+//                     classes: studentData.Classes // Berisi daftar kelas yang diikuti
+//                 }
+//             });
+//         }
 
-        // Langkah 2: Jika bukan siswa, cek apakah user ini adalah GURU
-        const teacherData = await Teacher.findOne({
-            where: { id_teacher: id_user },
-            attributes: ["id_teacher", "username"]
-        });
+//         // Langkah 2: Jika bukan siswa, cek apakah user ini adalah GURU
+//         const teacherData = await Teacher.findOne({
+//             where: { id_teacher: id_user },
+//             attributes: ["id_teacher", "username"]
+//         });
 
-        if (teacherData) {
-            // Karena relasinya One-to-Many (Guru punya banyak kelas), 
-            // Kita cari kelas yang dibuat oleh id_teacher ini di tabel Class
-            const createdClasses = await Class.findAll({
-                where: { id_teacher: id_user },
-                attributes: ["id_class", "class_name", "classCode"]
-            });
+//         if (teacherData) {
+//             // Karena relasinya One-to-Many (Guru punya banyak kelas), 
+//             // Kita cari kelas yang dibuat oleh id_teacher ini di tabel Class
+//             const createdClasses = await Class.findAll({
+//                 where: { id_teacher: id_user },
+//                 attributes: ["id_class", "class_name", "classCode"]
+//             });
 
-            return res.status(200).json({
-                message: "Berhasil mengambil kelas yang DIBUAT oleh Guru.",
-                role: "teacher",
-                data: {
-                    id_user: teacherData.id_teacher,
-                    name: teacherData.username,
-                    email: teacherData.email,
-                    classes: createdClasses 
-                }
-            });
-        }
+//             return res.status(200).json({
+//                 message: "Berhasil mengambil kelas yang DIBUAT oleh Guru.",
+//                 role: "teacher",
+//                 data: {
+//                     id_user: teacherData.id_teacher,
+//                     name: teacherData.username,
+//                     email: teacherData.email,
+//                     classes: createdClasses 
+//                 }
+//             });
+//         }
 
-        // Langkah 3: Jika di kedua tabel tidak ditemukan
-        return res.status(404).json({ 
-            message: "User tidak ditemukan di data siswa maupun guru." 
-        });
+//         // Langkah 3: Jika di kedua tabel tidak ditemukan
+//         return res.status(404).json({ 
+//             message: "User tidak ditemukan di data siswa maupun guru." 
+//         });
 
-    } catch (error) {
-        return res.status(500).json({ 
-            message: "Internal server error", 
-            error: error.message 
-        });
-    }
-};
+//     } catch (error) {
+//         return res.status(500).json({ 
+//             message: "Internal server error", 
+//             error: error.message 
+//         });
+//     }
+// };
 
 // get by id
 const getByIdClass = async ( req, res) => {
@@ -259,9 +346,9 @@ const getByIdClass = async ( req, res) => {
 //update
 const updateClass = async (req, res) => {
     try {
-        const updClass = await Class.findByPk(req.params.id);
+        const updClass = await Class.findByPk(req.params.id_class);
         if (!updClass)
-            return res.status(404).json({message : "class not found"})
+            return res.status(404).json({message : "class not found "})
 
         const {class_name} = req.body;
         if (!class_name) {
@@ -274,6 +361,33 @@ const updateClass = async (req, res) => {
         return res.status(500).json({message : "server error while run update method"})
     }
 };
+
+//update mapel
+const updateMapel = async (req, res) => {
+    try{
+        const upMapel = await Mapel.findByPk(req.params.id_mapel);
+        if (!upMapel) {
+            return res.status(404).json({message : "mapel not found"})
+        }
+        const {mapel_name, id_teacher} = req.body;
+
+        const newMapelName = mapel_name ? mapel_name : upMapel.mapel_name;
+        const newTeacherId = id_teacher ? id_teacher : upMapel.id_teacher;
+
+        await upMapel.update({
+            mapel_name: newMapelName,
+            id_teacher: newTeacherId
+        });
+
+        return res.status(200).json({ 
+            message: "successful update mapel",
+            data: upMapel 
+        });
+    }catch (err){
+        console.error(err)
+        return res.status(500).json({message : "server error while run update mapel method"})
+    }
+}
 
 //get class by student
 const getMapelByStudent = async (req, res) => {
@@ -289,14 +403,9 @@ const getMapelByStudent = async (req, res) => {
         const idClass = student ? student.id_class : null;
 
   
-        const classMapels = await classMapel.findAll({
+        const classMapels = await Mapel.findAll({
             where : {id_class : idClass},
-            include : [
-                {
-                model : Mapel,
-                attributes : ["mapel_name","id_mapel"],
-            }
-        ]
+            attributes : ["id_mapel", "mapel_name"],
         });
 
         if (classMapels.length == 0) {
@@ -357,28 +466,7 @@ const getMapelByTeacher = async (req, res) => {
   }
 };
 
-// delete student from class that joined by teacher
-const deleteStudentFromClass = async (req, res) => {
-    try{
-        const {id_class} = req.params;
-        const {id_student} = req.body;
 
-        const delStudent = await studentClass.findOne({ 
-            where : {
-                id_student,
-                id_class
-            }
-        });
-        if (!delStudent){
-            return res.status(404).json({message : "student not found in this class"})
-        }
-        await delStudent.destroy();
-        res.status(200).json({message : "successfully delete student from class that joined by teacher"})
-    }catch (err){
-    console.error(err)
-    res.status(500).json({message : "server error while delete student from class that joined by teacher"})
-}
-};
 
 module.exports = {
     createClass, 
@@ -386,11 +474,11 @@ module.exports = {
     deleteMapel, 
     getAllClass, 
     updateClass,
+    updateMapel,
     getByIdClass,
     addTeacherToMapel,
     getMapelByStudent, 
     getMapelByTeacher, 
-    deleteStudentFromClass,
-    getUserClassDetails,
+    // getUserClassDetails,
     getMapelByClassId
     };

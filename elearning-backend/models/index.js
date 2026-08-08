@@ -3,83 +3,63 @@ const Teacher = require("./teacher");
 const Mapel = require("./mapel");
 const Assignment = require("./assignment");
 const assignmentStudent = require("./assignmentStudent");
-const User = require("./user")
-const studentMapel = require("./studentMapel");
+const User = require("./user");
 const emailOtp = require("./emailOtps");
 const Class = require("./class");
-const classMapel = require("./classMapel");
+const ScheduleMapel = require("./schedule_mapel");
 
-//Relation m2m student Mapel
-Student.belongsToMany(Mapel, {
-    through: studentMapel,
-    foreignKey: "id_student",
-    otherKey: "id_Mapel"
-});
+// 1. Relasi Teacher - Mapel (Ditambahkan Alias 'teacher_tb' agar cocok dengan controller PDF)
+Teacher.hasMany(Mapel, { foreignKey: "id_teacher", as: "Mapels" });
+Mapel.belongsTo(Teacher, { foreignKey: "id_teacher", as: "teacher_tb" });
 
-Mapel.belongsToMany(Student, {
-    through: studentMapel,
-    foreignKey: "id_Mapel",
-    otherKey: "id_student"
-});
+// 2. Relasi Mapel - Assignment
+Mapel.hasMany(Assignment, { foreignKey: "id_Mapel", onDelete: "CASCADE" });
+Assignment.belongsTo(Mapel, { foreignKey: "id_Mapel" });
 
-studentMapel.belongsTo(Student, { foreignKey: "id_student" });
-studentMapel.belongsTo(Mapel, { foreignKey: "id_Mapel" });
+// 3. Relasi Mapel - ScheduleMapel
+Mapel.hasMany(ScheduleMapel, { foreignKey: "id_mapel", as: "Schedules" });
+ScheduleMapel.belongsTo(Mapel, { foreignKey: "id_mapel", as: "Mapel" });
 
-//Relation teacher Mapel
-Teacher.hasMany(Mapel, { foreignKey: "id_teacher" });
-Mapel.belongsTo(Teacher, { foreignKey: "id_teacher" });
+// 4. Relasi Class - Mapel
+Class.hasMany(Mapel, { foreignKey: "id_class", as: "Mapels" });
+Mapel.belongsTo(Class, { foreignKey: "id_class", as: "Class" });
 
-//Relation Mapel Assignment
-Mapel.hasMany(Assignment, {foreignKey: "id_Mapel", onDelete : "CASCADE"});
-Assignment.belongsTo(Mapel, { foreignKey: "id_Mapel"});
+// 5. Relasi User - Student
+Student.belongsTo(User, { foreignKey: "id_student" });
+User.hasOne(Student, { foreignKey: "id_student" });
 
-//Relation user student
-Student.belongsTo(User,{foreignKey: "id_student"});
-User.hasOne(Student, {foreignKey: "id_student"})
+// 6. Relasi User - Teacher
+Teacher.belongsTo(User, { foreignKey: "id_teacher", as: "User" });
+User.hasOne(Teacher, { foreignKey: "id_teacher", as: "Teacher" });
 
-//Relation User Teacher
-Teacher.belongsTo(User, {foreignKey : "id_teacher"});
-User.hasOne(Teacher, {foreignKey: "id_teacher"});
-
-//Relation emailOtp User
-User.hasMany(emailOtp,{
+// 7. Relasi emailOtp - User
+User.hasMany(emailOtp, {
     foreignKey: "user_id",
-    sourceKey:"id_user",
-    onDelete:"CASCADE"
+    sourceKey: "id_user",
+    onDelete: "CASCADE"
 });
-
 emailOtp.belongsTo(User, {
-    foreignKey :"user_id",
-    targetKey:"id_user"
+    foreignKey: "user_id",
+    targetKey: "id_user"
 });
 
-
-// relation assignmentStudent assignment
+// 8. Relasi Assignment - assignmentStudent
 Assignment.hasMany(assignmentStudent, { foreignKey: "id_assignment" });
 assignmentStudent.belongsTo(Assignment, { foreignKey: "id_assignment" });
 
-
-// relation class mapel
-Mapel.belongsToMany(Class, {
-  through: classMapel,
-  foreignKey: "id_mapel",
-  otherKey: "id_class"
-});
-
-Class.belongsToMany(Mapel, {
-  through: classMapel,
-  foreignKey: "id_class",
-  otherKey: "id_mapel"
-});
-
-
-classMapel.belongsTo(Mapel, { foreignKey: "id_mapel" });
-classMapel.belongsTo(Class, { foreignKey: "id_class" });
-
-//relation student class
+// 9. Relasi Student - Class
 Student.belongsTo(Class, { foreignKey: "id_class" });
 Class.hasMany(Student, { foreignKey: "id_class" });
 
-
-
-module.exports = {User, Student, Mapel, Teacher,Assignment, assignmentStudent, studentMapel, emailOtp, Class, classMapel};
+// PASTI KAN ScheduleMapel DITERUSKAN DI EXPORTS!
+module.exports = {
+    User,
+    Student,
+    Mapel,
+    Teacher,
+    Assignment,
+    assignmentStudent,
+    emailOtp,
+    Class,
+    ScheduleMapel
+};

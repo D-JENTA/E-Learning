@@ -19,6 +19,14 @@ const Mapel = sequelize.define ("Mapel",{
             model : "teacher_tb",
             key : "id_teacher"
         }
+    },
+    id_class :{
+        type : DataTypes.INTEGER,
+        allowNull : false,
+        references : {
+            model : "class_tb",
+            key : "id_class"
+        }
     }
 },{
     tableName : "mapel_tb",

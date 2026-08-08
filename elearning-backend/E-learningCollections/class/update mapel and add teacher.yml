@@ -1,0 +1,22 @@
+info:
+  name: update mapel and add teacher
+  type: http
+  seq: 12
+
+http:
+  method: PUT
+  url: http://localhost:5000/api/admin/mapels/81
+  body:
+    type: json
+    data: |-
+      {
+        "mapel_name" : "B.indo",
+        "id_teacher" : "158"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
