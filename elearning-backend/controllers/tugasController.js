@@ -3,7 +3,6 @@ const path = require("path");
 const fs = require("fs")
 const Assignment = require("../models/assignment");
 const assignmentStudent = require("../models/assignmentStudent");
-// const Student_mapel = require("../models/studentMapel");
 const  {Op, Model} = require("sequelize");
 const { uploadTeacher,uploadStudent, getResourceType, makePublicId, cloudinary } = require("../config/cloudinary");
 
@@ -21,19 +20,19 @@ const uploadAssignment = async (req, res) => {
     try {
         const id_teacher = req.user.id;
         const { assignment_title, description } = req.body;
-        const id_class = req.params.id_class;
+
+        const id_mapel = req.params.id_mapel; 
         const deadline = req.body.deadline ? new Date(req.body.deadline) : null;
 
-        if (!assignment_title || !id_class) {
-            if (req.file) fs.unlinkSync(req.file.path); // Hapus file temp jika validasi gagal
-            return res.status(400).json({ message: 'assignment title and id class are required' });
+        if (!assignment_title || !id_mapel) {
+            if (req.file) fs.unlinkSync(req.file.path); 
+            return res.status(400).json({ message: 'assignment title and id mapel are required' });
         }
 
         if (!req.file) {
             return res.status(400).json({ message: 'File wajib diupload' });
         }
 
-        // --- PROSES UPLOAD KE CLOUDINARY DENGAN CHUNKED METHOD ---
         const resourceType = getResourceType(req.file.mimetype);
         const publicId = makePublicId(req.file, resourceType);
 
@@ -41,22 +40,20 @@ const uploadAssignment = async (req, res) => {
             folder: "e-learning_assignments/teacher",
             resource_type: resourceType,
             public_id: publicId,
-            chunk_size: 6000000 // Pecah per 6MB saat transfer ke Cloudinary (sangat stabil)
+            chunk_size: 6000000 
         };
 
-        // Upload file dari server lokal ke Cloudinary
         const cloudinaryResult = await uploadToCloudinaryLarge(req.file.path, cloudinaryOptions);
 
-        // Hapus file dari penyimpanan lokal BE setelah sukses diupload ke Cloudinary
         fs.unlinkSync(req.file.path);
-        // ---------------------------------------------------------
+
         
         const assignment = await Assignment.create({
             assignment_title,
             description,
-            file_url: cloudinaryResult.secure_url,       // Menyamakan output lama
-            file_public_id: cloudinaryResult.public_id, // Menyamakan output lama
-            id_class,
+            file_url: cloudinaryResult.secure_url,
+            file_public_id: cloudinaryResult.public_id,
+            id_mapel,
             id_teacher,
             deadline
         });
@@ -64,7 +61,6 @@ const uploadAssignment = async (req, res) => {
         res.status(201).json({ message: 'Assignment uploaded successfully', data: assignment });
     } catch (err) {
         console.error(err);
-        // Proteksi jika error di tengah jalan, pastikan file temp terhapus agar disk BE tidak penuh
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
         }
@@ -76,7 +72,7 @@ const uploadAssignmentStudent = async (req, res) => {
     try {
         const id_student = req.user.id;
         const id_assignment = req.params.id_assignment;
-        const { title, id_class } = req.body;
+        const { title, id_mapel } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: 'File wajib diupload' });
@@ -103,7 +99,6 @@ const uploadAssignmentStudent = async (req, res) => {
             }
         }
 
-        // --- PROSES UPLOAD KE CLOUDINARY DENGAN CHUNKED METHOD ---
         const resourceType = getResourceType(req.file.mimetype);
         const publicId = makePublicId(req.file, resourceType);
 
@@ -122,7 +117,7 @@ const uploadAssignmentStudent = async (req, res) => {
             title,
             file_url: cloudinaryResult.secure_url,
             file_public_id: cloudinaryResult.public_id,
-            id_class,
+            id_mapel,
             id_assignment,
             id_student
         });
@@ -137,14 +132,14 @@ const uploadAssignmentStudent = async (req, res) => {
     }
 };
 
-//get assignment teacher by id_class
+//get assignment teacher by id_mapel
 const getAssignmentTeacher = async (req, res) => {
     try{
-        const {id_class} = req.params;
+        const {id_mapel} = req.params;
 
         const assignments = await Assignment.findAll({
             where : {
-                id_class
+                id_mapel
             },
             attributes : ["id_assignment", "assignment_title","description", "file_url", "deadline"]
         });
@@ -161,16 +156,16 @@ const getAssignmentTeacher = async (req, res) => {
         });
     }catch (err){
         console.error(err)
-        return res.status(500).json({message:"server error while executing the get assignment for student by id_class method" })
+        return res.status(500).json({message:"server error while executing the get assignment for student by id_mapel method" })
     }
 };
 
-// get assignment student by id_class
+// get assignment student by id mapel
 const getAssignmentStudent = async (req, res) => {
     try{
-        const {id_class} = req.params;
+        const {id_mapel} = req.params;
         const assignments = await assignmentStudent.findAll({
-            where : {id_class},
+            where : {id_mapel},
             attributes : ["id_assignmentStudent","title","file_url","score","createdAt"]
          });
          res.status(200).json({
@@ -186,7 +181,7 @@ const getAssignmentStudent = async (req, res) => {
          })
         }catch (err){
             console.error(err)
-            return res.status(500).json({message:"server error while executing the get assignment student by id_class method" })
+            return res.status(500).json({message:"server error while executing the get assignment student by id_mapel method" })
         }
 };
 
@@ -205,7 +200,6 @@ const getAssignmentStudentById = async (req, res) => {
         return res.status(500).json({message:"server error while executing the get assignment student by id_assignment method" })
     }
 };
-
 
 // get my submissions (assignment student by id_student)
 const getMySubmissions = async (req, res) => {
@@ -275,15 +269,42 @@ const deleteAssignment = async (req, res) => {
 // DELETE assignment student
 const deleteAssignmentStudent = async (req, res) => {
     try {
-        const assignment = await assignmentStudent.findByPk(req.params.id);
-    
+        const id_student = req.user?.id_student || req.user?.id_user || req.user?.id;
+        const { id } = req.params;
+
+        const assignment = await assignmentStudent.findOne({
+            where: { id_assignmentStudent: id },
+            include: [
+                {
+                    model: Assignment, 
+                    attributes: ['deadline']
+                }
+            ]
+        });
+
         if (!assignment) {
-            return res.status(404).json({ message: "Assignment not found" });
+            return res.status(404).json({ message: "Pengumpulan tugas tidak ditemukan." });
         }
 
-        if (assignment.score > 0) {
-            return res.status(400).json({ message: "Cannot delete assignment that has been scored" });
+        if (assignment.id_student !== id_student) {
+            return res.status(403).json({ message: "Akses ditolak. Anda hanya dapat menghapus tugas milik sendiri." });
         }
+
+        if (assignment.score !== null && assignment.score !== undefined) {
+            return res.status(400).json({ message: "Tugas tidak dapat dihapus karena sudah diberi nilai oleh guru." });
+        }
+
+
+        const deadline = assignment.Assignment?.deadline;
+        if (deadline) {
+            const now = new Date().getTime();
+            const assignmentDeadline = new Date(deadline).getTime();
+
+            if (now > assignmentDeadline) {
+                return res.status(400).json({ message: "Deadline sudah lewat. Tugas yang sudah terkirim tidak dapat dihapus." });
+            }
+        }
+
 
         if (assignment.file_public_id) {
             await cloudinary.uploader.destroy(assignment.file_public_id, {
@@ -291,12 +312,13 @@ const deleteAssignmentStudent = async (req, res) => {
             });
         }
 
+
         await assignment.destroy();
 
-        res.status(200).json({ message: "Assignment has been deleted" });
+        res.status(200).json({ message: "Pengumpulan tugas berhasil dihapus." });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: "Server error while deleting assignment" });
+        res.status(500).json({ message: "Terjadi kesalahan server saat menghapus tugas." });
     }
 };
 
@@ -319,13 +341,18 @@ const inputScore = async (req , res) => {
     }
 };
 
-// total score
+//total Score
 const totalScore = async (req, res) => {
-  try {
-    const { id_student, id_class } = req.query;
+     try {
+    const { id_student, id_mapel } = req.query;
 
+    if (!id_student || !id_mapel) {
+      return res.status(400).json({
+        message: "Parameter 'id_student' dan 'id_mapel' wajib diisi pada query URL."
+      });
+    }
     const allAssignments = await assignmentStudent.findAll({
-      where: { id_student, id_class },
+      where: { id_student, id_mapel },
       attributes: ['id_assignmentStudent', 'score', 'title']
       
     });
@@ -333,7 +360,7 @@ const totalScore = async (req, res) => {
     const total = await assignmentStudent.sum("score", {
       where: {
         id_student,
-        id_class
+        id_mapel
       }
     });
 
@@ -342,7 +369,7 @@ const totalScore = async (req, res) => {
     const count = await assignmentStudent.count({
         where : {
             id_student,
-            id_class
+            id_mapel
         }
     });
 
@@ -351,7 +378,7 @@ const totalScore = async (req, res) => {
     res.json({
       student_info: {
         id_student,
-        id_class
+        id_mapel
       },
       summary: {
         total_assignments: count,
@@ -369,18 +396,17 @@ const totalScore = async (req, res) => {
 };
 
 
-
 module.exports = { 
     uploadTeacher, 
     uploadStudent, 
     uploadAssignment, 
     uploadAssignmentStudent, 
-    deleteAssignment, 
-    deleteAssignmentStudent, 
     inputScore, 
-    totalScore,
     getAssignmentTeacher,
     getAssignmentStudent,
     getAssignmentStudentById,
     getMySubmissions,
+    totalScore,
+    deleteAssignmentStudent, 
+    deleteAssignment, 
     };

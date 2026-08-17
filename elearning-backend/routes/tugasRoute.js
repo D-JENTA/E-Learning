@@ -14,7 +14,7 @@ const uploadHandler = (uploadMiddleware) => (req, res, next) => {
     });
 };
 
-router.post("/teachers/class/:id_class/assignments", verifyToken, isTeacher, 
+router.post("/teachers/mapel/:id_mapel/assignments", verifyToken, isTeacher, 
     uploadHandler(uploadTeacher.single("file")),  
     uploadAssignment
 );
@@ -24,8 +24,8 @@ router.post("/students/:id_assignment/assignments", verifyToken, isStudent,
     uploadAssignmentStudent
 );
 
-router.get("/me/class/:id_class/assignmentsTeacher", verifyToken, getAssignmentTeacher);
-router.get("/me/class/:id_class/assignmentsStudent", verifyToken, isTeacher, getAssignmentStudent);
+router.get("/me/mapel/:id_mapel/assignmentsTeacher", verifyToken, getAssignmentTeacher);
+router.get("/me/mapel/:id_mapel/assignmentsStudent", verifyToken, isTeacher, getAssignmentStudent);
 router.get("/students/assignments", verifyToken, isStudent, getMySubmissions);
 router.delete("/teachers/assignments/:id", verifyToken, isTeacher, deleteAssignment);
 router.delete("/students/assignments/:id", verifyToken, isStudent, deleteAssignmentStudent);

@@ -20,7 +20,7 @@ const Assignment = require("../models/assignment");
 // register
 const register = async (req, res) => {
     let t;
-    const SALT_ROUNDS = 5;
+    const SALT_ROUNDS = 10;
     try {
         const { username, email, password, role, nis, nip, id_class } = req.body;
 
@@ -128,13 +128,14 @@ const verifyOtpLogin = async (req, res) => {
 
         await otpData.destroy({ transaction: t });
         
+        const verifiedUser = await user.update({ is_verified: true }, { transaction: t });
 
         await t.commit();
 
 
         const token = jwt.sign(
             { id: user.id_user, role: user.role }, 
-            process.env.JWT_SECRET || "SECRET_KEY", 
+            process.env.JWT_SECRET, 
             { expiresIn: "1d" }
         );
 
@@ -158,12 +159,10 @@ const verifyOtpLogin = async (req, res) => {
         });
 
     } catch (err) {
-        if (!t.finished) { 
-            await t.rollback(); 
-        }
-        console.error(err);
-        return res.status(500).json({ message: "server error" });
-    }
+    if (t) await t.rollback(); 
+    console.error(err);
+    return res.status(500).json({ message: "server error" });
+}
 };
 
 // login
@@ -303,42 +302,11 @@ const validateEmail = async (req, res) => {
     }
 };
 
-// input user by superAdmin
-const inputUser = async (req, res) => {
-    try {
-        const { username, email, password, role, nis, nip } = req.body;
-        if (!username || !email) return res.status(400).json({ message: "all fields must be filled in" });
-        if (!password || password.length < 6) return res.status(400).json({ message: "password must be more then 8 characters" });
-        if (!["student", "teacher", "admin"].includes(role)) return res.status(400).json({ message: "role must be filled" });
-        if (role === "student" && (!nis || nis.trim() === "")) return res.status(400).json({ message: "NIS must be filled in" });
-        if (role === "teacher" && (!nip || nip.trim() === "")) return res.status(400).json({ message: "NIP must be filled in" });
-
-        const existingUser = await User.findOne({ where: { email }, attributes: ["id_user"] });
-        if (existingUser) return res.status(400).json({ message: "email already exists" });
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({
-            username,
-            email,
-            password: hashedPassword,
-            role,
-            nis,
-            nip,
-            is_verified: true
-        });
-
-        res.status(201).json({ message: "User created successfully", data: user });
-    }catch (err) {
-        console.error(err)
-        res.status(500).json({message : "server error while input user by super admin"})
-    }
-}
-
 //update password
 const updatePassword = async (req, res) => {
     try{
-        
-        const{user_id, newPassword} = req.body;
+        const user_id = req.user.id;
+        const{newPassword} = req.body;
         if(!newPassword || newPassword.length < 6)
             return res.status(400).json({message : "new password must be more than 6 characters"});
 
@@ -493,7 +461,20 @@ const getAllTeachers = async (req, res) => {
         res.status(500).json({ message: "server error while get all teachers" });
     }
 };
-
+//update user
+const updateUser = async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findByPk(userId);
+        if (!user ) return res.status (404).json({message : "user not found"});
+        const {username, email, role} = req.body;
+        await user.update({username, email, role});
+        res.json({message : "User updated successfully.", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
+    }catch (err) {
+        console.error(err)
+        res.status(500).json({message : "server error while update user"})
+    }
+};
 // update email 
 const updateEmail = async (req, res) => {
     try{
@@ -566,7 +547,6 @@ const deleteUser = async ( req , res) => {
         const id_user = req.params.id;
         const user = await User.findByPk(id_user);
         if (!user) return res.status(400).json({message : "user not found"});
-        if (user.role === "superAdmin") return res.status(403).json({message : "you are not allowed to delete super admin"});
         await user.destroy();
         res.json({message : "success delete user by admin", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
     }catch ( error){
@@ -574,6 +554,7 @@ const deleteUser = async ( req , res) => {
     res.status(500).json({message : "cannot run method Delete for admin"})
 }
 };
+
 // check me
 const checkMe = async (req, res) => {
     try {
@@ -605,20 +586,20 @@ const logout = (req, res) => {
 module.exports = {
     register, 
     login, 
+    resendOtp,
+    verifyOtpLogin, 
     getUser, 
     getUserById, 
-    deleteUser, 
-    verifyOtpLogin, 
-    checkMe, 
-    logout,
-    updateProfilePicture,
-    resendOtp,
-    validateEmail,
-    updatePassword,
-    inputUser,
-    getStudentByIdClass,
     getAllTeachers,
+    getStudentByIdClass,
+    validateEmail,
+    checkMe, 
+    updateProfilePicture,
+    updatePassword,
     updateEmail,
+    updateUser,
     updateUsername,
+    logout,
     changeUserRole,
+    deleteUser, 
     };

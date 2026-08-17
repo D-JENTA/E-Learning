@@ -17,7 +17,7 @@ Mapel.hasMany(Assignment, { foreignKey: "id_Mapel", onDelete: "CASCADE" });
 Assignment.belongsTo(Mapel, { foreignKey: "id_Mapel" });
 
 // 3. Relasi Mapel - ScheduleMapel
-Mapel.hasMany(ScheduleMapel, { foreignKey: "id_mapel", as: "Schedules" });
+Mapel.hasMany(ScheduleMapel, { foreignKey: "id_mapel", as: "Schedules",onDelete: "CASCADE" });
 ScheduleMapel.belongsTo(Mapel, { foreignKey: "id_mapel", as: "Mapel" });
 
 // 4. Relasi Class - Mapel

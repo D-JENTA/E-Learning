@@ -27,12 +27,12 @@ const Assignment = sequelize.define("Assignment", {
       key : "id_teacher"
     }
   },
-  id_class: {
+  id_mapel: {
     type: DataTypes.INTEGER,
     allowNUll: false,
     references : {
-      model : "class_tb",
-      key:"id_class"
+      model : "mapel_tb",
+      key:"id_mapel"
     },
     onDelete :"CASCADE"
   },

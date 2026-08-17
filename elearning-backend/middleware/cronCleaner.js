@@ -1,8 +1,7 @@
 const cron = require("node-cron");
-const { User } = require("../models/user"); 
 const { Op } = require("sequelize");
 const e = require("express");
-const { emailOtp } = require("../models");
+const { User, emailOtp } = require("../models");
 
 
 const cronCleaner = () => {
@@ -13,7 +12,7 @@ const cronCleaner = () => {
             const deleted = await User.destroy({
                 where: {
                     is_verified: false,
-                    createdAt: { 
+                    created_at: {   
                         [Op.lt]: new Date(Date.now() - 24 * 60 * 60 * 1000)
                     }
                 }

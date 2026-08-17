@@ -4,28 +4,27 @@ const { Class, Mapel, ScheduleMapel, Teacher, User } = require("../models");
 
 const printDataJadwalPDF = async (req, res, next) => {
   try {
-    // 1. Fetch data Class -> Mapel -> ScheduleMapel & Teacher
     const classesData = await Class.findAll({
       attributes: ["id_class", "class_name"],
       include: [
         {
           model: Mapel,
-          as: "Mapels", // Sesuaikan alias relasi Class -> Mapel jika berbeda
+          as: "Mapels", 
           attributes: ["id_mapel", "mapel_name"],
           include: [
             {
               model: ScheduleMapel,
-              as: "Schedules", // Sesuaikan alias relasi Mapel -> ScheduleMapel
+              as: "Schedules",
               attributes: ["id_schedule", "day", "jp"]
             },
             {
               model: Teacher,
-              as: "teacher_tb", // Sesuaikan alias relasi Mapel -> Teacher
+              as: "teacher_tb",
               attributes: ["id_teacher"],
               include: [
                 {
                   model: User,
-                  as: "User", // Sesuaikan alias relasi Teacher -> User
+                  as: "User", 
                   attributes: ["username"]
                 }
               ]
@@ -35,10 +34,8 @@ const printDataJadwalPDF = async (req, res, next) => {
       ]
     });
 
-    // 2. Format Data ke HTML
     const htmlContent = generateJadwalHTML(classesData);
 
-    // 3. Render ke PDF dengan Puppeteer
     const browser = await puppeteer.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
@@ -55,7 +52,6 @@ const printDataJadwalPDF = async (req, res, next) => {
 
     await browser.close();
 
-    // 4. Response File PDF
     res.contentType("application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=Jadwal_Pelajaran.pdf");
     res.send(pdfBuffer);
@@ -258,4 +254,27 @@ function renderMapelCell(mapels, currentDay, currentJam) {
   return `<td></td>`;
 }
 
-module.exports = { printDataJadwalPDF };
+//get schedule
+const getSchedule = async (req, res, next) => {
+  try {
+    const {  day,classId } = req.query;
+    const classData= await Class.findByPk(classId,{
+      include: [
+        {
+          model: Mapel,
+          as: "Mapels",
+          attributes: ["id_mapel"],
+        }
+      ]
+    })
+    const schedulesData = await ScheduleMapel.findAll({
+      where: { day: day, id_mapel: classData.Mapels.map(mapel => mapel.id_mapel) },
+      attributes: ["jp"]
+    })
+    res.json(schedulesData);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { printDataJadwalPDF, getSchedule };

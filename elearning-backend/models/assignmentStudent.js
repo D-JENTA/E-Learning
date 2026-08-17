@@ -24,7 +24,7 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
             key : "id_student"
         }
     },
-    id_class : {
+    id_mapel : {
         type : DataTypes.INTEGER(11),
         allowNull : false,
         references : {
@@ -53,7 +53,7 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
     allowNull: true
 }
 },{
-    tableName : "assignmentStudent_tb",
+    tableName : "assignmentstudent_tb",
     timestamps : true
 } );
 
