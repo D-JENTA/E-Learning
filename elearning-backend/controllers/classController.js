@@ -313,7 +313,7 @@ const getMapelByStudent = async (req, res) => {
         });
 
         if (classMapels.length === 0) {
-            return res.status(404).json({ message: "Belum ada mata pelajaran untuk kelas ini" });
+            return res.status(200).json({ message: "No subjects found for this class" });
         }
 
 

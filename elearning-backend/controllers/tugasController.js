@@ -5,6 +5,8 @@ const Assignment = require("../models/assignment");
 const assignmentStudent = require("../models/assignmentStudent");
 const  {Op, Model} = require("sequelize");
 const { uploadTeacher,uploadStudent, getResourceType, makePublicId, cloudinary } = require("../config/cloudinary");
+const { assert } = require("console");
+const assertOwnsMapel = require("../utils/assertOwnsMapel");
 
 const uploadToCloudinaryLarge = (filePath, options) => {
     return new Promise((resolve, reject) => {
@@ -72,7 +74,7 @@ const uploadAssignmentStudent = async (req, res) => {
     try {
         const id_student = req.user.id;
         const id_assignment = req.params.id_assignment;
-        const { title, id_mapel } = req.body;
+        const { title } = req.body;
 
         if (!req.file) {
             return res.status(400).json({ message: 'File wajib diupload' });
@@ -80,7 +82,7 @@ const uploadAssignmentStudent = async (req, res) => {
 
         const assignmentData = await Assignment.findOne({
             where : { id_assignment: id_assignment },
-            attributes : ["deadline"]
+            attributes : ["deadline, id_mapel"]
         });
 
         if (!assignmentData) {
@@ -117,7 +119,7 @@ const uploadAssignmentStudent = async (req, res) => {
             title,
             file_url: cloudinaryResult.secure_url,
             file_public_id: cloudinaryResult.public_id,
-            id_mapel,
+            id_mapel: assignmentData.id_mapel,
             id_assignment,
             id_student
         });
@@ -251,6 +253,8 @@ const deleteAssignment = async (req, res) => {
             return res.status(404).json({ message: "Assignment not found" });
         }
 
+        await assertOwnsMapel(req.user.id_teacher, assignment.id_mapel);
+
         if (assignment.file_public_id) {
             await cloudinary.uploader.destroy(assignment.file_public_id, {
                 resource_type: getCloudinaryResourceType(assignment.file_url),
@@ -329,7 +333,7 @@ const inputScore = async (req , res) => {
         const {score} = req.body;
         
         const updated = await assignmentStudent.update({score},{where : {id_assignmentStudent}})
-
+        await assertOwnsMapel(req.user.id_teacher, assignmentData.id_mapel);
         if (updated[0] === 0) {
             return res.status(404).json({message : "assignment not found"})
         }

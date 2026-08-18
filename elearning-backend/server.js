@@ -37,16 +37,22 @@ app.use("/api", tugasRoutes);
 app.use("/api", classRoutes);
 app.use("/api", fiturRoutes);
 
-app.use((err, req, res, next) => {
-    console.error('ERROR:', err.message);
-    res.status(400).json({ message: err.message });
-});
-sequelize.sync();
-
 app.get("/", (req, res) => {
     res.send("server express running");
 });
 
+app.use((err, req, res, next) => {
+    console.error('ERROR:', err.message);
+
+if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ message: 'File size exceeds the limit of 5MB.' });
+  }
+
+  const statusCode = err.status || 500;
+    res.status(statusCode).json({ message: err.message });
+});
+
+sequelize.sync();
 cronCleaner();
 
 

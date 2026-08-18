@@ -32,7 +32,7 @@ const register = async (req, res) => {
 
         if (role === "student" && (!nis || nis.trim() === "")) return res.status(400).json({ message: "NIS must be filled in" });
         if (role === "teacher" && (!nip || nip.trim() === "")) return res.status(400).json({ message: "NIP must be filled in" });
-        // if (role === "student" && (!id_class || String.trim() === "")) return res.status(400).json({ message: "id_class must be filled in" });
+        if (role === "student" && (!id_class || String(id_class).trim() === "")) return res.status(400).json({ message: "id_class must be filled in" });
 
         const existingUser = await User.findOne({ where: { email }, attributes: ["id_user"] });
         if (existingUser) return res.status(400).json({ message: "email is registered, please log in" });
@@ -134,7 +134,7 @@ const verifyOtpLogin = async (req, res) => {
 
 
         const token = jwt.sign(
-            { id: user.id_user, role: user.role }, 
+            { id: user.id_user, username: user.username, role: user.role }, 
             process.env.JWT_SECRET, 
             { expiresIn: "1d" }
         );
@@ -506,25 +506,34 @@ const updateUsername = async (req, res) => {
 // update profile picture
 const updateProfilePicture = async (req, res) => {
     try {
-        const user = await User.findByPk(req.user.id);
-
-        if (user.profile_picture_url && user.profile_picture_url.includes('cloudinary')) {
-            try {
-                const publicId = user.profile_picture_url.split('/').pop().split('.')[0];
-                await cloudinary.uploader.destroy(`e-learning_profiles/${publicId}`);
-            } catch (cloudErr) {
-                console.error("Cloudinary Destroy Error:", cloudErr);
-                
-            }
-        }
-
-        // Pastikan req.file ada
         if (!req.file) {
             return res.status(400).json({ message: "No file uploaded" });
         }
 
+        const user = await User.findByPk(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const oldPublicId = user.profile_public_id; 
+
         const newImageUrl = req.file.path;
-        await user.update({ profile_picture_url: newImageUrl });
+        const newPublicId = req.file.filename; 
+
+      
+        await user.update({
+            profile_picture_url: newImageUrl,
+            profile_public_id: newPublicId
+        });
+
+        if (oldPublicId) {
+            try {
+                await cloudinary.uploader.destroy(oldPublicId);
+            } catch (cloudErr) {
+                console.error("Cloudinary Destroy Error:", cloudErr);
+            }
+        }
 
         return res.status(200).json({
             message: "Profile picture updated successfully",
@@ -533,9 +542,9 @@ const updateProfilePicture = async (req, res) => {
 
     } catch (err) {
         console.error("Error Detail:", err);
-        return res.status(500).json({ 
-            message: "Internal Server Error", 
-            error: err.message 
+        return res.status(500).json({
+            message: "Internal Server Error",
+            error: err.message
         });
     }
 };

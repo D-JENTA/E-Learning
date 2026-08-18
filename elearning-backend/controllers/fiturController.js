@@ -1,8 +1,22 @@
 const puppeteer = require("puppeteer");
-// Impor model sesuai relasi yang terdaftar di project Anda
 const { Class, Mapel, ScheduleMapel, Teacher, User } = require("../models");
 
+function esc(str) {
+  if (str === null || str === undefined) return "";
+  return String(str).replace(/[&<>"']/g, (char) => {
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    };
+    return map[char];
+  });
+}
+
 const printDataJadwalPDF = async (req, res, next) => {
+  let browser;
   try {
     const classesData = await Class.findAll({
       attributes: ["id_class", "class_name"],
@@ -36,12 +50,12 @@ const printDataJadwalPDF = async (req, res, next) => {
 
     const htmlContent = generateJadwalHTML(classesData);
 
-    const browser = await puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox","--disable-gpu"]
     });
     const page = await browser.newPage();
 
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    await page.setContent(htmlContent, { waitUntil: "load" });
 
     const pdfBuffer = await page.pdf({
       format: "A4",
@@ -50,7 +64,6 @@ const printDataJadwalPDF = async (req, res, next) => {
       margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" }
     });
 
-    await browser.close();
 
     res.contentType("application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=Jadwal_Pelajaran.pdf");
@@ -58,6 +71,8 @@ const printDataJadwalPDF = async (req, res, next) => {
 
   } catch (error) {
     next(error);
+  } finally {
+    if (browser) await browser.close();
   }
 };
 
@@ -163,7 +178,7 @@ const generateJadwalHTML = (classesData) => {
           <div class="page-kelas">
             <div class="header">
               <h2>JADWAL PELAJARAN</h2>
-              <h3>KELAS: ${cls.class_name}</h3>
+              <h3>KELAS: ${esc(cls.class_name)}</h3>
             </div>
 
             <table class="jadwal-table">
@@ -244,8 +259,8 @@ function renderMapelCell(mapels, currentDay, currentJam) {
 
       return `
         <td>
-          <span class="subject-name">${mapel.mapel_name}</span>
-          <span class="teacher-name">${teacherName}</span>
+          <span class="subject-name">${esc(mapel.mapel_name)}</span>
+          <span class="teacher-name">${esc(teacherName)}</span>
         </td>
       `;
     }
@@ -258,6 +273,7 @@ function renderMapelCell(mapels, currentDay, currentJam) {
 const getSchedule = async (req, res, next) => {
   try {
     const {  day,classId } = req.query;
+    
     const classData= await Class.findByPk(classId,{
       include: [
         {
@@ -267,6 +283,13 @@ const getSchedule = async (req, res, next) => {
         }
       ]
     })
+    if (!classData) {
+      return res.status(404).json({ message: "Class not found" });
+    }
+    if(!day || !["Senin", "Selasa", "Rabu", "Kamis", "Jumat"].includes(day)) {
+      return res.status(400).json({ message: "Invalid or missing 'day' parameter" });
+    }
+
     const schedulesData = await ScheduleMapel.findAll({
       where: { day: day, id_mapel: classData.Mapels.map(mapel => mapel.id_mapel) },
       attributes: ["jp"]

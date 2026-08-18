@@ -11,11 +11,11 @@ const Teacher = sequelize.define("teacher_tb",{
     },
     username : {
         type : DataTypes.STRING(50),
-        allowNUll : false
+        allowNull : false
     },
     nip : {
-        type : DataTypes.INTEGER,
-        allowNUll : true
+        type : DataTypes.STRING(20),
+        allowNull : true
     }
 },{
     tableName : "teacher_tb",

@@ -4,7 +4,7 @@ const { uploadTeacher, uploadStudent, uploadAssignment, uploadAssignmentStudent,
      deleteAssignment, deleteAssignmentStudent, inputScore, totalScore, getAssignmentStudent, getAssignmentTeacher,
       getAssignmentStudentById, getMySubmissions } = require("../controllers/tugasController");
 const verifyToken = require("../middleware/verifyToken");
-const { isTeacher, isAdmin, isStudent } = require("../middleware/roleMiddleware");
+const { isTeacher, isAdmin, isStudent, onlyStudent, onlyTeacher } = require("../middleware/roleMiddleware");
 
 
 const uploadHandler = (uploadMiddleware) => (req, res, next) => {
@@ -27,10 +27,10 @@ router.post("/students/:id_assignment/assignments", verifyToken, isStudent,
 router.get("/me/mapel/:id_mapel/assignmentsTeacher", verifyToken, getAssignmentTeacher);
 router.get("/me/mapel/:id_mapel/assignmentsStudent", verifyToken, isTeacher, getAssignmentStudent);
 router.get("/students/assignments", verifyToken, isStudent, getMySubmissions);
-router.delete("/teachers/assignments/:id", verifyToken, isTeacher, deleteAssignment);
-router.delete("/students/assignments/:id", verifyToken, isStudent, deleteAssignmentStudent);
 router.post("/assignment/:id/score", verifyToken, isTeacher, inputScore);
-router.get("/student/totalScore", totalScore);
+router.get("/student/totalScore",verifyToken,isTeacher, totalScore);
 router.get("/teachers/assignments/:id_assignment", verifyToken, isTeacher, getAssignmentStudentById);
+router.delete("/students/assignments/:id", verifyToken, onlyStudent, deleteAssignmentStudent);
+router.delete("/teachers/assignments/:id", verifyToken, onlyTeacher, deleteAssignment);
 
 module.exports = router;

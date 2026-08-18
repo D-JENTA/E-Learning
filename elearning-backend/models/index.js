@@ -13,8 +13,8 @@ Teacher.hasMany(Mapel, { foreignKey: "id_teacher", as: "Mapels" });
 Mapel.belongsTo(Teacher, { foreignKey: "id_teacher", as: "teacher_tb" });
 
 // 2. Relasi Mapel - Assignment
-Mapel.hasMany(Assignment, { foreignKey: "id_Mapel", onDelete: "CASCADE" });
-Assignment.belongsTo(Mapel, { foreignKey: "id_Mapel" });
+Mapel.hasMany(Assignment, { foreignKey: "id_mapel", onDelete: "CASCADE" });
+Assignment.belongsTo(Mapel, { foreignKey: "id_mapel" });
 
 // 3. Relasi Mapel - ScheduleMapel
 Mapel.hasMany(ScheduleMapel, { foreignKey: "id_mapel", as: "Schedules",onDelete: "CASCADE" });

@@ -1,8 +1,17 @@
 const express = require("express");
 const {printDataJadwalPDF, getSchedule} = require("../controllers/fiturController");
+const {isWakakur} = require("../middleware/roleMiddleware");
+const verifyToken = require("../middleware/verifyToken");
+const limit = require("express-rate-limit");
 const router = express.Router();
 
-router.get("/print/jadwal", printDataJadwalPDF);
-router.get("/schedule", getSchedule);
+const limiter = limit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10 // limit each IP to 10 requests per windowMs
+});
+
+router.use(limiter);
+router.get("/print/jadwal", verifyToken, isWakakur,limiter, printDataJadwalPDF);
+router.get("/schedule", verifyToken, isWakakur,limiter, getSchedule);
 
 module.exports = router;
