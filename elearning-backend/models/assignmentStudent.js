@@ -28,8 +28,8 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
         type : DataTypes.INTEGER(11),
         allowNull : false,
         references : {
-            model : "class_tb",
-            key : "id_class"
+            model : "mapel_tb",
+            key : "id_mapel"
         }
     },
     id_assignment : {
@@ -54,7 +54,11 @@ const assignmentStudent = sequelize.define("assignmentStudent",{
 }
 },{
     tableName : "assignmentstudent_tb",
-    timestamps : true
+    timestamps : true,
+    indexes : [
+        // satu siswa = satu pengumpulan per tugas (resubmit = replace)
+        { unique : true, name : "uq_submission_student_assignment", fields : ["id_student", "id_assignment"] }
+    ]
 } );
 
 module.exports = assignmentStudent

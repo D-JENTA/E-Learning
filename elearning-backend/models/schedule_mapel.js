@@ -25,7 +25,10 @@ const ScheduleMapel = sequelize.define("ScheduleMapel", {
   }
 }, {
   tableName: "schedule_mapel_tb",
-  timestamps: false
+  timestamps: false,
+  indexes: [
+    { unique: true, name: "uq_schedule_mapel_day_jp", fields: ["id_mapel", "day", "jp"] }
+  ]
 });
 
 module.exports = ScheduleMapel;

@@ -47,6 +47,10 @@ emailOtp.belongsTo(User, {
 Assignment.hasMany(assignmentStudent, { foreignKey: "id_assignment" });
 assignmentStudent.belongsTo(Assignment, { foreignKey: "id_assignment" });
 
+// 8b. Relasi Student - assignmentStudent (supaya nama siswa bisa di-join, tanpa N+1)
+Student.hasMany(assignmentStudent, { foreignKey: "id_student" });
+assignmentStudent.belongsTo(Student, { foreignKey: "id_student" });
+
 // 9. Relasi Student - Class
 Student.belongsTo(Class, { foreignKey: "id_class" });
 Class.hasMany(Student, { foreignKey: "id_class" });

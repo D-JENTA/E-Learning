@@ -10,7 +10,8 @@ const Class = sequelize.define("Class", {
     },
     class_name : {
         type : DataTypes.STRING(80),
-        allowNull : false
+        allowNull : false,
+        unique : true
     }
 },{
     tableName : "class_tb",

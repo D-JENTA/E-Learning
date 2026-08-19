@@ -30,7 +30,7 @@ const router = express.Router();
 router.post("/auth/register",  register);
 router.post("/auth/profile-picture", verifyToken, uploadCloud.single("profile_picture"), updateProfilePicture);
 router.post("/auth/login", loginLimiter, login);
-router.post("/auth/resend-otp",verifyToken,loginLimiter, resendOtp);
+router.post("/auth/resend-otp",loginLimiter, resendOtp);
 router.post("/auth/verifyOtp",loginLimiter, verifyOtpLogin);
 router.post("/auth/validate-email", validateEmail);
 router.post("/auth/update-password",verifyToken,  updatePassword);

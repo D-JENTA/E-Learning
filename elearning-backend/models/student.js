@@ -8,13 +8,10 @@ const Student = sequelize.define("Student",{
         primaryKey : true,
         autoIncrement : true
     },
-    username : {
-        type : DataTypes.STRING(50),
-        allowNull : false
-    },
     nis : {
         type : DataTypes.STRING(20),
-        allowNull : true
+        allowNull : true,
+        unique : true
     },
     id_class : {
         type : DataTypes.INTEGER(11),

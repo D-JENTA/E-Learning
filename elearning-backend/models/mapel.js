@@ -30,7 +30,10 @@ const Mapel = sequelize.define ("Mapel",{
     }
 },{
     tableName : "mapel_tb",
-    timestamps : false
+    timestamps : false,
+    indexes : [
+        { unique : true, name : "uq_mapel_name_class", fields : ["mapel_name", "id_class"] }
+    ]
 }
 );
 

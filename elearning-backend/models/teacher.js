@@ -9,15 +9,11 @@ const Teacher = sequelize.define("teacher_tb",{
         primaryKey : true,
         autoIncrement : true
     },
-    username : {
-        type : DataTypes.STRING(50),
-        allowNull : false
-    },
     nip : {
         type : DataTypes.STRING(20),
-        allowNull : true
-    }
-},{
+        allowNull : true,
+        unique : true
+    }},{
     tableName : "teacher_tb",
     timestamps : false
 }

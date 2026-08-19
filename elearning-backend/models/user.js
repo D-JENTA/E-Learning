@@ -38,6 +38,10 @@ const User = sequelize.define("User", {
     profile_picture_url :{
         type: DataTypes.STRING(255),
         allowNull: true
+    },
+    profile_public_id :{
+        type: DataTypes.STRING(255),
+        allowNull: true
     }
 },{
     tableName : "user_tb",

@@ -1,30 +1,25 @@
 const jwt = require("jsonwebtoken");
 
+// Token-only: token hanya dibaca dari header Authorization: Bearer <token>
 const verifyToken = (req, res, next) => {
-    try {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
 
-        const tokenFromCookie = req.cookies.token;
-        const authHeader = req.headers.authorization;
-        const tokenFromHeader = authHeader && authHeader.startsWith("Bearer ")
-            ? authHeader.split(" ")[1]
-            : null;
-
-        const token = tokenFromCookie || tokenFromHeader;
-        
-        if (!token) {
-            return res.status(401).json({ message: "Unauthorized, token not found" });
-        }
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        req.user = decoded; 
-        
-        next();
-    } catch (error) {
-        return res.status(401).json({ 
+    if (!token) {
+        return res.status(401).json({
             isAuthenticated: false,
-            message: "Unauthorized, invalid token",
-            error: error.message
-         });
+            message: "Unauthorized, token not found"
+        });
+    }
+
+    try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        next();
+    } catch {
+        return res.status(401).json({
+            isAuthenticated: false,
+            message: "Unauthorized, invalid token"
+        });
     }
 };
 

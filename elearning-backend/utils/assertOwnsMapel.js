@@ -1,14 +1,17 @@
 // utils/assertOwnsMapel.js
-const { Mapel, Teacher } = require("../models");
+const { Mapel } = require("../models");
 
-const assertOwnsMapel = async (id_teacher, id_mapel) => {
+// admin dilewatkan (route isTeacher memang mengizinkan admin); guru wajib pemilik mapel
+const assertOwnsMapel = async (user, id_mapel) => {
+    if (user.role === "admin") return null;
+
     const mapel = await Mapel.findOne({
-        where: { id_mapel, id_teacher }
+        where: { id_mapel, id_teacher: user.id }
     });
 
     if (!mapel) {
         const error = new Error("Anda tidak memiliki akses ke mapel ini");
-        error.status = 403; 
+        error.status = 403;
         throw error;
     }
 

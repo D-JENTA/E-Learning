@@ -1,21 +1,36 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const fs = require("fs");
-const path = require("path");
-const User = require("../models/user");
-const Student = require("../models/student");
-const Teacher = require("../models/teacher");
-const SECRET_KEY = process.env.JWT_SECRET;
-const emailOtp = require("../models/emailOtps");
+const {
+    User,
+    Student,
+    Teacher,
+    Mapel,
+    Assignment,
+    assignmentStudent,
+    emailOtp
+} = require("../models");
 const sequelize = require("../config/db");
 const sendEmail = require("../utils/sendEmail");
-const uploadCloud = require("../config/cloudinary").uploadCloud;
-const Mapel = require("../models/mapel");
-const Class = require("../models/class");
-const assignmentStudent = require("../models/assignmentStudent");
-const cloudinary = require("cloudinary").v2;
-const Assignment = require("../models/assignment");
+const { destroyCloudinaryFiles } = require("../config/cloudinary");
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+// satu OTP aktif per user (UNIQUE(user_id) di DB) -> upsert, bukan destroy+create
+const issueOtp = async (user_id, transaction) => {
+    const otp = generateOtp();
+    await emailOtp.upsert(
+        {
+            user_id,
+            otp,
+            expires_at: new Date(Date.now() + 5 * 60 * 1000),
+            created_at: new Date()
+        },
+        { transaction }
+    );
+    return otp;
+};
+
+const signToken = (user) =>
+    jwt.sign({ id: user.id_user, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 // register
 const register = async (req, res) => {
@@ -27,15 +42,12 @@ const register = async (req, res) => {
         // Validation Input
         if (!username || !email) return res.status(400).json({ message: "all fields must be filled in" });
         
-        if (!password || password.length < 6) return res.status(400).json({ message: "password must be more then 8 characters" });
+        if (!password || password.length < 6) return res.status(400).json({ message: "password must be at least 6 characters" });
         if (!["student", "teacher", "admin"].includes(role)) return res.status(400).json({ message: "role must be filled" });
 
         if (role === "student" && (!nis || nis.trim() === "")) return res.status(400).json({ message: "NIS must be filled in" });
         if (role === "teacher" && (!nip || nip.trim() === "")) return res.status(400).json({ message: "NIP must be filled in" });
         if (role === "student" && (!id_class || String(id_class).trim() === "")) return res.status(400).json({ message: "id_class must be filled in" });
-
-        const existingUser = await User.findOne({ where: { email }, attributes: ["id_user"] });
-        if (existingUser) return res.status(400).json({ message: "email is registered, please log in" });
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
@@ -49,22 +61,12 @@ const register = async (req, res) => {
             is_verified: false
         }, { transaction: t });
 
-        
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        
-
-        await emailOtp.destroy({ where: { user_id: newUser.id_user }, transaction: t });
-
-        await emailOtp.create({
-            user_id: newUser.id_user,
-            otp: generatedOtp,
-            expires_at: new Date(Date.now() + 5 * 60 * 1000) 
-        }, { transaction: t });
+        const generatedOtp = await issueOtp(newUser.id_user, t);
 
         if (role === "student") {
-            await Student.create({ id_student: newUser.id_user, nis, id_class, username: newUser.username }, { transaction: t });
+            await Student.create({ id_student: newUser.id_user, nis, id_class }, { transaction: t });
         } else if (role === "teacher") {
-            await Teacher.create({ id_teacher: newUser.id_user, nip, username: newUser.username }, { transaction: t });
+            await Teacher.create({ id_teacher: newUser.id_user, nip }, { transaction: t });
         }
 
         await t.commit();
@@ -76,7 +78,6 @@ const register = async (req, res) => {
 
         res.status(201).json({
             message: "registration successful, check your email for otp",
-            user_id: newUser.id_user,
             user: {
                 id_user: newUser.id_user,
                 username: newUser.username,
@@ -86,6 +87,16 @@ const register = async (req, res) => {
 
     } catch (err) {
         if (t && !t.finished) await t.rollback();
+        // race register: dua request email sama -> 400, bukan 500
+        if (err.name === "SequelizeUniqueConstraintError") {
+            const field = Object.keys(err.fields || {})[0] || "";
+            if (field.includes("nis")) return res.status(400).json({ message: "NIS is already used" });
+            if (field.includes("nip")) return res.status(400).json({ message: "NIP is already used" });
+            return res.status(400).json({ message: "email is registered, please log in" });
+        }
+        if (err.name === "SequelizeValidationError") {
+            return res.status(400).json({ message: err.errors.map(e => e.message).join(", ") });
+        }
         console.error(err);
         res.status(500).json({ message: "server error" });
     }
@@ -109,7 +120,6 @@ const verifyOtpLogin = async (req, res) => {
 
         const otpData = await emailOtp.findOne({
             where: { user_id: Number(user_id) },
-            order: [['created_at', 'DESC']],
             transaction: t
         });
 
@@ -127,34 +137,19 @@ const verifyOtpLogin = async (req, res) => {
 
 
         await otpData.destroy({ transaction: t });
-        
-        const verifiedUser = await user.update({ is_verified: true }, { transaction: t });
+
+        await user.update({ is_verified: true }, { transaction: t });
 
         await t.commit();
 
 
-        const token = jwt.sign(
-            { id: user.id_user, username: user.username, role: user.role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: "1d" }
-        );
-
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax"
-        });
-
-
         return res.json({
             message: "login success",
-            token,
-            user_id: user.id_user,
-            user: { 
-                id_user: user.id_user, 
-                username: user.username, 
-                role: user.role 
+            token: signToken(user),
+            user: {
+                id_user: user.id_user,
+                username: user.username,
+                role: user.role
             }
         });
 
@@ -181,19 +176,8 @@ const login = async (req, res) => {
         }
 
         if (user.role === 'admin') {
- 
-            await emailOtp.destroy({ where: { user_id: user.id_user } });
 
-            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      
-            const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-            await emailOtp.create({
-                user_id: user.id_user,
-                otp: otpCode,
-                expires_at: expiresAt
-            });
-
+            const otpCode = await issueOtp(user.id_user);
 
             setImmediate(() => {
             sendEmail(email, otpCode).catch(console.error);
@@ -203,34 +187,20 @@ const login = async (req, res) => {
             return res.status(200).json({
                 message: 'Login tahap pertama berhasil. Silakan cek email Anda untuk kode OTP.',
                 requiresTwoFactor: true,
-                user_id: user.id_user, 
-                email: user.email 
+                user_id: user.id_user,
+                email: user.email
             });
 
         } else {
             await emailOtp.destroy({ where: { user_id: user.id_user } });
 
-
-            const token = jwt.sign(
-                { id: user.id_user, role: user.role }, 
-                process.env.JWT_SECRET || "SECRET_KEY", 
-                { expiresIn: "1d" }
-            );
-
-            res.cookie("token", token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax"
-            });
-            
             return res.status(200).json({
                 message: "login success",
-                token,
-                user_id: user.id_user,
-                user: { 
-                    id_user: user.id_user, 
-                    username: user.username, 
-                    role: user.role 
+                token: signToken(user),
+                user: {
+                    id_user: user.id_user,
+                    username: user.username,
+                    role: user.role
                 }
             });
         }
@@ -241,27 +211,23 @@ const login = async (req, res) => {
     }
 };
 
-// resend otp
+// resend otp (tanpa token: dipakai tepat setelah register, saat user belum punya token)
 const resendOtp = async (req, res) => {
     try {
-        const id_user = req.user.id;
-        
-        const user = await User.findByPk(id_user);
-        
+        const { user_id, email } = req.body;
+        if (!user_id && !email) {
+            return res.status(400).json({ message: "user_id atau email wajib diisi" });
+        }
+
+        const user = user_id
+            ? await User.findByPk(user_id)
+            : await User.findOne({ where: { email } });
+
         if (!user || !user.email) {
             return res.status(404).json({ message: "Email user tidak ditemukan" });
         }
 
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiredAt = new Date(Date.now() + 5 * 60000);
-
-        await emailOtp.destroy({ where: { user_id: id_user } });
-
-        await emailOtp.create({
-            user_id: id_user,
-            otp: generatedOtp,
-            expires_at: expiredAt 
-        });
+        const generatedOtp = await issueOtp(user.id_user);
 
         setImmediate(() => {
             sendEmail(user.email, generatedOtp).catch(err => {
@@ -282,14 +248,7 @@ const validateEmail = async (req, res) => {
         const {email} = req.body;
         const user = await User.findOne({where : {email}});
         if (!user) return res.status(400).json({message : "email not found"});
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiredAt = new Date(Date.now() + 5 * 60000);
-        await emailOtp.destroy({where : {user_id : user.id_user}});
-        await emailOtp.create({
-            user_id : user.id_user,
-            otp : generatedOtp,
-            expires_at : expiredAt
-        });
+        const generatedOtp = await issueOtp(user.id_user);
         setImmediate(() => {
             sendEmail(email, generatedOtp).catch(console.error);
         }
@@ -324,85 +283,92 @@ const updatePassword = async (req, res) => {
     }
 };
 
-// update user by admin (admin can update name, email, and role but with strict validation if admin want to change role)
+// update role by admin (student <-> teacher, semua mutasi dalam satu transaction)
 const changeUserRole = async (req, res) => {
+    const { id, targetRole, newNISORNIP, id_class } = req.body;
+
+    if (!id) return res.status(400).json({ message: "id user wajib diisi." });
+    if (!["student", "teacher"].includes(targetRole)) {
+        return res.status(400).json({ message: "Target role tidak valid. Gunakan 'student' atau 'teacher'." });
+    }
+    if (!newNISORNIP || String(newNISORNIP).trim() === "") {
+        return res.status(400).json({ message: targetRole === "teacher" ? "NIP baru wajib diisi." : "NIS baru wajib diisi." });
+    }
+    if (targetRole === "student" && !id_class) {
+        return res.status(400).json({ message: "id_class wajib diisi saat mengubah guru menjadi siswa." });
+    }
+
+    const t = await sequelize.transaction();
     try {
-        const { id } = req.body; 
-        const { targetRole } = req.body; 
-        const { newNISORNIP } = req.body;
-
-
         if (targetRole === 'teacher') {
-            const student = await Student.findOne({ where: { id_student: id } });
-            if (!student) return res.status(404).json({ message: "Data siswa tidak ditemukan." });
+            const student = await Student.findOne({ where: { id_student: id }, transaction: t });
+            if (!student) {
+                await t.rollback();
+                return res.status(404).json({ message: "Data siswa tidak ditemukan." });
+            }
 
-            const hasClass = await User.findOne({ where: { id_student: id } });
-            const hasSubmission = await assignmentStudent.findOne({ where: { id_student: id } });
-
-            if (hasClass || hasSubmission ) {
+            // pengumpulan tugas ikut CASCADE terhapus kalau baris siswa dihapus -> blokir
+            const hasSubmission = await assignmentStudent.findOne({ where: { id_student: id }, transaction: t });
+            if (hasSubmission) {
+                await t.rollback();
                 return res.status(400).json({
-                    message: "Gagal mengubah peran! Siswa ini sudah memiliki riwayat tugas atau kelas."
+                    message: "Gagal mengubah peran! Siswa ini sudah memiliki riwayat pengumpulan tugas."
                 });
             }
 
-            await Teacher.create({
-                id_teacher: student.id_student,
-                username: student.username,
-                email: student.email,
-                nip: newNISORNIP
-            });
+            await Teacher.create({ id_teacher: student.id_student, nip: newNISORNIP }, { transaction: t });
+            await User.update({ role: 'teacher' }, { where: { id_user: id }, transaction: t });
+            await student.destroy({ transaction: t });
 
-            await User.update({ role: 'teacher' }, { where: { id_user: id } });
-
-            await student.destroy();
+            await t.commit();
             return res.status(200).json({ message: "Berhasil mengubah peran Siswa menjadi Guru." });
         }
 
-        if (targetRole === 'student') {
-            const teacher = await Teacher.findOne({ where: { id_teacher: id } });
-            if (!teacher) return res.status(404).json({ message: "Data guru tidak ditemukan." });
-
- 
-            const ownsClass = await Class.findOne({ where: { id_teacher: id } });
-            if (ownsClass) {
-                return res.status(400).json({
-                    message: "Gagal mengubah peran! Guru ini masih aktif mengajar atau memiliki kelas di aplikasi."
-                });
-            }
-
-
-            const createdAssignment = await Assignment.findOne({ where: { id_teacher: id } });
-            if (createdAssignment) {
-                return res.status(400).json({
-                    message: "Gagal mengubah peran! Guru ini sudah memiliki riwayat membuat tugas."
-                });
-            }
-
-  
-            await Student.create({
-                id_student: teacher.id_teacher,
-                username: teacher.username,
-                email: teacher.email,
-                nis: newNISORNIP
-            });
-            
-            await User.update({ role: 'student' }, { where: { id_user: id } });
-
-            await teacher.destroy();
-            return res.status(200).json({ message: "Berhasil mengubah peran Guru menjadi Siswa." });
+        const teacher = await Teacher.findOne({ where: { id_teacher: id }, transaction: t });
+        if (!teacher) {
+            await t.rollback();
+            return res.status(404).json({ message: "Data guru tidak ditemukan." });
         }
 
-        return res.status(400).json({ message: "Target role tidak valid. Gunakan 'student' atau 'teacher'." });
+        // class_tb tidak punya kolom guru; kepemilikan guru ada di mapel_tb.id_teacher
+        // (FK-nya SET NULL, jadi kalau baris guru dihapus mapel jadi tanpa guru tanpa jejak)
+        const stillTeaching = await Mapel.findOne({ where: { id_teacher: id }, transaction: t });
+        if (stillTeaching) {
+            await t.rollback();
+            return res.status(400).json({
+                message: "Gagal mengubah peran! Guru ini masih mengajar mata pelajaran di aplikasi."
+            });
+        }
+
+        const createdAssignment = await Assignment.findOne({ where: { id_teacher: id }, transaction: t });
+        if (createdAssignment) {
+            await t.rollback();
+            return res.status(400).json({
+                message: "Gagal mengubah peran! Guru ini sudah memiliki riwayat membuat tugas."
+            });
+        }
+
+        await Student.create({ id_student: teacher.id_teacher, nis: newNISORNIP, id_class }, { transaction: t });
+        await User.update({ role: 'student' }, { where: { id_user: id }, transaction: t });
+        await teacher.destroy({ transaction: t });
+
+        await t.commit();
+        return res.status(200).json({ message: "Berhasil mengubah peran Guru menjadi Siswa." });
 
     } catch (error) {
-        return res.status(500).json({ message: "Internal server error", error: error.message });
+        if (!t.finished) await t.rollback();
+        if (error.name === "SequelizeUniqueConstraintError") {
+            return res.status(400).json({ message: "NIS/NIP tersebut sudah dipakai user lain." });
+        }
+        console.error(error);
+        return res.status(500).json({ message: "Internal server error" });
     }
 };
 
 // GET all
 const getUser = async ( req, res) => {
     try{
-        const users = await User.findAll({attributes:{exclude : ["password"]}});
+        const users = await User.findAll({attributes : ["id_user", "username", "email", "role"]});
         res.json(users);
     }catch (err) {
         console.error(err)
@@ -413,7 +379,7 @@ const getUser = async ( req, res) => {
 // GET BY ID
 const getUserById = async (req, res) => {
     try {
-        const user = await User.findByPk(req.user.id, {attributes: ["id_user", "username", "email", "role",'profile_picture_url'], exclude : ["password"]});
+        const user = await User.findByPk(req.user.id, {attributes: ["id_user", "username", "email", "role", "profile_picture_url"]});
         if (!user) return res.status(400).json({message : "user not found"});
         res.json(user);
 
@@ -423,26 +389,23 @@ const getUserById = async (req, res) => {
     }
 };
 
-// get student by id class 
+// get student by id class
 const getStudentByIdClass = async (req, res) => {
     try {
         const id_class = req.params.id_class;
         if (!id_class) return res.status(400).json({ message: "id class is required" });
 
-        const students = await Class.findAll({
-            where: {
-                id_class: id_class
-            },
-            attributes: [], 
-            include: [
-                {
-                    model: Student,
-                    attributes: ['id_student', 'username', 'nis'] 
-                }
-            ]
+        const students = await Student.findAll({
+            where: { id_class },
+            attributes: ["id_student", "nis"],
+            include: [{ model: User, attributes: ["username"] }]
         });
 
-        res.json(students);
+        res.json(students.map(s => ({
+            id_student: s.id_student,
+            nis: s.nis,
+            username: s.User ? s.User.username : null
+        })));
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "server error while get student by id class" });
@@ -453,9 +416,13 @@ const getStudentByIdClass = async (req, res) => {
 const getAllTeachers = async (req, res) => {
     try{
         const teachers = await Teacher.findAll({
-            attributes : ["id_teacher", "username"]
-        })
-        res.json(teachers);
+            attributes : ["id_teacher"],
+            include : [{ model: User, as: "User", attributes: ["username"] }]
+        });
+        res.json(teachers.map(t => ({
+            id_teacher: t.id_teacher,
+            username: t.User ? t.User.username : null
+        })));
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "server error while get all teachers" });
@@ -469,7 +436,7 @@ const updateUser = async (req, res) => {
         if (!user ) return res.status (404).json({message : "user not found"});
         const {username, email, role} = req.body;
         await user.update({username, email, role});
-        res.json({message : "User updated successfully.", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
+        res.json({message : "User updated successfully.", data : { id_user : user.id_user, username : user.username, email : user.email, role : user.role}});
     }catch (err) {
         console.error(err)
         res.status(500).json({message : "server error while update user"})
@@ -482,7 +449,7 @@ const updateEmail = async (req, res) => {
         if (!userId) return res.status(404).json({message : " User not found"});
         const {email} = req.body;
         await userId.update({email});
-        res.json({message : "User email updated successfully.", data : { id : userId.id, username : userId.username, email : userId.email}});
+        res.json({message : "User email updated successfully.", data : { id_user : userId.id_user, username : userId.username, email : userId.email}});
     }catch (err) {
         console.error(err)
         res.status(500).json({message : "server error while update email"})
@@ -496,7 +463,7 @@ const updateUsername = async (req, res) => {
         if (!userId) return res.status(404).json({message : " User not found"});
         const {username} = req.body;
         await userId.update({username});
-        res.json({message : "User username updated successfully.", data : { id : userId.id, username : userId.username, email : userId.email}});
+        res.json({message : "User username updated successfully.", data : { id_user : userId.id_user, username : userId.username, email : userId.email}});
     }catch (err) {
         console.error(err)
         res.status(500).json({message : "server error while update username"})
@@ -516,24 +483,18 @@ const updateProfilePicture = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const oldPublicId = user.profile_public_id; 
+        const oldFile = { file_public_id: user.profile_public_id, file_url: user.profile_picture_url };
 
         const newImageUrl = req.file.path;
-        const newPublicId = req.file.filename; 
+        const newPublicId = req.file.filename;
 
-      
+
         await user.update({
             profile_picture_url: newImageUrl,
             profile_public_id: newPublicId
         });
 
-        if (oldPublicId) {
-            try {
-                await cloudinary.uploader.destroy(oldPublicId);
-            } catch (cloudErr) {
-                console.error("Cloudinary Destroy Error:", cloudErr);
-            }
-        }
+        await destroyCloudinaryFiles([oldFile]);
 
         return res.status(200).json({
             message: "Profile picture updated successfully",
@@ -542,10 +503,7 @@ const updateProfilePicture = async (req, res) => {
 
     } catch (err) {
         console.error("Error Detail:", err);
-        return res.status(500).json({
-            message: "Internal Server Error",
-            error: err.message
-        });
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
 
@@ -557,7 +515,7 @@ const deleteUser = async ( req , res) => {
         const user = await User.findByPk(id_user);
         if (!user) return res.status(400).json({message : "user not found"});
         await user.destroy();
-        res.json({message : "success delete user by admin", data : { id : user.id, username : user.username, email : user.email, role : user.role}});
+        res.json({message : "success delete user by admin", data : { id_user : user.id_user, username : user.username, email : user.email, role : user.role}});
     }catch ( error){
     console.error(error)
     res.status(500).json({message : "cannot run method Delete for admin"})
@@ -566,29 +524,17 @@ const deleteUser = async ( req , res) => {
 
 // check me
 const checkMe = async (req, res) => {
-    try {
-        res.status(200).json({
-            isAuthenticated: true,
-            user: {
-                id: req.user.id,
-                role: req.user.role,
-                username: req.user.username
-            }
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "cannot run method CHECK ME" });
-    }
+    res.status(200).json({
+        isAuthenticated: true,
+        user: {
+            id: req.user.id,
+            role: req.user.role
+        }
+    });
 };
 
-// logout
-const logout = (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    path: '/'
-  });
-  return res.json({ success: true });
-};
+// logout (token-only: server tidak menyimpan sesi, FE yang membuang tokennya)
+const logout = (req, res) => res.json({ success: true });
 
 
 

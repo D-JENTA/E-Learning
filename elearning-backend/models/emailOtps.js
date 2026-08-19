@@ -10,7 +10,8 @@ const emailOtp = sequelize.define("emailOtp",{
     },
     user_id:{
         type: DataTypes.INTEGER,
-        allowNull : false
+        allowNull : false,
+        unique : true
     },
     otp:{
         type: DataTypes.STRING(6),

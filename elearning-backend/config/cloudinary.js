@@ -2,7 +2,6 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs"); // Tambahkan module FS untuk mengelola file lokal
 
 cloudinary.config({
   cloud_name: process.env.cloudinary_cloud_name,
@@ -22,20 +21,25 @@ const profileStorage = new CloudinaryStorage({
 const uploadCloud = multer({ storage: profileStorage });
 
 
-// 2. MODIFIKASI: Sediakan folder temporary di server BE untuk menampung file tugas besar
-const tempDir = path.join(__dirname, "temp_uploads");
-if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir);
-}
-
-const localStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, tempDir);
+// 2. Tugas: stream langsung ke Cloudinary, tidak mampir disk.
+//    - transfer client->BE dan BE->Cloudinary jadi tumpang-tindih (dulu berurutan)
+//    - satu request, bukan 12 chunk berurutan yang bikin link idle di antaranya
+//    Catatan: upload_stream = satu request, batas Cloudinary 100MB -> sama dengan limit multer di bawah.
+//    ponytail: timeout digedein karena 60s default itu idle-timeout; client lambat atau
+//    Cloudinary memproses video bisa bikin socket diam >60s.
+const assignmentStorage = (folder) =>
+  new CloudinaryStorage({
+    cloudinary,
+    params: (req, file) => {
+      const resource_type = getResourceType(file.mimetype);
+      return {
+        folder,
+        resource_type,
+        public_id: makePublicId(file, resource_type),
+        timeout: 10 * 60 * 1000,
+      };
     },
-    filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-    }
-});
+  });
 
 const sharedFileFilter = (req, file, cb) => {
   const allowedMime = [
@@ -53,9 +57,12 @@ const sharedFileFilter = (req, file, cb) => {
     "image/gif",
   ];
 
-  allowedMime.includes(file.mimetype)
-    ? cb(null, true)
-    : cb(new Error("Format tidak didukung. Gunakan PDF, DOCX, PPT, MP4, JPG, PNG, WEBP, atau GIF"), false);
+  if (allowedMime.includes(file.mimetype)) return cb(null, true);
+
+  // status ditempel supaya error handler global balas 400, bukan 500 (salah file itu salah client)
+  const err = new Error("Format tidak didukung. Gunakan PDF, DOCX, PPT, MP4, JPG, PNG, WEBP, atau GIF");
+  err.status = 400;
+  cb(err, false);
 };
 
 // Fungsi helper bawaan Anda tetap dipertahankan
@@ -85,15 +92,43 @@ const makePublicId = (file, resourceType) => {
   return `${Date.now()}-${baseName}`;
 };
 
-// Gunakan localStorage untuk Guru dan Siswa
+// Tebak resource_type dari secure_url yang tersimpan (dibutuhkan saat menghapus file)
+const getCloudinaryResourceType = (fileUrl = "") => {
+  const url = String(fileUrl).toLowerCase();
+
+  if (url.includes("/video/upload/")) return "video";
+  if (url.includes("/image/upload/")) return "image";
+  if (url.includes("/raw/upload/")) return "raw";
+
+  if (/\.(mp4|mov|webm|avi)$/i.test(url)) return "video";
+  if (/\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(url)) return "image";
+
+  return "raw";
+};
+
+// Best-effort: kegagalan hapus di Cloudinary tidak boleh menggagalkan operasi DB.
+// rows: [{ file_public_id, file_url }]
+const destroyCloudinaryFiles = async (rows = []) => {
+  await Promise.all(
+    rows
+      .filter((r) => r && r.file_public_id)
+      .map((r) =>
+        cloudinary.uploader
+          .destroy(r.file_public_id, { resource_type: getCloudinaryResourceType(r.file_url) })
+          .catch((err) => console.error("Cloudinary destroy failed:", r.file_public_id, err.message))
+      )
+  );
+};
+
+// Guru & siswa: sama-sama stream ke Cloudinary, beda folder
 const uploadTeacher = multer({
-  storage: localStorage,
+  storage: assignmentStorage("e-learning_assignments/teacher"),
   fileFilter: sharedFileFilter,
   limits: { fileSize: 100 * 1024 * 1024 },
 });
 
 const uploadStudent = multer({
-  storage: localStorage,
+  storage: assignmentStorage("e-learning_assignments/student"),
   fileFilter: sharedFileFilter,
   limits: { fileSize: 100 * 1024 * 1024 },
 });
@@ -104,6 +139,8 @@ module.exports = {
   uploadCloud, 
   uploadTeacher, 
   uploadStudent, 
-  getResourceType, 
-  makePublicId 
+  getResourceType,
+  makePublicId,
+  getCloudinaryResourceType,
+  destroyCloudinaryFiles
 };

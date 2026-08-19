@@ -1,13 +1,15 @@
-const Assignment = require("../models/assignment");
 const { Op } = require("sequelize");
-const { data } = require("autoprefixer");
-const sequelize = require("../config/db")
-const path = require("path");
-const fs = require("fs/promises");
-const { Student, Teacher, } = require("../models");
-const Class = require("../models/class");
-const Mapel = require("../models/mapel");
-const ScheduleMapel = require("../models/schedule_mapel");
+const {
+  Student,
+  Teacher,
+  User,
+  Class,
+  Mapel,
+  ScheduleMapel,
+  Assignment,
+  assignmentStudent
+} = require("../models");
+const { destroyCloudinaryFiles } = require("../config/cloudinary");
 
 //create class
 const createClass = async (req, res) => {
@@ -27,6 +29,9 @@ const createClass = async (req, res) => {
       data: newClass
     });
   } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({ message: "class name already exists" });
+    }
     console.error(err);
     res.status(500).json({ message: "server error" });
   }
@@ -79,8 +84,16 @@ const createMapel = async (req, res) => {
                 id_class: classIdValue,
                 id_teacher: teacherIdValue
             });
-        } else if (teacherIdValue && mapel.id_teacher !== teacherIdValue) {
+        } else if (mapel.id_teacher == null && teacherIdValue) {
+            // mapel lama belum punya guru -> boleh diisi
             await mapel.update({ id_teacher: teacherIdValue });
+        } else if (teacherIdValue && mapel.id_teacher !== teacherIdValue) {
+            // jangan pindahkan guru diam-diam (semua jadwal mapel ini ikut berubah)
+            return res.status(409).json({
+                message: `Mapel '${formattedMapelName}' di kelas ini sudah diampu guru lain. Gunakan endpoint update mapel kalau memang mau ganti guru.`,
+                id_mapel: mapel.id_mapel,
+                id_teacher: mapel.id_teacher
+            });
         }
 
         const existingSchedules = await ScheduleMapel.findAll({
@@ -139,6 +152,9 @@ const createMapel = async (req, res) => {
         });
 
     } catch (err) {
+        if (err.name === "SequelizeUniqueConstraintError") {
+            return res.status(409).json({ message: "Jadwal yang sama sudah ada." });
+        }
         console.error(err);
         return res.status(500).json({ message: "Server error" });
     }
@@ -146,35 +162,31 @@ const createMapel = async (req, res) => {
 
 //delete mapel
 const deleteMapel = async (req, res) => {
-    let t;
   try {
-    const {id_mapel} = req.body;
+    const { id_mapel } = req.body;
     const delMapel = await Mapel.findByPk(id_mapel);
     if (!delMapel)
       return res.status(404).json({ message: "mapel not found" });
 
-    const assignments = await Assignment.findAll({
+    // file guru + file pengumpulan siswa (keduanya ikut CASCADE terhapus di DB)
+    const files = await Assignment.findAll({
       where: { id_mapel: delMapel.id_mapel },
-      attributes: ["file_url"]
+      attributes: ["file_public_id", "file_url"],
+      raw: true
+    });
+    const submissionFiles = await assignmentStudent.findAll({
+      where: { id_mapel: delMapel.id_mapel },
+      attributes: ["file_public_id", "file_url"],
+      raw: true
     });
 
-    t = await sequelize.transaction();
+    await delMapel.destroy();
 
-    await delMapel.destroy({ transaction: t });
-
-    await t.commit();
-
-    for (const item of assignments) {
-      if (!item.file_url) continue;
-
-      const filePath = path.resolve(__dirname, "..", item.file_url);
-      fs.unlink(filePath).catch(() => {});
-    }
+    await destroyCloudinaryFiles([...files, ...submissionFiles]);
 
     res.json({ message: "mapel deleted successfully" });
 
   } catch (err) {
-    if (t && !t.finished) await t.rollback();
     console.error(err);
     res.status(500).json({ message: "server error" });
   }
@@ -182,19 +194,58 @@ const deleteMapel = async (req, res) => {
 
 // delete class
 const deleteClass = async (req, res) => {
-    let t;
     try {
-        const { id_class } = req.body;
+        const { id_class, confirm } = req.body;
         const delClass = await Class.findByPk(id_class);
         if (!delClass) {
             return res.status(404).json({ message: "class not found" });
         }
 
-        await Class.destroy({ where: { id_class } });
+        // student_tb -> class_tb ON DELETE RESTRICT: tanpa cek ini FK error jadi 500 tanpa penjelasan
+        const totalStudents = await Student.count({ where: { id_class } });
+        if (totalStudents > 0) {
+            return res.status(409).json({
+                message: `Kelas tidak bisa dihapus: masih ada ${totalStudents} siswa di kelas ini. Pindahkan atau hapus siswanya dulu.`,
+                students: totalStudents
+            });
+        }
+
+        const mapels = await Mapel.findAll({ where: { id_class }, attributes: ["id_mapel"], raw: true });
+        const mapelIds = mapels.map(m => m.id_mapel);
+
+        if (mapelIds.length > 0) {
+            const [totalAssignments, totalSubmissions] = await Promise.all([
+                Assignment.count({ where: { id_mapel: mapelIds } }),
+                assignmentStudent.count({ where: { id_mapel: mapelIds } })
+            ]);
+
+            // mapel_tb -> class_tb CASCADE: menghapus kelas ikut menghapus mapel + tugas + nilai
+            if (confirm !== true) {
+                return res.status(409).json({
+                    message: "Kelas ini masih punya data terkait. Kirim ulang dengan confirm: true kalau memang mau dihapus semua.",
+                    affected: {
+                        mapels: mapelIds.length,
+                        assignments: totalAssignments,
+                        submissions: totalSubmissions
+                    }
+                });
+            }
+        }
+
+        const files = mapelIds.length
+            ? await Assignment.findAll({ where: { id_mapel: mapelIds }, attributes: ["file_public_id", "file_url"], raw: true })
+            : [];
+        const submissionFiles = mapelIds.length
+            ? await assignmentStudent.findAll({ where: { id_mapel: mapelIds }, attributes: ["file_public_id", "file_url"], raw: true })
+            : [];
+
+        await delClass.destroy();
+
+        await destroyCloudinaryFiles([...files, ...submissionFiles]);
+
         return res.status(200).json({ message: "class deleted successfully" });
-        
+
     } catch (err) {
-        if (t && !t.finished) await t.rollback();
         console.error(err);
         return res.status(500).json({ message: "server error" });
     }
@@ -225,7 +276,8 @@ const getMapelByClassId = async (req, res) => {
                 {
                     model : Teacher,
                     as: "teacher_tb",
-                    attributes : [ "username"]
+                    attributes : ["id_teacher"],
+                    include : [{ model : User, as: "User", attributes : ["username"] }]
                 },
                 {
                     model : Class,
@@ -233,10 +285,16 @@ const getMapelByClassId = async (req, res) => {
                     attributes : ["class_name"]
                 }
             ],
-            
+
         });
 
-        res.json(classMapels);
+        res.json(classMapels.map(m => ({
+            id_mapel: m.id_mapel,
+            mapel_name: m.mapel_name,
+            class_name: m.Class ? m.Class.class_name : null,
+            id_teacher: m.teacher_tb ? m.teacher_tb.id_teacher : null,
+            teacher_name: m.teacher_tb && m.teacher_tb.User ? m.teacher_tb.User.username : null
+        })));
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "server error" });
@@ -257,6 +315,9 @@ const updateClass = async (req, res) => {
         await updClass.update({class_name});
         res.status(200).json({message: "successful update class"})
     }catch (err){
+        if (err.name === "SequelizeUniqueConstraintError") {
+            return res.status(409).json({ message: "class name already exists" });
+        }
         console.error(err)
         return res.status(500).json({message : "server error while run update method"})
     }
@@ -284,6 +345,9 @@ const updateMapel = async (req, res) => {
             data: upMapel 
         });
     }catch (err){
+        if (err.name === "SequelizeUniqueConstraintError") {
+            return res.status(409).json({ message: "mapel dengan nama tersebut sudah ada di kelas ini" });
+        }
         console.error(err)
         return res.status(500).json({message : "server error while run update mapel method"})
     }
@@ -292,42 +356,21 @@ const updateMapel = async (req, res) => {
 //get class by student
 const getMapelByStudent = async (req, res) => {
     try{
-        const id_student = req.user.id_user || req.user.id_student || req.user.id;
-        console.log("Student ID from Token:", id_student);
-
-        const student = await Student.findByPk(id_student, {
-            attributes: ["id_student", "username", "id_class"],
+        const student = await Student.findByPk(req.user.id, {
+            attributes: ["id_student", "id_class"],
             raw: true
         });
 
-        console.log("Student Data:", student);
-        
-        
-        const idClass = student ? student.id_class : null;
-        
-        console.log("Class ID:", idClass);
-
-        const classMapels = await Mapel.findAll({
-            where : {id_class : idClass},
+        const classMapels = student ? await Mapel.findAll({
+            where : {id_class : student.id_class},
             attributes : ["id_mapel", "mapel_name"],
-        });
-
-        if (classMapels.length === 0) {
-            return res.status(200).json({ message: "No subjects found for this class" });
-        }
-
-
-        const joinedMapels = classMapels.map((item) => {
-            const cls = item.Class || item.class_tb;
-            return {
-                id_mapel: item.id_mapel,
-                mapel_name: item.mapel_name
-            };
-        });
+        }) : [];
 
         return res.status(200).json({
-            message: "successfully retrieved joined class subjects",
-            data: joinedMapels
+            message: classMapels.length
+                ? "successfully retrieved joined class subjects"
+                : "No subjects found for this class",
+            data: classMapels
         });
     }catch(err){
         console.error(err)
@@ -338,11 +381,7 @@ const getMapelByStudent = async (req, res) => {
 //get class by teacher
 const getMapelByTeacher = async (req, res) => {
       try {
-    const id_teacher = req.user.id_user || req.user.id_teacher || req.user.id; 
-
-    if (!id_teacher) {
-      return res.status(400).json({ message: "Teacher ID not found in token" });
-    }
+    const id_teacher = req.user.id;
 
     const mapels = await Mapel.findAll({
         where : {id_teacher},
@@ -355,28 +394,20 @@ const getMapelByTeacher = async (req, res) => {
             }
         ]
     });
-    const formattedData = mapels.map((item) => {
-        const cls = item.Class || item.class_tb
-
-        return {
-            id_mapel: item.id_mapel,
-            id_class: cls ? cls.id_class : null,
-            mapel_name: item.mapel_name,
-            class_name: cls ? cls.class_name : "",
-            display_name: cls 
-            ? `${item.mapel_name} - ${cls.class_name}` 
-            : item.mapel_name
-        }
-    })
+    const formattedData = mapels.map((item) => ({
+        id_mapel: item.id_mapel,
+        id_class: item.Class ? item.Class.id_class : null,
+        mapel_name: item.mapel_name,
+        class_name: item.Class ? item.Class.class_name : ""
+    }))
     return res.status(200).json({
       message: "success",
-      id_teacher: id_teacher,
       data: formattedData
     });
 
   } catch (err) {
     console.error("Error getMapelByTeacher:", err);
-    return res.status(500).json({ message: "server error while getMapelByTeacher", error: err.message });
+    return res.status(500).json({ message: "server error while getMapelByTeacher" });
   }
 };
 

@@ -1,21 +1,11 @@
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs")
-const Assignment = require("../models/assignment");
-const assignmentStudent = require("../models/assignmentStudent");
-const  {Op, Model} = require("sequelize");
-const { uploadTeacher,uploadStudent, getResourceType, makePublicId, cloudinary } = require("../config/cloudinary");
-const { assert } = require("console");
+const { Assignment, assignmentStudent, Student, User } = require("../models");
+const { destroyCloudinaryFiles } = require("../config/cloudinary");
 const assertOwnsMapel = require("../utils/assertOwnsMapel");
 
-const uploadToCloudinaryLarge = (filePath, options) => {
-    return new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_large(filePath, options, (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-        });
-    });
-};
+// File sudah di Cloudinary begitu multer selesai (storage-nya streaming).
+// Kalau request akhirnya ditolak/gagal, filenya harus dibuang supaya tidak jadi orphan.
+const uploadedFile = (req) =>
+    req.file ? [{ file_public_id: req.file.filename, file_url: req.file.path }] : [];
 
 // POST method assignment
 const uploadAssignment = async (req, res) => {
@@ -23,53 +13,47 @@ const uploadAssignment = async (req, res) => {
         const id_teacher = req.user.id;
         const { assignment_title, description } = req.body;
 
-        const id_mapel = req.params.id_mapel; 
+        const id_mapel = req.params.id_mapel;
         const deadline = req.body.deadline ? new Date(req.body.deadline) : null;
-
-        if (!assignment_title || !id_mapel) {
-            if (req.file) fs.unlinkSync(req.file.path); 
-            return res.status(400).json({ message: 'assignment title and id mapel are required' });
-        }
 
         if (!req.file) {
             return res.status(400).json({ message: 'File wajib diupload' });
         }
 
-        const resourceType = getResourceType(req.file.mimetype);
-        const publicId = makePublicId(req.file, resourceType);
+        const missing = [];
+        if (!assignment_title) missing.push("assignment_title");
+        if (!description) missing.push("description");
+        if (missing.length) {
+            await destroyCloudinaryFiles(uploadedFile(req));
+            return res.status(400).json({ message: `field wajib belum diisi: ${missing.join(", ")}` });
+        }
 
-        const cloudinaryOptions = {
-            folder: "e-learning_assignments/teacher",
-            resource_type: resourceType,
-            public_id: publicId,
-            chunk_size: 6000000 
-        };
-
-        const cloudinaryResult = await uploadToCloudinaryLarge(req.file.path, cloudinaryOptions);
-
-        fs.unlinkSync(req.file.path);
-
-        
         const assignment = await Assignment.create({
             assignment_title,
             description,
-            file_url: cloudinaryResult.secure_url,
-            file_public_id: cloudinaryResult.public_id,
+            file_url: req.file.path,
+            file_public_id: req.file.filename,
             id_mapel,
             id_teacher,
             deadline
         });
 
-        res.status(201).json({ message: 'Assignment uploaded successfully', data: assignment });
+        res.status(201).json({
+            message: 'Assignment uploaded successfully',
+            data: {
+                id: assignment.id_assignment,
+                title: assignment.assignment_title,
+                fileUrl: assignment.file_url,
+                deadline: assignment.deadline
+            }
+        });
     } catch (err) {
+        await destroyCloudinaryFiles(uploadedFile(req));
         console.error(err);
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         res.status(500).json({ message: 'Server failed to upload assignment' });
     }
 };
-// POST method assignment student
+// POST method assignment student (resubmit = replace, satu baris per siswa per tugas)
 const uploadAssignmentStudent = async (req, res) => {
     try {
         const id_student = req.user.id;
@@ -80,56 +64,60 @@ const uploadAssignmentStudent = async (req, res) => {
             return res.status(400).json({ message: 'File wajib diupload' });
         }
 
-        const assignmentData = await Assignment.findOne({
-            where : { id_assignment: id_assignment },
-            attributes : ["deadline, id_mapel"]
-        });
-
-        if (!assignmentData) {
-            if (req.file) fs.unlinkSync(req.file.path);
-            return res.status(404).json({ message: 'Tugas tidak ditemukan atau sudah dihapus oleh guru.' });
+        if (!title) {
+            await destroyCloudinaryFiles(uploadedFile(req));
+            return res.status(400).json({ message: 'field wajib belum diisi: title' });
         }
 
-        if (assignmentData && assignmentData.deadline) {
-            const now = new Date().getTime(); 
-            const assignmentDeadline = new Date(assignmentData.deadline).getTime(); 
-            const apakahLewat = now > assignmentDeadline;
+        // tugas + deadline + status dinilai sudah dicek canSubmitAssignment (sebelum upload jalan)
+        const assignmentData = req.assignment;
 
-            if (apakahLewat) {
-                if (req.file) fs.unlinkSync(req.file.path); // Hapus file temp jika deadline lewat
-                return res.status(400).json({ message: 'Deadline sudah lewat. Tidak bisa mengumpulkan tugas.' });
+        // dicek ulang: guru bisa menilai selama upload berjalan
+        const existing = await assignmentStudent.findOne({ where: { id_student, id_assignment } });
+        if (existing && existing.score !== null && existing.score !== undefined) {
+            await destroyCloudinaryFiles(uploadedFile(req));
+            return res.status(400).json({ message: 'Tugas sudah dinilai guru, tidak bisa dikumpulkan ulang.' });
+        }
+
+        let assignmentS;
+        if (existing) {
+            const oldFile = { file_public_id: existing.file_public_id, file_url: existing.file_url };
+            assignmentS = await existing.update({
+                title,
+                file_url: req.file.path,
+                file_public_id: req.file.filename,
+                id_mapel: assignmentData.id_mapel
+            });
+            await destroyCloudinaryFiles([oldFile]);
+        } else {
+            assignmentS = await assignmentStudent.create({
+                title,
+                file_url: req.file.path,
+                file_public_id: req.file.filename,
+                id_mapel: assignmentData.id_mapel,
+                id_assignment,
+                id_student
+            });
+        }
+
+        res.status(201).json({
+            message: existing ? 'Assignment replaced successfully' : 'Assignment submitted successfully',
+            data: {
+                id: assignmentS.id_assignmentStudent,
+                title: assignmentS.title,
+                fileUrl: assignmentS.file_url,
+                score: assignmentS.score
             }
-        }
-
-        const resourceType = getResourceType(req.file.mimetype);
-        const publicId = makePublicId(req.file, resourceType);
-
-        const cloudinaryOptions = {
-            folder: "e-learning_assignments/student",
-            resource_type: resourceType,
-            public_id: publicId,
-            chunk_size: 6000000 
-        };
-
-        const cloudinaryResult = await uploadToCloudinaryLarge(req.file.path, cloudinaryOptions);
-
-        fs.unlinkSync(req.file.path); 
-
-        const assignmentS = await assignmentStudent.create({
-            title,
-            file_url: cloudinaryResult.secure_url,
-            file_public_id: cloudinaryResult.public_id,
-            id_mapel: assignmentData.id_mapel,
-            id_assignment,
-            id_student
         });
-
-        res.status(201).json({ message: 'Assignment submitted successfully', data: assignmentS });
     } catch (err) {
-        console.error(err);
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
+        await destroyCloudinaryFiles(uploadedFile(req));
+        if (err.name === "SequelizeForeignKeyConstraintError") {
+            return res.status(404).json({ message: 'Tugas sudah dihapus oleh guru saat upload berjalan.' });
         }
+        if (err.name === "SequelizeUniqueConstraintError") {
+            return res.status(409).json({ message: 'Pengumpulan sedang diproses, coba lagi.' });
+        }
+        console.error(err);
         res.status(500).json({ message: 'Server failed to submit assignment' });
     }
 };
@@ -147,7 +135,6 @@ const getAssignmentTeacher = async (req, res) => {
         });
         res.status(200).json({
             status: "success",
-            count: assignments.length,
             data: assignments.map(item => ({
                 id: item.id_assignment,
                 title: item.assignment_title,
@@ -166,13 +153,13 @@ const getAssignmentTeacher = async (req, res) => {
 const getAssignmentStudent = async (req, res) => {
     try{
         const {id_mapel} = req.params;
+        await assertOwnsMapel(req.user, id_mapel);
         const assignments = await assignmentStudent.findAll({
             where : {id_mapel},
             attributes : ["id_assignmentStudent","title","file_url","score","createdAt"]
          });
          res.status(200).json({
             status: "success",
-            count: assignments.length,
             data: assignments.map(item => ({
                 id: item.id_assignmentStudent,
                 title: item.title,
@@ -182,6 +169,7 @@ const getAssignmentStudent = async (req, res) => {
             }))
          })
         }catch (err){
+            if (err.status) return res.status(err.status).json({ message: err.message });
             console.error(err)
             return res.status(500).json({message:"server error while executing the get assignment student by id_mapel method" })
         }
@@ -191,13 +179,38 @@ const getAssignmentStudent = async (req, res) => {
 const getAssignmentStudentById = async (req, res) => {
     try{
         const {id_assignment} = req.params;
+
+        const assignment = await Assignment.findByPk(id_assignment, { attributes: ["id_mapel"] });
+        if (!assignment) {
+            return res.status(404).json({ message: "Tugas tidak ditemukan" });
+        }
+        await assertOwnsMapel(req.user, assignment.id_mapel);
+
         const assignments = await assignmentStudent.findAll({
             where : {id_assignment},
-            attributes : ["id_assignmentStudent", "title", "file_url", "score","id_student", "createdAt"]
+            attributes : ["id_assignmentStudent", "title", "file_url", "score","id_student", "createdAt"],
+            include : [{
+                model : Student,
+                attributes : ["nis"],
+                include : [{ model : User, attributes : ["username"] }]
+            }]
          });
-         res.status(200).json({ message : "success get assignment student by id_assignment", data : assignments})
+         res.status(200).json({
+            message : "success get assignment student by id_assignment",
+            data : assignments.map(item => ({
+                id: item.id_assignmentStudent,
+                id_student: item.id_student,
+                nis: item.Student ? item.Student.nis : null,
+                username: item.Student && item.Student.User ? item.Student.User.username : null,
+                title: item.title,
+                fileUrl: item.file_url,
+                score: item.score,
+                createdAt: item.createdAt
+            }))
+         })
         }
     catch (err){
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error(err)
         return res.status(500).json({message:"server error while executing the get assignment student by id_assignment method" })
     }
@@ -231,19 +244,6 @@ const getMySubmissions = async (req, res) => {
     }
 };
 
-const getCloudinaryResourceType = (fileUrl = "") => {
-    const url = String(fileUrl).toLowerCase();
-
-    if (url.includes("/video/upload/")) return "video";
-    if (url.includes("/image/upload/")) return "image";
-    if (url.includes("/raw/upload/")) return "raw";
-
-    if (/\.(mp4|mov|webm|avi)$/i.test(url)) return "video";
-    if (/\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(url)) return "image";
-
-    return "raw";
-};
-
 // DELETE method assignment teacher
 const deleteAssignment = async (req, res) => {
     try {
@@ -253,18 +253,25 @@ const deleteAssignment = async (req, res) => {
             return res.status(404).json({ message: "Assignment not found" });
         }
 
-        await assertOwnsMapel(req.user.id_teacher, assignment.id_mapel);
+        await assertOwnsMapel(req.user, assignment.id_mapel);
 
-        if (assignment.file_public_id) {
-            await cloudinary.uploader.destroy(assignment.file_public_id, {
-                resource_type: getCloudinaryResourceType(assignment.file_url),
-            });
-        }
+        // pengumpulan siswa ikut CASCADE terhapus -> filenya juga harus dibersihkan
+        const submissionFiles = await assignmentStudent.findAll({
+            where: { id_assignment: assignment.id_assignment },
+            attributes: ["file_public_id", "file_url"],
+            raw: true
+        });
 
         await assignment.destroy();
 
+        await destroyCloudinaryFiles([
+            { file_public_id: assignment.file_public_id, file_url: assignment.file_url },
+            ...submissionFiles
+        ]);
+
         res.status(200).json({ message: "Assignment has been deleted" });
     } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
         console.error(err);
         res.status(500).json({ message: "Server error while deleting assignment" });
     }
@@ -273,14 +280,14 @@ const deleteAssignment = async (req, res) => {
 // DELETE assignment student
 const deleteAssignmentStudent = async (req, res) => {
     try {
-        const id_student = req.user?.id_student || req.user?.id_user || req.user?.id;
+        const id_student = req.user.id;
         const { id } = req.params;
 
         const assignment = await assignmentStudent.findOne({
             where: { id_assignmentStudent: id },
             include: [
                 {
-                    model: Assignment, 
+                    model: Assignment,
                     attributes: ['deadline']
                 }
             ]
@@ -300,24 +307,15 @@ const deleteAssignmentStudent = async (req, res) => {
 
 
         const deadline = assignment.Assignment?.deadline;
-        if (deadline) {
-            const now = new Date().getTime();
-            const assignmentDeadline = new Date(deadline).getTime();
-
-            if (now > assignmentDeadline) {
-                return res.status(400).json({ message: "Deadline sudah lewat. Tugas yang sudah terkirim tidak dapat dihapus." });
-            }
+        if (deadline && Date.now() > new Date(deadline).getTime()) {
+            return res.status(400).json({ message: "Deadline sudah lewat. Tugas yang sudah terkirim tidak dapat dihapus." });
         }
 
-
-        if (assignment.file_public_id) {
-            await cloudinary.uploader.destroy(assignment.file_public_id, {
-                resource_type: getCloudinaryResourceType(assignment.file_url),
-            });
-        }
-
+        const file = { file_public_id: assignment.file_public_id, file_url: assignment.file_url };
 
         await assignment.destroy();
+
+        await destroyCloudinaryFiles([file]);
 
         res.status(200).json({ message: "Pengumpulan tugas berhasil dihapus." });
     } catch (err) {
@@ -329,18 +327,26 @@ const deleteAssignmentStudent = async (req, res) => {
 // post score
 const inputScore = async (req , res) => {
     try {
-        const id_assignmentStudent = req.params.id;
-        const {score} = req.body;
-        
-        const updated = await assignmentStudent.update({score},{where : {id_assignmentStudent}})
-        await assertOwnsMapel(req.user.id_teacher, assignmentData.id_mapel);
-        if (updated[0] === 0) {
-            return res.status(404).json({message : "assignment not found"})
+        const { score } = req.body;
+        if (score === undefined || score === null || Number.isNaN(Number(score)) || score < 0 || score > 100) {
+            return res.status(400).json({ message: "score wajib berupa angka 0-100" });
         }
 
-        res.json({message : "success saving score"})
-    }catch(error) {
-        console.error(error)
+        const submission = await assignmentStudent.findByPk(req.params.id, {
+            attributes: ["id_assignmentStudent", "id_mapel"]
+        });
+        if (!submission) {
+            return res.status(404).json({ message: "assignment not found" });
+        }
+
+        await assertOwnsMapel(req.user, submission.id_mapel);
+
+        await submission.update({ score });
+
+        res.json({ message: "success saving score" });
+    } catch (err) {
+        if (err.status) return res.status(err.status).json({ message: err.message });
+        console.error(err)
         return res.status(500).json({message : "server error"})
     }
 };
@@ -355,55 +361,36 @@ const totalScore = async (req, res) => {
         message: "Parameter 'id_student' dan 'id_mapel' wajib diisi pada query URL."
       });
     }
-    const allAssignments = await assignmentStudent.findAll({
-      where: { id_student, id_mapel },
-      attributes: ['id_assignmentStudent', 'score', 'title']
-      
-    });
+
+    await assertOwnsMapel(req.user, id_mapel);
 
     const total = await assignmentStudent.sum("score", {
-      where: {
-        id_student,
-        id_mapel
-      }
+      where: { id_student, id_mapel }
     });
-
-    
-
     const count = await assignmentStudent.count({
-        where : {
-            id_student,
-            id_mapel
-        }
+      where: { id_student, id_mapel }
     });
 
-    const average_value = count > 0 ? total / count : 0;
+    const average_value = count > 0 ? (total || 0) / count : 0;
 
     res.json({
-      student_info: {
-        id_student,
-        id_mapel
-      },
       summary: {
         total_assignments: count,
         total_score: total || 0,
         average_value: Number(average_value.toFixed(2))
-      },
-      assignments_detail: allAssignments 
+      }
     });
 
   } catch (error) {
-    res.status(500).json({
-      message: error.message
-    });
+    if (error.status) return res.status(error.status).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "server error while counting total score" });
   }
 };
 
 
-module.exports = { 
-    uploadTeacher, 
-    uploadStudent, 
-    uploadAssignment, 
+module.exports = {
+    uploadAssignment,
     uploadAssignmentStudent, 
     inputScore, 
     getAssignmentTeacher,
