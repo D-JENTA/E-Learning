@@ -10,8 +10,8 @@ const limiter = limit({
   max: 10 // limit each IP to 10 requests per windowMs
 });
 
-router.use(limiter);
+
 router.get("/print/jadwal", verifyToken, isWakakur,limiter, printDataJadwalPDF);
-router.get("/schedule", verifyToken, isWakakur,limiter, getSchedule);
+router.get("/schedule", verifyToken, isWakakur, getSchedule);
 
 module.exports = router;

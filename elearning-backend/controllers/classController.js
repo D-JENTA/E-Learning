@@ -271,13 +271,20 @@ const getMapelByClassId = async (req, res) => {
         }
         const classMapels = await Mapel.findAll({
             where : {id_class},
-            attributes : ["id_mapel", "mapel_name"],
+            attributes : ["mapel_name"],
             include : [
+                {
+                    model : ScheduleMapel,
+                    as : "Schedules",
+                    attributes : ["day"]
+                },
                 {
                     model : Teacher,
                     as: "teacher_tb",
-                    attributes : ["id_teacher"],
-                    include : [{ model : User, as: "User", attributes : ["username"] }]
+                    include : [{ 
+                        model : User,
+                        as: "User",
+                        attributes : ["username"] }]
                 },
                 {
                     model : Class,
@@ -289,10 +296,9 @@ const getMapelByClassId = async (req, res) => {
         });
 
         res.json(classMapels.map(m => ({
-            id_mapel: m.id_mapel,
             mapel_name: m.mapel_name,
+            day: m.Schedules ? m.Schedules.map(s => s.day) : [],
             class_name: m.Class ? m.Class.class_name : null,
-            id_teacher: m.teacher_tb ? m.teacher_tb.id_teacher : null,
             teacher_name: m.teacher_tb && m.teacher_tb.User ? m.teacher_tb.User.username : null
         })));
     } catch (err) {
