@@ -1,6 +1,6 @@
 const express = require("express");
 const {printDataJadwalPDF, getSchedule} = require("../controllers/fiturController");
-const {isWakakur} = require("../middleware/roleMiddleware");
+const {isWakakur,isAdmin} = require("../middleware/roleMiddleware");
 const verifyToken = require("../middleware/verifyToken");
 const limit = require("express-rate-limit");
 const router = express.Router();
@@ -11,7 +11,7 @@ const limiter = limit({
 });
 
 
-router.get("/print/jadwal", verifyToken, isWakakur,limiter, printDataJadwalPDF);
-router.get("/schedule", verifyToken, isWakakur, getSchedule);
+router.get("/print/jadwal", verifyToken, isAdmin,limiter, printDataJadwalPDF);
+router.get("/schedule", verifyToken,  isAdmin, getSchedule);
 
 module.exports = router;

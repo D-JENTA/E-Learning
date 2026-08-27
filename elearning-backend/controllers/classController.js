@@ -270,37 +270,50 @@ const getMapelByClassId = async (req, res) => {
             return res.status(400).json({message : "class ID must be filled"})
         }
         const classMapels = await Mapel.findAll({
-            where : {id_class},
-            attributes : ["mapel_name"],
-            include : [
-                {
-                    model : ScheduleMapel,
-                    as : "Schedules",
-                    attributes : ["day"]
-                },
-                {
-                    model : Teacher,
-                    as: "teacher_tb",
-                    include : [{ 
-                        model : User,
-                        as: "User",
-                        attributes : ["username"] }]
-                },
-                {
-                    model : Class,
-                    as: "Class",
-                    attributes : ["class_name"]
-                }
-            ],
+                where: { id_class },
+                attributes: ["id_mapel", "mapel_name"],
+                include: [
+                    { model: ScheduleMapel, as: "Schedules", attributes: ["day","jp"] },
+                    {
+                        model: Teacher,
+                        as: "teacher_tb",
+                        include: [{ model: User, as: "User", attributes: ["username"] }]
+                    },
+                    { model: Class, as: "Class", attributes: ["id_class", "class_name"] }
+                ],
+            });
 
+        const groupedByDay = {};
+
+
+        classMapels.forEach(m => {
+            const schedules = m.Schedules || [];
+
+            const mapelData = {
+                id_mapel: m.id_mapel,
+                mapel_name: m.mapel_name,
+                class_name: m.Class?.class_name || null,
+                id_class: m.Class?.id_class || null,
+                teacher_name: m.teacher_tb?.User?.username || null
+            };
+
+            if (schedules.length === 0) return; // mapel belum ada jadwal, skip
+
+            schedules.forEach(s => {
+                if (!s.day) return;
+
+                if (!groupedByDay[s.day]) groupedByDay[s.day] = [];
+                groupedByDay[s.day].push({
+                    jp: s.jp,
+                    day: s.day,
+                    ...mapelData
+                });
+            });
         });
 
-        res.json(classMapels.map(m => ({
-            mapel_name: m.mapel_name,
-            day: m.Schedules ? m.Schedules.map(s => s.day) : [],
-            class_name: m.Class ? m.Class.class_name : null,
-            teacher_name: m.teacher_tb && m.teacher_tb.User ? m.teacher_tb.User.username : null
-        })));
+        res.json(groupedByDay);
+
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "server error" });
@@ -336,15 +349,31 @@ const updateMapel = async (req, res) => {
         if (!upMapel) {
             return res.status(404).json({message : "mapel not found"})
         }
-        const {mapel_name, id_teacher} = req.body;
+
+        const upScheduleMapel = await ScheduleMapel.findOne({
+            where : {id_mapel : upMapel.id_mapel}
+        })
+        if (!upScheduleMapel) {
+            return res.status(404).json({message: "schadule null"})
+        }
+
+
+        const {mapel_name, id_teacher, jp, day} = req.body;
 
         const newMapelName = mapel_name ? mapel_name : upMapel.mapel_name;
         const newTeacherId = id_teacher ? id_teacher : upMapel.id_teacher;
+        const newJp = jp ? jp : upScheduleMapel.jp;
+        const newDay = day ? day : upScheduleMapel.day;
 
         await upMapel.update({
             mapel_name: newMapelName,
             id_teacher: newTeacherId
         });
+
+        await upScheduleMapel.update({
+            jp :newJp,
+            day : newDay
+        })
 
         return res.status(200).json({ 
             message: "successful update mapel",
@@ -370,6 +399,13 @@ const getMapelByStudent = async (req, res) => {
         const classMapels = student ? await Mapel.findAll({
             where : {id_class : student.id_class},
             attributes : ["id_mapel", "mapel_name"],
+            include : [
+                {
+                    model : ScheduleMapel,
+                    as : "Schedules",
+                    attributes : ["day"]
+                }
+            ]
         }) : [];
 
         return res.status(200).json({

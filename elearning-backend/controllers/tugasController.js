@@ -377,7 +377,8 @@ const totalScore = async (req, res) => {
       summary: {
         total_assignments: count,
         total_score: total || 0,
-        average_value: Number(average_value.toFixed(2))
+        average_value: Number(average_value.toFixed(2)),
+        id_mapel: Number(id_mapel),
       }
     });
 

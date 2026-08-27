@@ -234,16 +234,20 @@ const generateJadwalHTML = (classesData) => {
 // Helper untuk merender isi cell Mapel berdasarkan DAY & JP
 function renderMapelCell(mapels, currentDay, currentJam) {
   // Standarisasi string hari (misal "Jum'at" / "Jumat" -> "jumat")
-  const targetDay = currentDay.toLowerCase().replace(/[^a-z]/g, '');
+  const targetDay = String(currentDay).toLowerCase().replace(/[^a-z]/g, '');
 
   for (const mapel of mapels) {
     const schedules = mapel.Schedules || [];
 
     // Cari jadwal di ScheduleMapel yang cocok dengan Hari dan Jam
     const matchedSchedule = schedules.find(s => {
-      if (!s.day || !s.jp) return false;
+      if (!s) return false;
+      if (s.day === null || s.day === undefined) return false;
+      if (s.jp === null || s.jp === undefined) return false;
 
-      const scheduleDay = s.day.toLowerCase().replace(/[^a-z]/g, '');
+      // Cast eksplisit ke String supaya aman walau kolom "day" tersimpan
+      // sebagai tipe non-string (angka, dll) di database.
+      const scheduleDay = String(s.day).toLowerCase().replace(/[^a-z]/g, '');
       const jpArray = String(s.jp).split(",").map(j => j.trim());
 
       return scheduleDay === targetDay && jpArray.includes(String(currentJam));
