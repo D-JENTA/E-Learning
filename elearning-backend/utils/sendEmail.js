@@ -47,5 +47,29 @@ const sendEmail = async (to, otp) => {
     }
 };
 
-module.exports = sendEmail;
+const sendTeacherCredentialsEmail = async (email, username, tempPassword) => {
+    const templatePath = path.join(__dirname, "../templates/teacherCredentialsEmail.html");
+    let html = fs.readFileSync(templatePath, "utf-8");
+
+    html = html
+        .replace("{{USERNAME}}", username)
+        .replace("{{EMAIL}}", email)
+        .replace("{{PASSWORD}}", tempPassword);
+
+    await transporter.sendMail({
+        from: `"E-Learning" <${process.env.EMAIL_USER}>`,
+        to : email,
+        subject: "Akun Guru Anda Telah Dibuat",
+        html,
+        attachments: [
+            {
+                filename: "eduLogo.png",
+                path: path.join(__dirname, "../assets/eduLogo.png"),
+                cid: "logo"
+            }
+        ]
+    });
+};
+
+module.exports = {sendEmail, sendTeacherCredentialsEmail};
 

@@ -10,9 +10,15 @@ const {
     emailOtp
 } = require("../models");
 const sequelize = require("../config/db");
-const sendEmail = require("../utils/sendEmail");
+const {sendEmail, sendTeacherCredentialsEmail} = require("../utils/sendEmail");
 const { destroyCloudinaryFiles } = require("../config/cloudinary");
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
+const crypto = require("crypto");
+
+//generate pw teacher
+const generateTempPassword = (length = 6) => {
+    return crypto.randomBytes(length).toString("base64url").slice(0, length);
+};
 
 // satu OTP aktif per user (UNIQUE(user_id) di DB) -> upsert, bukan destroy+create
 const issueOtp = async (user_id, transaction) => {
@@ -32,24 +38,21 @@ const issueOtp = async (user_id, transaction) => {
 const signToken = (user) =>
     jwt.sign({ id: user.id_user, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-// register
-const register = async (req, res) => {
+// register student
+const registerStudent = async (req, res) => {
     let t;
     const SALT_ROUNDS = 10;
     try {
-        const { username, email, password, role, nis, nip, id_class } = req.body;
+        const { username, email, password, nis, id_class } = req.body;
 
         // Validation Input
         if (!username || !email) return res.status(400).json({ message: "all fields must be filled in" });
         
         if (!password || password.length < 6) return res.status(400).json({ message: "password must be at least 6 characters" });
-        if (!["student", "teacher", "admin"].includes(role)) return res.status(400).json({ message: "role must be filled" });
-
-        if (role === "student" && (!nis || nis.trim() === "")) return res.status(400).json({ message: "NIS must be filled in" });
-        if (role === "teacher" && (!nip || nip.trim() === "")) return res.status(400).json({ message: "NIP must be filled in" });
-        if (role === "student" && (!id_class || String(id_class).trim() === "")) return res.status(400).json({ message: "id_class must be filled in" });
 
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
+        const fixrole = "student";
 
         t = await sequelize.transaction();
 
@@ -57,17 +60,13 @@ const register = async (req, res) => {
             username,
             email,
             password: hashedPassword,
-            role,
+            role : fixrole,
             is_verified: false
         }, { transaction: t });
 
         const generatedOtp = await issueOtp(newUser.id_user, t);
-
-        if (role === "student") {
-            await Student.create({ id_student: newUser.id_user, nis, id_class }, { transaction: t });
-        } else if (role === "teacher") {
-            await Teacher.create({ id_teacher: newUser.id_user, nip }, { transaction: t });
-        }
+       
+        await Student.create({ id_student: newUser.id_user, nis, id_class }, { transaction: t });
 
         await t.commit();
 
@@ -101,6 +100,66 @@ const register = async (req, res) => {
         res.status(500).json({ message: "server error" });
     }
 };
+
+//register teacher
+const registerTeacher = async (req, res) => {
+    let t;
+    const SALT_ROUNDS = 10;
+    try {
+        const { username, email, nip } = req.body;
+        
+        if (!username || !email || !nip) return res.status(400).json({ message: "all fields must be filled in" });
+        
+        const tempPassword = generateTempPassword(6)
+        const hashedPassword = await bcrypt.hash(tempPassword, SALT_ROUNDS);
+
+        const fixrole = "teacher";
+
+        t = await sequelize.transaction();
+
+        const newUser = await User.create({
+            username,
+            email,
+            password: hashedPassword,
+            role : fixrole,
+            is_verified: true
+        }, { transaction: t });
+       
+        await Teacher.create({ id_teacher: newUser.id_user, nip, }, { transaction: t });
+
+        await t.commit();
+
+        setImmediate(() => {
+            sendTeacherCredentialsEmail(email, username, tempPassword).catch(console.error);
+        });
+
+        res.status(201).json({
+            message: "registration successful, check your email for your password",
+            user: {
+                id_user: newUser.id_user,
+                username: newUser.username,
+                role: newUser.role
+            }
+        });
+
+    } catch (err) {
+        if (t && !t.finished) await t.rollback();
+        // race register: dua request email sama -> 400, bukan 500
+        if (err.name === "SequelizeUniqueConstraintError") {
+            const field = Object.keys(err.fields || {})[0] || "";
+            if (field.includes("nis")) return res.status(400).json({ message: "NIS is already used" });
+            if (field.includes("nip")) return res.status(400).json({ message: "NIP is already used" });
+            return res.status(400).json({ message: "email is registered, please log in" });
+        }
+        if (err.name === "SequelizeValidationError") {
+            return res.status(400).json({ message: err.errors.map(e => e.message).join(", ") });
+        }
+        console.error(err);
+        res.status(500).json({ message: "server error" });
+    }
+};
+
+
 
 //verify otp
 const verifyOtpLogin = async (req, res) => {
@@ -539,7 +598,8 @@ const logout = (req, res) => res.json({ success: true });
 
 
 module.exports = {
-    register, 
+    registerStudent, 
+    registerTeacher,
     login, 
     resendOtp,
     verifyOtpLogin, 

@@ -1,7 +1,8 @@
 const express = require("express");
 const loginLimiter = require("../middleware/rateLimiter")
 const { 
-       register,
+       registerStudent,
+       registerTeacher,
         login,
          getUser,
           getUserById,
@@ -27,7 +28,8 @@ const {uploadCloud} = require("../config/cloudinary")
 const router = express.Router();
 
 
-router.post("/auth/register",  register);
+router.post("/auth/registerStudent",  registerStudent);
+router.post("/auth/registerTeacher",verifyToken,isAdmin, registerTeacher)
 router.post("/auth/profile-picture", verifyToken, uploadCloud.single("profile_picture"), updateProfilePicture);
 router.post("/auth/login", loginLimiter, login);
 router.post("/auth/resend-otp",loginLimiter, resendOtp);
