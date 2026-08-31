@@ -117,19 +117,46 @@ const uploadAssignment = async (req, res) => {
   }
 };
 
-module.exports = { uploadAssignment }; // POST method assignment student (resubmit = replace, satu baris per siswa per tugas)
+// POST method assignment submission (student) - mendukung file ATAU link
 const uploadAssignmentStudent = async (req, res) => {
   try {
     const id_student = req.user.id;
     const id_assignment = req.params.id_assignment;
-    const { title } = req.body;
+    const { title, submission_link } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ message: "File wajib diupload" });
+    const hasFile = !!req.file;
+    const hasLink = !!submission_link && submission_link.trim() !== "";
+
+    // helper untuk cleanup file yang sudah kepalang naik ke Cloudinary
+    const cleanupFile = async () => {
+      if (hasFile) await destroyCloudinaryFiles(uploadedFile(req));
+    };
+
+    // wajib salah satu: file ATAU link
+    if (!hasFile && !hasLink) {
+      return res
+        .status(400)
+        .json({ message: "Wajib upload file atau isi link tugas" });
+    }
+
+    // tolak kalau dua-duanya dikirim sekaligus, biar tidak ambigu sumber datanya
+    if (hasFile && hasLink) {
+      await cleanupFile();
+      return res.status(400).json({
+        message: "Pilih salah satu: upload file atau isi link, jangan keduanya",
+      });
+    }
+
+    if (hasLink && !isValidUrl(submission_link)) {
+      // link tidak valid tidak pernah membuat file ke-upload duluan, tapi jaga-jaga tetap panggil cleanup
+      await cleanupFile();
+      return res
+        .status(400)
+        .json({ message: "Link tidak valid, gunakan format URL http/https" });
     }
 
     if (!title) {
-      await destroyCloudinaryFiles(uploadedFile(req));
+      await cleanupFile();
       return res
         .status(400)
         .json({ message: "field wajib belum diisi: title" });
@@ -143,30 +170,44 @@ const uploadAssignmentStudent = async (req, res) => {
       where: { id_student, id_assignment },
     });
     if (existing && existing.score !== null && existing.score !== undefined) {
-      await destroyCloudinaryFiles(uploadedFile(req));
+      await cleanupFile();
       return res.status(400).json({
         message: "Tugas sudah dinilai guru, tidak bisa dikumpulkan ulang.",
       });
     }
 
+    const newFileUrl = hasFile ? req.file.path : submission_link.trim();
+    const newFilePublicId = hasFile ? req.file.filename : null;
+    const newFileExtension = hasFile
+      ? path.extname(req.file.originalname).slice(1).toLowerCase()
+      : "link";
+
     let assignmentS;
     if (existing) {
-      const oldFile = {
-        file_public_id: existing.file_public_id,
-        file_url: existing.file_url,
-      };
+      // hapus file Cloudinary lama HANYA kalau submission lama memang berupa file
+      // (kalau submission lama itu link, file_public_id sudah NULL, tidak ada yang perlu dihapus)
+      const oldFile = existing.file_public_id
+        ? {
+            file_public_id: existing.file_public_id,
+            file_url: existing.file_url,
+          }
+        : null;
+
       assignmentS = await existing.update({
         title,
-        file_url: req.file.path,
-        file_public_id: req.file.filename,
+        file_url: newFileUrl,
+        file_public_id: newFilePublicId,
+        file_extension: newFileExtension,
         id_mapel: assignmentData.id_mapel,
       });
-      await destroyCloudinaryFiles([oldFile]);
+
+      if (oldFile) await destroyCloudinaryFiles([oldFile]);
     } else {
       assignmentS = await assignmentStudent.create({
         title,
-        file_url: req.file.path,
-        file_public_id: req.file.filename,
+        file_url: newFileUrl,
+        file_public_id: newFilePublicId,
+        file_extension: newFileExtension,
         id_mapel: assignmentData.id_mapel,
         id_assignment,
         id_student,
@@ -181,6 +222,7 @@ const uploadAssignmentStudent = async (req, res) => {
         id: assignmentS.id_assignmentStudent,
         title: assignmentS.title,
         fileUrl: assignmentS.file_url,
+        isLink: !hasFile,
         score: assignmentS.score,
       },
     });
@@ -547,4 +589,3 @@ module.exports = {
   deleteAssignmentStudent,
   deleteAssignment,
 };
-
