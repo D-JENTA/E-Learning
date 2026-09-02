@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import MainLayout from '../../components/Teacher/MainLayout';
-
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
 
 const IconChevronLeft = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
@@ -15,7 +10,6 @@ const IconChevronRight = () => (
 );
 
 export default function CalendarAdmin() {
-  const navigate = useNavigate();
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -46,17 +40,8 @@ export default function CalendarAdmin() {
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-              title="Kembali"
-            >
-              <IconArrowLeft />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-800">Kalender</h1>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Kalender</h1>
           </div>
 
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">

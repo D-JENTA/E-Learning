@@ -1,11 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import MainLayoutStudent from "../../components/Student/MainLayout";
 import Toast from "../../components/Toast";
-
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
 
 const IconBook = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +29,6 @@ const classes = [
 export default function LessonStudent() {
   const [openJoin, setOpenJoin] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
-  const navigate = useNavigate();
 
   const handleDeleteClass = (id) => {
     setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
@@ -48,18 +42,9 @@ export default function LessonStudent() {
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
         
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-             <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-              title="Kembali"
-            >
-              <IconArrowLeft />
-            </button>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Kelas Saya</h1>
-          </div>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-11">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Kelas Saya</h1>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
              <p className="text-slate-500 text-lg font-medium">
                 Akses semua materi dan tugas pelajaranmu.
               </p>

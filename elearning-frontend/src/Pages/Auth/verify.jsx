@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import imageBg from "../../assets/Loginimg.png";
 import lockIcon from "../../assets/Salinan lock.png";
+import logoAnimation from "../../assets/EDUSpace_logo_animation.mp4";
 
 const VERIFIED_ACCOUNTS_STORAGE_KEY = 'verified_accounts';
 
@@ -23,9 +24,8 @@ const saveVerifiedAccount = (email, role) => {
   }
 };
 
-// --- KOMPONEN NOTIFIKASI TOAST (Universal & Bisa di-close) ---
+// --- KOMPONEN NOTIFIKASI TOAST ---
 const CustomAlert = ({ message, type, onClose }) => {
-  // Auto-close setelah 3 detik
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -35,7 +35,6 @@ const CustomAlert = ({ message, type, onClose }) => {
 
   if (!message) return null;
 
-  const accentColor = type === 'error' ? 'border-l-red-500' : 'border-l-blue-500';
   const iconBg = type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
   
   const Icon = type === 'error' 
@@ -62,7 +61,22 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// -----------------------------------------------------------
+
+const VideoLoadingOverlay = () => (
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white">
+    <video
+      src={logoAnimation}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="w-96 h-96 md:w-[28rem] md:h-[28rem] object-contain"
+    />
+    <p className="mt-6 text-sm font-bold text-gray-600 uppercase tracking-widest animate-pulse">
+      Menyiapkan akun Anda...
+    </p>
+  </div>
+);
 
 export default function Verify() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
@@ -76,6 +90,8 @@ export default function Verify() {
   const location = useLocation();
 
   const emailFromState = location.state?.email || localStorage.getItem("pending_email") || "";
+  const authMode = localStorage.getItem("auth_mode");
+  const isRegisterFlow = authMode === "register";
 
   useEffect(() => {
     const pendingUser = localStorage.getItem("pending_user_id");
@@ -86,7 +102,7 @@ export default function Verify() {
       return;
     }
 
-    if (emailFromState && !pendingUser) {
+    if (emailFromState && !pendingUser && !isRegisterFlow) {
       const syncPendingUserId = async () => {
         try {
           const response = await fetch('/api/auth/validate-email', {
@@ -105,7 +121,7 @@ export default function Verify() {
       };
       syncPendingUserId();
     }
-  }, [emailFromState, navigate]);
+  }, [emailFromState, navigate, isRegisterFlow]);
 
   useEffect(() => {
     let interval = null;
@@ -130,10 +146,14 @@ export default function Verify() {
     }
 
     try {
-      const response = await fetch('/api/auth/validate-email', {
+      const savedUserId = localStorage.getItem("pending_user_id");
+      const response = await fetch('/api/auth/resend-otp', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailFromState }),
+        body: JSON.stringify({
+          email: emailFromState,
+          ...(savedUserId ? { user_id: savedUserId } : {}),
+        }),
       });
 
       if (response.ok) {
@@ -165,11 +185,33 @@ export default function Verify() {
     }
   };
 
+  // --- HANDLER TEMPEL / PASTE OTP ---
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").trim();
+    // Ambil hanya karakter angka
+    const digitsOnly = pastedData.replace(/\D/g, "");
+
+    if (digitsOnly.length > 0) {
+      const newOtp = [...otp];
+      // Isi array OTP sesuai jumlah angka yang ditempel (maksimal 6)
+      for (let i = 0; i < Math.min(digitsOnly.length, 6); i++) {
+        newOtp[i] = digitsOnly[i];
+      }
+      setOtp(newOtp);
+
+      // Otomatis pindahkan fokus ke kolom berikutnya setelah angka terakhir yang ditempel
+      const nextFocusIndex = Math.min(digitsOnly.length, 5);
+      if (inputRefs.current[nextFocusIndex]) {
+        inputRefs.current[nextFocusIndex].focus();
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const code = otp.join("");
     const savedUserId = localStorage.getItem("pending_user_id");
-    const authMode = localStorage.getItem("auth_mode");
     const savedRole = localStorage.getItem("pending_role");
 
     if (code.length < 6) {
@@ -178,8 +220,8 @@ export default function Verify() {
     }
     
     if (!savedUserId) {
-        setAlertInfo({ show: true, message: "Sesi berakhir. Silakan login kembali.", type: 'error' });
-        return navigate("/login");
+      setAlertInfo({ show: true, message: "Sesi berakhir. Silakan login kembali.", type: 'error' });
+      return navigate("/login");
     }
 
     setIsLoading(true);
@@ -197,35 +239,45 @@ export default function Verify() {
 
       if (!response.ok) throw new Error(result.message || "OTP Salah.");
 
+      const token = result.token || result.accessToken || result.access_token || result.data?.token;
+      if (token) localStorage.setItem("token", token);
+
       if (authMode === "reset_password") {
+        setIsLoading(false);
         navigate("/reset-password", { state: { email: emailFromState } });
       } else {
         const normalizedRole = String(savedRole || "student").toLowerCase();
         saveVerifiedAccount(emailFromState || localStorage.getItem("pending_email") || "", normalizedRole);
-        localStorage.removeItem("pending_user_id");
-        localStorage.removeItem("pending_role");
-        localStorage.removeItem("pending_email");
+        
+        const redirectDelay = isRegisterFlow ? 5000 : 0;
 
-        if (normalizedRole === "superadmin" || normalizedRole === "admin") {
-          window.location.href = "/admin/super-dashboard";
-        } else if (normalizedRole === "student") {
-          window.location.href = "/student/home";
-        } else if (normalizedRole === "teacher") {
-          window.location.href = "/teacher/dashboard";
-        } else {
-          window.location.href = "/dashboard";
-        }
+        setTimeout(() => {
+          localStorage.removeItem("pending_user_id");
+          localStorage.removeItem("pending_role");
+          localStorage.removeItem("pending_email");
+          localStorage.removeItem("auth_mode");
+
+          if (normalizedRole === "superadmin" || normalizedRole === "admin") {
+            window.location.href = "/admin/super-dashboard";
+          } else if (normalizedRole === "student") {
+            window.location.href = "/student/home";
+          } else if (normalizedRole === "teacher") {
+            window.location.href = "/teacher/dashboard";
+          } else {
+            window.location.href = "/dashboard";
+          }
+        }, redirectDelay);
       }
     } catch (error) {
-      setAlertInfo({ show: true, message: error.message, type: 'error' });
-    } finally {
       setIsLoading(false);
+      setAlertInfo({ show: true, message: error.message, type: 'error' });
     }
   };
 
   return (
     <div className="h-screen w-full flex overflow-hidden bg-[#e8ecfa] font-sans text-center">
-      {/* Render Custom Alert (Toast) */}
+      {isLoading && isRegisterFlow && <VideoLoadingOverlay />}
+
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 
@@ -237,9 +289,9 @@ export default function Verify() {
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4">
         <div className="w-full max-w-[360px]">
           <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
-                 <img src={lockIcon} alt="lock" className="w-10 h-10 object-contain" />
-              </div>
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
+              <img src={lockIcon} alt="lock" className="w-10 h-10 object-contain" />
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Verifikasi Kode</h2>
           <p className="text-xs text-gray-500 mb-8 leading-relaxed">
@@ -256,6 +308,7 @@ export default function Verify() {
                   value={data}
                   onChange={(e) => handleChange(e, index)}
                   onKeyDown={(e) => handleKeyDown(e, index)}
+                  onPaste={handlePaste}
                   maxLength={1}
                   className="w-10 h-12 md:w-12 bg-white rounded-lg text-center text-xl font-bold outline-none border-2 border-transparent focus:border-blue-500 shadow-sm transition-all"
                 />

@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
-
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
+import MainLayoutAdmin from "../../components/Admin/MainLayout";
 
 const IconX = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -69,10 +66,10 @@ const FilePreview = ({ fileUrl }) => {
     return (
       <div className="flex justify-center bg-slate-50 rounded-xl p-2 border border-slate-200">
         <img
-            src={fileUrl}
-            alt="Preview"
-            className="max-h-[70vh] rounded-lg object-contain shadow-sm"
-          />
+          src={fileUrl}
+          alt="Preview"
+          className="max-h-[70vh] rounded-lg object-contain shadow-sm"
+        />
       </div>
     );
   }
@@ -211,13 +208,14 @@ const GradeModal = ({ isOpen, submission, onClose, onSave }) => {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
         <div className="text-center mb-4">
           <h3 className="text-lg font-bold">Input Nilai Siswa</h3>
-          <p className="text-xs text-slate-400 mt-2">ID: #{submission.id || submission.id_assignmentStudent}</p>
         </div>
 
         <div className="mb-4">
           <label className="block text-[11px] font-black uppercase text-slate-400 mb-2">Skor Akhir (0-100)</label>
           <input
             type="number"
+            min="0"
+            max="100"
             value={score}
             onChange={(e) => { setScore(e.target.value); setErrorMessage(""); }}
             placeholder="0"
@@ -246,10 +244,10 @@ const GradeModal = ({ isOpen, submission, onClose, onSave }) => {
 const getFileBadge = (fileUrl) => {
   if (!fileUrl) return null;
   const ext = fileUrl.split('?')[0].split('.').pop().toLowerCase();
-  
+
   let icon = <IconFileGeneric />;
   let label = "Lihat File";
-  
+
   if (['jpg','jpeg','png','webp','gif'].includes(ext)) {
     icon = <IconImage />; label = "Lihat Gambar";
   } else if (['mp4','mov','webm'].includes(ext)) {
@@ -263,10 +261,28 @@ const getFileBadge = (fileUrl) => {
   return { icon, label };
 };
 
-export default function StudentSubmissions() {
+const getStudentName = (item) => {
+  return (
+    item.Student?.username ||
+    item.student?.username ||
+    item.User?.username ||
+    item.user?.username ||
+    item.Student?.name ||
+    item.student?.name ||
+    item.User?.name ||
+    item.user?.name ||
+    item.username ||
+    item.name ||
+    "Siswa"
+  );
+};
+
+export default function StudentSubmissions({ user }) {
   const { id_assignment } = useParams();
-  const navigate = useNavigate();
-  
+
+  const isAdmin = user?.role === "superAdmin";
+  const Layout = isAdmin ? MainLayoutAdmin : MainLayoutTeacher;
+
   const [submissions, setSubmissions] = useState([]);
   const [taskTitle, setTaskTitle] = useState("Memuat Judul..."); 
   const [isLoading, setIsLoading] = useState(true);
@@ -276,16 +292,25 @@ export default function StudentSubmissions() {
 
   const ITEMS_PER_PAGE_DESKTOP = 6;
   const ITEMS_PER_PAGE_MOBILE = 3;
-  
+
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE);
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPage(window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const loadTaskTitleFromStorage = useCallback(() => {
     try {
       const storageKey = `task_title_${id_assignment}`;
       const savedTitle = localStorage.getItem(storageKey);
-      
+
       if (savedTitle) {
         setTaskTitle(savedTitle);
       } else {
@@ -322,7 +347,6 @@ export default function StudentSubmissions() {
     }
   }, [id_assignment, loadTaskTitleFromStorage, fetchSubmissions]);
 
-  const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
   const totalPages = Math.ceil(submissions.length / itemsPerPage);
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -335,6 +359,7 @@ export default function StudentSubmissions() {
   };
 
   const openGradeModal = (submission) => {
+    if (isAdmin) return;
     setSelectedSubmission(submission);
     setGradeModalOpen(true);
   };
@@ -353,26 +378,24 @@ export default function StudentSubmissions() {
   };
 
   return (
-    <MainLayoutTeacher>
+    <Layout>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
 
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-             <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-              title="Kembali"
-            >
-              <IconArrowLeft />
-            </button>
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Pengumpulan Tugas</h1>
+            {isAdmin && (
+              <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 px-2 py-1 rounded-md">
+                Mode Admin • Lihat Saja
+              </span>
+            )}
           </div>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-11">
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
              <p className="text-slate-500 text-base font-medium">
-                Lihat dan beri nilai untuk tugas ini.
-              </p>
-              <button 
+               {isAdmin ? "Lihat pengumpulan tugas siswa untuk tugas ini." : "Lihat dan beri nilai untuk tugas ini."}
+             </p>
+             <button 
                 onClick={fetchSubmissions}
                 className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all w-full md:w-auto"
               >
@@ -403,13 +426,13 @@ export default function StudentSubmissions() {
                     <th className="px-6 py-4">Nama Siswa</th>
                     <th className="px-6 py-4">File Tugas</th>
                     <th className="px-6 py-4 text-center">Skor</th>
-                    <th className="px-6 py-4 text-center">Aksi</th>
+                    {!isAdmin && <th className="px-6 py-4 text-center">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-sm">
                   {isLoading ? (
                     <tr>
-                      <td colSpan="5" className="py-24 text-center text-slate-400">
+                      <td colSpan={isAdmin ? 4 : 5} className="py-24 text-center text-slate-400">
                         <div className="flex flex-col items-center gap-3">
                           <div className="w-8 h-8 border-4 border-slate-100 border-t-[#0d264f] rounded-full animate-spin"></div>
                           <span>Memuat data pengumpulan...</span>
@@ -418,12 +441,12 @@ export default function StudentSubmissions() {
                     </tr>
                   ) : submissions.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-24 text-center text-slate-400">
+                      <td colSpan={isAdmin ? 4 : 5} className="py-24 text-center text-slate-400">
                         <div className="flex flex-col items-center gap-3">
                           <div className="p-3 bg-slate-50 rounded-full text-slate-300">
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6l2 2zm2 2h.01" />
-                              </svg>
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6l2 2zm2 2h.01" />
+                             </svg>
                           </div>
                           <span>Belum ada siswa yang mengumpulkan tugas.</span>
                         </div>
@@ -437,10 +460,12 @@ export default function StudentSubmissions() {
                     const badge = getFileBadge(fileUrl);
                     const targetID = item.id || item.id_assignmentStudent;
                     const realIndex = index + 1 + indexOfFirstItem;
+                    const studentName = getStudentName(item);
 
                     return (
                       <tr key={targetID || index} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-100 last:border-0">
-                        
+
+                        {/* MOBILE VIEW */}
                         <td className="p-4 md:hidden block w-full">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="font-bold text-slate-900 text-base">#{realIndex}</span>
@@ -455,7 +480,7 @@ export default function StudentSubmissions() {
                             </div>
                             <div className="mb-3">
                                 <span className="text-xs font-bold text-slate-400 uppercase">Nama Siswa</span>
-                                <p className="font-bold text-slate-800 mt-1">{item.Student?.name || item.student?.name || "Siswa"}</p>
+                                <p className="font-bold text-slate-800 mt-1">{studentName}</p>
                             </div>
                             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                                 <div className="flex flex-col">
@@ -464,20 +489,23 @@ export default function StudentSubmissions() {
                                       {item.score ?? "-"} <span className="text-xs text-slate-400 font-normal">/ 100</span>
                                     </span>
                                 </div>
-                                <button
-                                  onClick={() => openGradeModal(item)}
-                                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm"
-                                >
-                                  {item.score ? "Edit Nilai" : "Beri Nilai"}
-                                </button>
+                                {!isAdmin && (
+                                  <button
+                                    onClick={() => openGradeModal(item)}
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm"
+                                  >
+                                    {item.score ? "Edit Nilai" : "Beri Nilai"}
+                                  </button>
+                                )}
                             </div>
                         </td>
 
+                        {/* DESKTOP VIEW */}
                         <td className="px-6 py-4 text-center text-slate-400 font-medium hidden md:table-cell">{realIndex}</td>
-                        
+
                         <td className="px-6 py-4 hidden md:table-cell">
                           <div className="flex items-center gap-3">
-                              <span className="font-bold text-slate-800">{item.Student?.name || item.student?.name || "Siswa"}</span>
+                              <span className="font-bold text-slate-800">{studentName}</span>
                           </div>
                         </td>
 
@@ -504,14 +532,16 @@ export default function StudentSubmissions() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4 text-center hidden md:table-cell">
-                          <button
-                            onClick={() => openGradeModal(item)}
-                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm hover:shadow-md"
-                          >
-                            {item.score ? "Edit Nilai" : "Beri Nilai"}
-                          </button>
-                        </td>
+                        {!isAdmin && (
+                          <td className="px-6 py-4 text-center hidden md:table-cell">
+                            <button
+                              onClick={() => openGradeModal(item)}
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm hover:shadow-md"
+                            >
+                              {item.score ? "Edit Nilai" : "Beri Nilai"}
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -564,7 +594,7 @@ export default function StudentSubmissions() {
         <PreviewModal fileUrl={previewUrl} onClose={() => setPreviewUrl(null)} />
       )}
 
-      {gradeModalOpen && (
+      {!isAdmin && gradeModalOpen && (
         <GradeModal
           isOpen={gradeModalOpen}
           submission={selectedSubmission}
@@ -572,6 +602,6 @@ export default function StudentSubmissions() {
           onSave={handleSaveScore}
         />
       )}
-    </MainLayoutTeacher>
+    </Layout>
   );
 }

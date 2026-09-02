@@ -122,13 +122,6 @@ export default function GradeAssignment() {
                 </span>
               ) : "Simpan Nilai"}
             </button>
-            
-            <button
-              onClick={() => navigate(-1)}
-              className="w-full text-slate-400 py-2 font-bold text-xs hover:text-slate-600 transition-colors"
-            >
-              Batal & Kembali
-            </button>
           </div>
         </div>
 

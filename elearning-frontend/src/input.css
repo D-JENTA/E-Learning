@@ -11,3 +11,27 @@
     @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
+
+/* Scrollbar tipis untuk dropdown CustomSelect (kelas, hari, guru).
+   Terlihat kecil dan rounded, bukan scrollbar default browser. */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

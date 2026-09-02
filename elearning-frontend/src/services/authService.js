@@ -1,4 +1,5 @@
 import api from '../axios';
+import { jwtDecode } from 'jwt-decode';
 
 /**
  * Helper function untuk menghapus token cookie via backend response
@@ -122,12 +123,26 @@ const authService = {
   },
 
   /**
-   * Get data user saat ini
+   * Get data user saat ini — didapat dengan decode token JWT.
+   * Key 'user' di localStorage sudah tidak dipakai lagi.
    * @returns {Object|null}
    */
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    try {
+      const decoded = jwtDecode(token);
+      return {
+        id: decoded.id ?? decoded.id_user ?? decoded.sub,
+        role: decoded.role,
+        email: decoded.email,
+      };
+    } catch (err) {
+      console.error('Token tidak valid / gagal decode:', err);
+      localStorage.removeItem('token');
+      return null;
+    }
   },
 
   /**

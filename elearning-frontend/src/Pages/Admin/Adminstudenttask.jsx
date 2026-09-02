@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
 import Toast from "../../components/Toast";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
-
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
 
 const IconX = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -113,7 +109,6 @@ const PreviewModal = ({ fileUrl, title, onClose }) => {
 
 export default function AdminStudentClassTasks() {
   const { id_user, id_class } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
 
   const [studentInfo] = useState(location.state?.student || null);
@@ -202,21 +197,11 @@ export default function AdminStudentClassTasks() {
         <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
       )}
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-            title="Kembali"
-          >
-            <IconArrowLeft />
-          </button>
-
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Tugas Siswa</h1>
-            <p className="text-slate-500 text-lg mt-1">
-              {studentInfo?.username || `Siswa #${id_user}`} - {classData?.class_name || `Kelas #${id_class}`}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Tugas Siswa</h1>
+          <p className="text-slate-500 text-lg mt-1">
+            {studentInfo?.username || `Siswa #${id_user}`} - {classData?.class_name || `Kelas #${id_class}`}
+          </p>
         </div>
 
         <div className="bg-gradient-to-r from-[#0d264f] to-blue-800 rounded-2xl p-6 md:p-8 shadow-lg text-white">
