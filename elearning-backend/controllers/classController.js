@@ -285,6 +285,11 @@ const getAllMapel = async (req, res) => {
   try {
     const mapels = await Mapel.findAll({
       attributes: ["id_mapel", "mapel_name"],
+      include: {
+        model: Class,
+        as: "Class",
+        attributes: ["id_class", "class_name"],
+      },
     });
     res.json(mapels);
   } catch (err) {
@@ -370,8 +375,7 @@ const updateClass = async (req, res) => {
       .json({ message: "server error while run update method" });
   }
 };
-
-//update mapel
+// update mapel
 const updateMapel = async (req, res) => {
   try {
     const upMapel = await Mapel.findByPk(req.params.id_mapel);
@@ -379,25 +383,135 @@ const updateMapel = async (req, res) => {
       return res.status(404).json({ message: "mapel not found" });
     }
 
-    const upScheduleMapel = await ScheduleMapel.findOne({
-      where: { id_mapel: upMapel.id_mapel },
-    });
-    if (!upScheduleMapel) {
-      return res.status(404).json({ message: "schadule null" });
+    // ambil id_schedule spesifik kalau dikirim, supaya tidak salah pilih
+    // jadwal saat mapel punya lebih dari satu baris jadwal
+    const { mapel_name, id_teacher, jp, day, id_schedule } = req.body;
+
+    let upScheduleMapel;
+    if (id_schedule) {
+      upScheduleMapel = await ScheduleMapel.findOne({
+        where: { id_schedule, id_mapel: upMapel.id_mapel },
+      });
+    } else {
+      const allSchedules = await ScheduleMapel.findAll({
+        where: { id_mapel: upMapel.id_mapel },
+      });
+      if (allSchedules.length > 1) {
+        return res.status(400).json({
+          message:
+            "mapel ini punya lebih dari satu jadwal, sertakan id_schedule untuk menentukan jadwal mana yang diupdate",
+        });
+      }
+      upScheduleMapel = allSchedules[0];
     }
 
-    const { mapel_name, id_teacher, jp, day } = req.body;
+    if (!upScheduleMapel) {
+      return res.status(404).json({ message: "schedule not found" });
+    }
 
-    const newMapelName = mapel_name ? mapel_name : upMapel.mapel_name;
-    const newTeacherId = id_teacher ? id_teacher : upMapel.id_teacher;
-    const newJp = jp ? jp : upScheduleMapel.jp;
-    const newDay = day ? day : upScheduleMapel.day;
+    const newMapelName = mapel_name
+      ? String(mapel_name).trim()
+      : upMapel.mapel_name;
+
+    // normalisasi id_teacher:
+    // - tidak dikirim (undefined)      -> pertahankan nilai lama
+    // - null / "" / 0 dikirim eksplisit -> kosongkan guru (null)
+    // - angka valid lainnya             -> pakai id itu
+    let newTeacherId;
+    if (id_teacher === undefined) {
+      newTeacherId = upMapel.id_teacher;
+    } else if (
+      id_teacher === null ||
+      String(id_teacher).trim() === "" ||
+      Number(id_teacher) === 0
+    ) {
+      newTeacherId = null;
+    } else {
+      newTeacherId = Number(id_teacher);
+    }
+
+    // kalau guru diisi (bukan null), pastikan guru itu memang ada
+    if (newTeacherId !== null) {
+      const teacherExists = await Teacher.findByPk(newTeacherId);
+      if (!teacherExists) {
+        return res.status(400).json({ message: "teacher not found" });
+      }
+    }
+
+    // normalisasi day sama seperti createMapel
+    const newDay = day
+      ? day.trim().charAt(0).toUpperCase() + day.trim().slice(1).toLowerCase()
+      : upScheduleMapel.day;
+
+    // normalisasi jp sama seperti createMapel
+    let newJpArray = [];
+    let newJp;
+    if (jp === undefined || jp === null) {
+      newJp = upScheduleMapel.jp;
+      newJpArray = String(newJp)
+        .split(",")
+        .map((j) => Number(j.trim()));
+    } else if (Array.isArray(jp)) {
+      newJpArray = jp.map(Number);
+      newJp = newJpArray.join(",");
+    } else if (typeof jp === "string" && jp.includes("-")) {
+      const [start, end] = jp.split("-").map(Number);
+      for (let i = start; i <= end; i++) newJpArray.push(i);
+      newJp = newJpArray.join(",");
+    } else {
+      newJp = String(jp).trim();
+      newJpArray = newJp.split(",").map((j) => Number(j.trim()));
+    }
+
+    // cek bentrok jadwal, kecuali dengan baris jadwal miliknya sendiri
+    const existingSchedules = await ScheduleMapel.findAll({
+      where: {
+        day: newDay,
+        id_schedule: { [Op.ne]: upScheduleMapel.id_schedule },
+      },
+      include: [
+        {
+          model: Mapel,
+          as: "Mapel",
+          where: {
+            [Op.or]: [
+              { id_class: upMapel.id_class },
+              ...(newTeacherId ? [{ id_teacher: newTeacherId }] : []),
+            ],
+          },
+        },
+      ],
+    });
+
+    for (const schedule of existingSchedules) {
+      if (!schedule.jp) continue;
+
+      const existingJpArray = String(schedule.jp)
+        .split(",")
+        .map((j) => Number(j.trim()));
+      const isConflict = newJpArray.some((j) => existingJpArray.includes(j));
+
+      if (isConflict) {
+        const conflictedMapel = schedule.Mapel;
+
+        if (conflictedMapel.id_class === upMapel.id_class) {
+          return res.status(400).json({
+            message: `Jam bentrok! Kelas ini sudah terisi mata pelajaran '${conflictedMapel.mapel_name}' pada hari ${newDay} JP (${schedule.jp}).`,
+          });
+        }
+
+        if (newTeacherId && conflictedMapel.id_teacher === newTeacherId) {
+          return res.status(400).json({
+            message: `Jadwal guru bentrok! Guru tersebut sudah mengajar di kelas lain pada hari ${newDay} JP (${schedule.jp}).`,
+          });
+        }
+      }
+    }
 
     await upMapel.update({
       mapel_name: newMapelName,
       id_teacher: newTeacherId,
     });
-
     await upScheduleMapel.update({
       jp: newJp,
       day: newDay,
@@ -405,7 +519,10 @@ const updateMapel = async (req, res) => {
 
     return res.status(200).json({
       message: "successful update mapel",
-      data: upMapel,
+      data: {
+        mapel: upMapel,
+        schedule: upScheduleMapel,
+      },
     });
   } catch (err) {
     if (err.name === "SequelizeUniqueConstraintError") {
@@ -413,13 +530,17 @@ const updateMapel = async (req, res) => {
         .status(409)
         .json({ message: "mapel dengan nama tersebut sudah ada di kelas ini" });
     }
+    if (err.name === "SequelizeForeignKeyConstraintError") {
+      return res
+        .status(400)
+        .json({ message: "teacher ID tidak valid / tidak ditemukan" });
+    }
     console.error(err);
     return res
       .status(500)
       .json({ message: "server error while run update mapel method" });
   }
 };
-
 //get class by student
 const getMapelByStudent = async (req, res) => {
   try {
@@ -503,4 +624,3 @@ module.exports = {
   deleteMapel,
   deleteClass,
 };
-
