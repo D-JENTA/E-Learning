@@ -590,14 +590,30 @@ const getAllTeachers = async (req, res) => {
     res.status(500).json({ message: "server error while get all teachers" });
   }
 };
-//update user
+
+// update user
 const updateUser = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const user = await User.findByPk(userId);
+    const id_user = req.params.id;
+    const user = await User.findByPk(id_user);
     if (!user) return res.status(404).json({ message: "user not found" });
-    const { username, email, role } = req.body;
-    await user.update({ username, email, role });
+
+    const { username, email } = req.body;
+
+    const updateData = {};
+    if (username !== undefined && username.trim() !== "") {
+      updateData.username = username.trim();
+    }
+    if (email !== undefined && email.trim() !== "") {
+      updateData.email = email.trim();
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    await user.update(updateData);
+
     res.json({
       message: "User updated successfully.",
       data: {
@@ -608,6 +624,9 @@ const updateUser = async (req, res) => {
       },
     });
   } catch (err) {
+    if (err.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({ message: "Email already in use" });
+    }
     console.error(err);
     res.status(500).json({ message: "server error while update user" });
   }
