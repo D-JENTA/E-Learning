@@ -131,6 +131,8 @@ const registerTeacher = async (req, res) => {
     if (!username || !email || !nip)
       return res.status(400).json({ message: "all fields must be filled in" });
 
+    t = await sequelize.transaction();
+
     const mapel = await Mapel.findByPk(id_mapel);
     if (!mapel) {
       await t.rollback();
@@ -148,8 +150,6 @@ const registerTeacher = async (req, res) => {
     const hashedPassword = await bcrypt.hash(tempPassword, SALT_ROUNDS);
 
     const fixrole = "teacher";
-
-    t = await sequelize.transaction();
 
     const newUser = await User.create(
       {
