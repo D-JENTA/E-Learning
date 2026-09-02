@@ -64,8 +64,8 @@ export default function ManageClass() {
   };
 
   const menuItems = [
-    { 
-      title: 'Kelola Siswa', 
+    {
+      title: 'Kelola Siswa',
       desc: 'Lihat daftar siswa, tambah atau hapus anggota kelas.', 
       icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
       color: 'text-blue-600',
@@ -80,22 +80,11 @@ export default function ManageClass() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => window.history.back()}
-                className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-                title="Kembali"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5M12 19l-7-7 7-7"/>
-                </svg>
-              </button>
-              <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Manajemen Kelas</h2>
-            </div>
+            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Manajemen Kelas</h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-slate-500 mb-8 pl-14">
+        <div className="flex items-center gap-2 text-sm text-slate-500 mb-8">
           <Link to="/teacher/classes" className="hover:text-[#0d264f] font-medium">Daftar Kelas</Link>
           <span>/</span>
           <span className="text-slate-800 font-medium">{currentClass.name || "Kelas Aktif"}</span>

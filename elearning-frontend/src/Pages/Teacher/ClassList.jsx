@@ -39,9 +39,10 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
-export default function ClassList() {
+export default function ClassList({ user }) {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [teacherName, setTeacherName] = useState("");
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const navigate = useNavigate();
 
@@ -53,11 +54,12 @@ export default function ClassList() {
   const fetchMyClasses = async () => {
     try {
       setIsLoading(true);
-      
+      const token = localStorage.getItem("token");
+
       const response = await fetch('/api/teachers/me/mapels', {
         method: 'GET',
-        credentials: 'include',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -65,7 +67,8 @@ export default function ClassList() {
       const result = await response.json();
      
       if (response.ok) {
-        setClasses(result.data || []);
+        const classData = Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
+        setClasses(classData);
       } else {
         if (response.status === 401) navigate('/login');
         console.error("Gagal mengambil data:", result.message);
@@ -81,40 +84,33 @@ export default function ClassList() {
     fetchMyClasses();
   }, []);
 
-  const handleDeleteClass = async (id_class) => {
-
-    try {
-      const response = await fetch(`/api/classes/${id_class}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        setClasses((prev) => {
-            const newClasses = prev.filter((item) => item.id_class !== id_class);
-            const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
-            const totalPages = Math.ceil(newClasses.length / itemsPerPage);
-            if (currentPage > totalPages && totalPages > 0) {
-                setCurrentPage(totalPages);
-            }
-            return newClasses;
+  useEffect(() => {
+    const fetchTeacherName = async () => {
+      try {
+        const res = await fetch("/api/auth/users/me", {
+          headers: {
+            "ngrok-skip-browser-warning": "69420",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+          },
+          credentials: "include",
         });
-        setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
-      } else {
-        const err = await response.json();
-        setAlertInfo({ show: true, message: err.message || "Gagal menghapus kelas.", type: 'error' });
+        const data = await res.json().catch(() => null);
+        if (res.ok && data) {
+          setTeacherName(data.username || data.data?.username || data.user?.username || "");
+        }
+      } catch (err) {
+        console.error("Gagal ambil nama guru:", err);
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      setAlertInfo({ show: true, message: "Terjadi kesalahan koneksi saat menghapus.", type: 'error' });
-    }
-  };
+    };
+    fetchTeacherName();
+  }, []);
 
   const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
   const totalPages = Math.ceil(classes.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentClasses = classes.slice(indexOfFirstItem, indexOfLastItem);
+
   const paginate = (pageNumber) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -133,23 +129,12 @@ export default function ClassList() {
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
         
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-             <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-              title="Kembali ke halaman sebelumnya"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
-            </button>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Mapel</h1>
-          </div>
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-11">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Kelas</h1>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
              <p className="text-slate-500 text-lg font-medium">
-                Kelola dan pantau perkembangan mapel Anda.
-              </p>
+               Kelola dan pantau perkembangan kelas Anda.
+             </p>
           </div>
         </div>
 
@@ -160,36 +145,38 @@ export default function ClassList() {
           </div>
         ) : (
           <>
-            <div className={`grid gap-6 transition-all duration-500 
-              ${window.innerWidth >= 768 ? 'grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} 
-              ${window.innerWidth >= 768 && itemsPerPage === 6 ? 'grid-rows-2' : 'grid-rows-1'}
-            `}>
-              {currentClasses.length === 0 ? (
-                <div className="col-span-full text-center py-20 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-200">
-                  <div className="mx-auto w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 text-slate-400">
-                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
-                  </div>
-                  <p className="text-slate-500 font-medium mb-4">Belum ada kelas terdaftar. Buat kelas baru sekarang.</p>
-                  <button
-                    onClick={() => navigate('/teacher/create-class')}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#0d264f] text-white font-bold hover:bg-[#0b1f47] transition-all"
-                  >
-                    Buat Kelas Baru
-                  </button>
-                </div>
-              ) : (
-                currentClasses.map((item) => (
-                  <TeacherClassCard 
-                    key={item.id_class} 
-                    data={item} 
-                    onDelete={handleDeleteClass}
-                    onManage={() => navigate(`/teacher/manage-class/${item.id_class}`)}
-                  />
-                ))
-              )}
-            </div>
+            {currentClasses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {currentClasses.map((item, index) => {
+                  const mapelId = item.id_mapel || item.id_class;
+
+                  return (
+                    <TeacherClassCard
+                      key={mapelId || index}
+                      data={item}
+                      teacherName={teacherName || user?.username || "Guru"}
+                      onManage={() => {
+                        if (mapelId) {
+                          navigate(`/teacher/assignments/${mapelId}`, {
+                            state: {
+                              id_class: item.id_class,
+                              class_name: item.class_name,
+                              mapel_name: item.mapel_name,
+                            },
+                          });
+                        } else {
+                          console.error("ID Mapel tidak ditemukan:", item);
+                        }
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                <p className="text-slate-500 font-medium text-lg">Belum ada mata pelajaran yang tersedia.</p>
+              </div>
+            )}
 
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-10 pb-4">
@@ -216,7 +203,7 @@ export default function ClassList() {
                     </button>
                   );
                 })}
-
+              
                 <button 
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
@@ -245,54 +232,47 @@ export default function ClassList() {
   );
 }
 
-function TeacherClassCard({ data, onDelete, onManage }) {
-  const classCode = data.classCode || "N/A";
+function TeacherClassCard({ data, onManage, teacherName }) {
+  const mapelName = data.mapel_name || data.class_name || "Mata Pelajaran";
+  const className = data.class_name || "-";
 
   return (
-    <div 
+    <div
       onClick={onManage}
-      className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer relative overflow-hidden"
+      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl flex flex-col justify-between"
     >
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0d264f] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-3 rounded-xl bg-blue-50 text-[#0d264f] group-hover:bg-[#0d264f] group-hover:text-white transition-all shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <rect x="6" y="6" width="12" height="14" rx="2" ry="2" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h2M13 10h2M9 14h2M13 14h2" />
-          </svg>
+      <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-blue-500/10 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
+      <div className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#0d264f] to-blue-500 transition-transform duration-300 group-hover:scale-x-100"></div>
+
+      <div>
+        {/* Header: Ikon Buku + Nama Mapel (Geser kanan dengan ml-2) */}
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0d264f] shadow-xs transition-all duration-300 group-hover:bg-[#0d264f] group-hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h3 className="ml-2 text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight line-clamp-2 leading-tight group-hover:text-[#0d264f] transition-colors">
+            {mapelName}
+          </h3>
         </div>
-        
-        <button 
-          onClick={(e) => { 
-            e.stopPropagation(); 
-            onDelete(data.id_class); 
-          }} 
-          className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-full transition-all hover:shadow-md"
-          title="Hapus Kelas"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-        </button>
+
+        {/* Badge Nama Kelas (Diperbesar: text-sm sm:text-base) */}
+        <div className="mb-4">
+          <span className="inline-block rounded-full border border-blue-100 bg-blue-50/80 px-4 py-1 text-sm sm:text-base font-bold text-blue-700 tracking-wide uppercase">
+            {className}
+          </span>
+        </div>
       </div>
 
-      <div className="mb-2">
-        <h3 className="text-xl font-bold text-slate-800 group-hover:text-[#0d264f] transition-colors truncate">
-          {data.class_name}
-        </h3>
-        <div className="flex items-center gap-2 mt-2">
-           <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Kode Join:</span>
-           <span className="text-xs font-mono font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
-             {classCode}
-           </span>
-        </div>
-      </div>
-      <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
-        <span className="text-xs text-slate-400 font-medium">Klik untuk kelola materi & siswa</span>
-        <div className="text-[#0d264f] font-bold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1">
-          Buka
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+      {/* Footer Card: Nama Pengajar */}
+      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
+        <span className="text-sm sm:text-base font-semibold text-slate-600 truncate mr-2 group-hover:text-[#0d264f] transition-colors">
+          {teacherName}
+        </span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#0d264f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </div>
       </div>

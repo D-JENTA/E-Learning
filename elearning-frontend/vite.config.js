@@ -10,6 +10,8 @@ export default ({ mode }) => {
   return defineConfig({
     plugins: [react()],
     server: {
+      host: true,
+      allowedHosts: true, // Mengizinkan semua host eksternal (termasuk trycloudflare.com)
       proxy: {
         '/api': {
           target: targetUrl,

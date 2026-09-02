@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
-
+import MainLayoutAdmin from "../../components/Admin/MainLayout"; // TAMBAHAN
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -40,16 +40,12 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
-
 const IconX = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
 );
 
 const IconEye = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 );
 
 const IconTrash = () => (
@@ -212,18 +208,26 @@ const DescriptionText = ({ text }) => {
   );
 };
 
-export default function TeacherAssignments() {
+export default function TeacherAssignments({ user }) {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const location = useLocation();
+  const id_class = location.state?.id_class ?? localStorage.getItem(`mapel_class_${id}`);
   const [assignments, setAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const ITEMS_PER_PAGE_DESKTOP = 6;
-  const ITEMS_PER_PAGE_MOBILE = 3;
-  
+  // Admin cuma boleh melihat data di halaman ini (read-only).
+  // Aksi buat/hapus tugas dan navigasi ke pengelolaan siswa
+  // tetap eksklusif untuk guru.
+  const isAdmin = user?.role === "superAdmin";
+
+  // Pilih layout sesuai role, supaya sidebar tetap konsisten
+  // dengan halaman asal (Admin -> tetap sidebar Admin).
+  const Layout = isAdmin ? MainLayoutAdmin : MainLayoutTeacher; // TAMBAHAN
+
+  const ITEMS_PER_PAGE = 6;
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchAssignments = useCallback(async () => {
@@ -241,7 +245,6 @@ export default function TeacherAssignments() {
       });
 
       const result = await response.json();
-      console.log("ASSIGNMENTS API RESULT:", result);
 
       if (response.ok) {
         setAssignments(result.data || []);
@@ -260,11 +263,15 @@ export default function TeacherAssignments() {
     if (id) fetchAssignments();
   }, [id, fetchAssignments]);
 
-  const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
-  const totalPages = Math.ceil(assignments.length / itemsPerPage);
+  useEffect(() => {
+    if (location.state?.id_class) {
+      localStorage.setItem(`mapel_class_${id}`, String(location.state.id_class));
+    }
+  }, [id, location.state]);
 
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const totalPages = Math.ceil(assignments.length / ITEMS_PER_PAGE);
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
   const currentAssignments = assignments.slice(indexOfFirstItem, indexOfLastItem);
 
   const paginate = (pageNumber) => {
@@ -279,6 +286,8 @@ export default function TeacherAssignments() {
   };
 
   const handleDelete = async (id_assignment) => {
+    if (isAdmin) return; // guard tambahan di FE, aksi ini bukan untuk admin
+
     if (!id_assignment) {
       setAlertInfo({ show: true, message: "ID tugas tidak ditemukan!", type: 'error' });
       return;
@@ -311,7 +320,7 @@ export default function TeacherAssignments() {
   };
 
   return (
-    <MainLayoutTeacher>
+    <Layout>
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 
@@ -321,21 +330,32 @@ export default function TeacherAssignments() {
       )}
 
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
-        
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm" title="Kembali">
-              <IconArrowLeft />
-            </button>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Tugas Kelas</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Tugas</h1>
+            {isAdmin && (
+              <span className="ml-1 text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 px-2 py-1 rounded-md">
+                Mode Admin • Lihat Saja
+              </span>
+            )}
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-11 md:pl-11">
-            <p className="text-slate-500 text-base font-medium">Kelola tugas dan materi untuk kelas ini.</p>
-            <Link to={`/teacher/upload-task/${id}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 shadow-md hover:shadow-lg transition-all font-bold w-full md:w-auto">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              Buat Tugas Baru
-            </Link>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <p className="text-slate-500 text-base font-medium">Kelola tugas dan materi untuk Mapel ini.</p>
+            {!isAdmin && (
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                {id_class && (
+                  <Link to={`/teacher/manage-students/${id_class}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[#0d264f] bg-white border border-slate-200 hover:bg-slate-50 hover:border-[#0d264f] shadow-sm transition-all font-bold w-full md:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Kelola Siswa
+                  </Link>
+                )}
+                <Link to={`/teacher/upload-task/${id}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 shadow-md hover:shadow-lg transition-all font-bold w-full md:w-auto">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Buat Tugas Baru
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -351,11 +371,11 @@ export default function TeacherAssignments() {
           </div>
         ) : assignments.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center text-slate-400">
-            Belum ada tugas dibuat di kelas ini.
+            Belum ada tugas yang dibuat.
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
               {currentAssignments.map((task, index) => {
                 const targetID = task.id || task.id_assignment;
                 const originalFileUrl = task.fileUrl || task.file_url;
@@ -383,7 +403,7 @@ export default function TeacherAssignments() {
                         <DescriptionText text={task.description} />
                       </div>
 
-                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-colors">
+                      <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-colors mt-auto">
                         {originalFileUrl ? (
                           <button 
                             onClick={(e) => handleFileAction(e, fileLink)}
@@ -397,27 +417,33 @@ export default function TeacherAssignments() {
                         )}
                       </div>
                     </div>
-                    <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
-                      
 
-                    <Link 
+                    <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2.5">
+                      <Link 
                         to={`/teacher/submissions/${id}/${targetID}`} 
-                          onClick={() => {
+                        onClick={() => {
                           const storageKey = `task_title_${targetID}`;
                           localStorage.setItem(storageKey, task.title);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 hover:border-indigo-600"
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-bold text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 hover:border-indigo-600 shrink min-w-0"
                       >
-                      <IconEye /> Lihat Pengumpulan
-                    </Link>
+                        <IconEye /> 
+                        <span className="truncate">Lihat Pengumpulan</span>
+                      </Link>
 
-                      <button 
-                        onClick={() => handleDelete(targetID)} 
-                        className="p-2.5 rounded-lg text-red-500 bg-red-50 hover:bg-red-600 hover:text-white hover:shadow-md hover:shadow-red-200 transition-all duration-300 border border-red-100"
-                        title="Hapus Tugas"
-                      >
-                        <IconTrash />
-                      </button>
+                      {!isAdmin && (
+                        <button 
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(targetID);
+                          }} 
+                          className="relative z-10 p-2.5 rounded-lg text-red-500 bg-red-50 hover:bg-red-600 hover:text-white hover:shadow-md hover:shadow-red-200 transition-all duration-300 border border-red-100 shrink-0 flex justify-center items-center cursor-pointer lg:mr-2"
+                          title="Hapus Tugas"
+                        >
+                          <IconTrash />
+                        </button>
+                      )}
                     </div>
                   </article>
                 );
@@ -425,37 +451,41 @@ export default function TeacherAssignments() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-10 pb-4">
-                <button 
+              <div className="flex flex-wrap justify-center items-center gap-2 mt-8 py-4">
+                <button
                   onClick={() => paginate(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center gap-1"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
+                  Sebelumnya
                 </button>
 
-                {[...Array(totalPages).keys()].map((page) => {
-                  const pageNumber = page + 1;
-                  const isActive = currentPage === pageNumber;
-                  return (
+                <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] sm:max-w-none py-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
-                      key={pageNumber}
-                      onClick={() => paginate(pageNumber)}
-                      className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm duration-300 transform hover:scale-105 ${isActive ? 'bg-[#0d264f] text-white shadow-lg' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
+                      key={page}
+                      onClick={() => paginate(page)}
+                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
                     >
-                      {pageNumber}
+                      {page}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
 
-                <button 
+                <button
                   onClick={() => paginate(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center gap-1"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  Selanjutnya
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -478,6 +508,6 @@ export default function TeacherAssignments() {
           animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
-    </MainLayoutTeacher>
+    </Layout>
   );
 }

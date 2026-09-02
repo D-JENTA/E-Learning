@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Cropper from "react-easy-crop";
 import MainLayout from "../../components/Admin/MainLayout";
 
-// --- KOMPONEN NOTIFIKASI TOAST (Custom Alert) ---
+// --- KOMPONEN NOTIFIKASI TOAST ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -39,11 +39,41 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// ---------------------------------------------------
 
-const IconArrowLeft = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-);
+// Fungsi helper untuk menghasilkan Gambar Crop dari Canvas
+const getCroppedImg = (imageSrc, pixelCrop) => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.src = imageSrc;
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = pixelCrop.width;
+      canvas.height = pixelCrop.height;
+      const ctx = canvas.getContext("2d");
+
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        pixelCrop.width,
+        pixelCrop.height
+      );
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("Canvas kosong"));
+          return;
+        }
+        resolve(blob);
+      }, "image/png");
+    };
+    image.onerror = (error) => reject(error);
+  });
+};
 
 const IconUpload = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -60,38 +90,54 @@ const IconZoom = () => (
 export default function Settings() {
   const [profilePic, setProfilePic] = useState(null);
   const [username, setUsername] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false); // State loading tombol update
+  const [isUpdating, setIsUpdating] = useState(false);
   
-  // State untuk Custom Alert
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
-
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
+  // State Crop Image
+  const [editImageSrc, setEditImageSrc] = useState(null);  
+  const [isEditImageModalOpen, setIsEditImageModalOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  
   const fileInputRef = useRef(null);
-  const navigate = useNavigate();
 
   const fetchUserData = async () => {
     try {
       setIsLoading(true);
-      
       const resPic = await fetch("/api/auth/profile-picture", {
         method: "GET",
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: { 
+          "ngrok-skip-browser-warning": "69420",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        },
         credentials: "include",
       });
-      const picResult = await resPic.json();
-      if (resPic.ok) setProfilePic(picResult.profile_picture_url);
+      const picResult = await resPic.json().catch(() => null);
+      if (resPic.ok && picResult) setProfilePic(picResult.profile_picture_url);
 
-      const resUser = await fetch("/api/auth/me", {
+      const resUser = await fetch("/api/auth/users/me", {
         method: "GET",
-        headers: { "ngrok-skip-browser-warning": "69420" },
+        headers: { 
+          "ngrok-skip-browser-warning": "69420",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        },
         credentials: "include",
       });
-      const userResult = await resUser.json();
-      if (resUser.ok) {
-        setUsername(userResult.username || "");
+      const userResult = await resUser.json().catch(() => null);
+      
+      if (resUser.ok && userResult) {
+        const fetchedUsername = userResult.username || userResult.data?.username || userResult.user?.username || "";
+        const fetchedPic = userResult.profile_picture_url || userResult.data?.profile_picture_url || userResult.user?.profile_picture_url || null;
+        
+        setUsername(fetchedUsername);
+        setOriginalUsername(fetchedUsername);
+        if (fetchedPic) setProfilePic(fetchedPic);
       }
     } catch (err) {
       console.error("Gagal sinkronisasi data:", err);
@@ -104,32 +150,55 @@ export default function Settings() {
     fetchUserData();
   }, []);
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("profile_picture", file);
+    const src = URL.createObjectURL(file);
+    setEditImageSrc(src);
+    setIsEditImageModalOpen(true);
+    setZoom(1);
+    setCrop({ x: 0, y: 0 });
+
+    e.target.value = "";
+  };
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const applyCrop = async () => {
+    if (!editImageSrc || !croppedAreaPixels) return;
 
     try {
       setIsUploading(true);
+      const blob = await getCroppedImg(editImageSrc, croppedAreaPixels);
+      const formData = new FormData();
+      formData.append("profile_picture", blob, "profile.png");
+
       const response = await fetch("/api/auth/profile-picture", {
         method: "POST",
         headers: { "ngrok-skip-browser-warning": "69420" },
         body: formData,
         credentials: "include",
       });
-      const result = await response.json();
-      if (response.ok) {
+      const result = await response.json().catch(() => null);
+      
+      console.log("Upload result:", result);
+      
+
+      if (response.ok && result) {
         setProfilePic(result.profile_picture_url);
         setAlertInfo({ show: true, message: "Foto profil berhasil diperbarui.", type: 'success' });
       } else {
-        setAlertInfo({ show: true, message: result.message || "Gagal mengunggah gambar.", type: 'error' });
+        setAlertInfo({ show: true, message: result?.message || "Gagal mengunggah gambar.", type: 'error' });
       }
     } catch (err) {
-      setAlertInfo({ show: true, message: "Terjadi kesalahan saat mengunggah.", type: 'error' });
+      setAlertInfo({ show: true, message: "Terjadi kesalahan saat pemotongan gambar.", type: 'error' });
     } finally {
       setIsUploading(false);
+      setIsEditImageModalOpen(false);
+      setEditImageSrc(null);
     }
   };
 
@@ -147,19 +216,13 @@ export default function Settings() {
         credentials: "include",
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
 
-      if (response.ok) {
-        // 1. Kosongkan form agar nama lama tidak tertinggal
-        setUsername("");
-        
-        // 2. Tampilkan pesan sukses
+      if (response.ok && result) {
         setAlertInfo({ show: true, message: "Nama pengguna berhasil diperbarui.", type: 'success' });
-        
-        // 3. Fetch ulang data untuk memastikan tampilan (avatar) terupdate dengan nama baru
         await fetchUserData();
       } else {
-        setAlertInfo({ show: true, message: result.message || "Gagal memperbarui username.", type: 'error' });
+        setAlertInfo({ show: true, message: result?.message || "Gagal memperbarui username.", type: 'error' });
       }
     } catch (err) {
       setAlertInfo({ show: true, message: "Terjadi kesalahan jaringan.", type: 'error' });
@@ -170,7 +233,6 @@ export default function Settings() {
 
   return (
     <MainLayout>
-      {/* Render Custom Alert */}
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 
@@ -180,20 +242,9 @@ export default function Settings() {
       )}
 
       <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">
-        
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#0d264f] hover:border-slate-300 transition-all shadow-sm"
-            title="Kembali"
-          >
-            <IconArrowLeft />
-          </button>
-          
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Pengaturan</h1>
-            <p className="text-slate-500 text-lg mt-1">Kelola identitas dan keamanan akun.</p>
-          </div>
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Pengaturan</h1>
+          <p className="text-slate-500 text-lg mt-1">Kelola identitas dan keamanan akun.</p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
@@ -259,7 +310,7 @@ export default function Settings() {
             <form onSubmit={handleUpdateUsername} className="space-y-8 max-w-2xl">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">
-                  Nama Pengguna
+                  Edit Nama
                 </label>
                 <input 
                   type="text" 
@@ -273,8 +324,7 @@ export default function Settings() {
               <div className="pt-4">
                 <button 
                   type="submit"
-                  // PERUBAHAN: Tombol disabled jika username kosong atau sedang loading
-                  disabled={isUpdating || !username.trim()}
+                  disabled={isUpdating || !username.trim() || username === originalUsername}
                   className="w-full md:w-auto px-10 py-3.5 bg-[#0d264f] hover:bg-[#1e3a8a] text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
@@ -285,6 +335,7 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Modal Lihat Gambar Ukuran Penuh */}
         {isImageModalOpen && (
           <div 
             className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300"
@@ -303,6 +354,63 @@ export default function Settings() {
                 className="w-full h-auto rounded-lg shadow-2xl object-contain max-h-[80vh]"
                 onClick={(e) => e.stopPropagation()} 
               />
+            </div>
+          </div>
+        )}
+
+        {/* Modal Edit / Crop Image */}
+        {isEditImageModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[150] flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+            <h3 className="text-white text-2xl font-bold mb-6 tracking-tight">Edit Image</h3>
+            
+            <div className="relative w-72 h-72 rounded-full overflow-hidden shadow-2xl mb-6 bg-slate-800 border-4 border-white/20">
+              {editImageSrc && (
+                <Cropper
+                  image={editImageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={true}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-4 mb-8 w-64 max-w-full">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.01}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full accent-blue-500 cursor-pointer"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => { setIsEditImageModalOpen(false); setEditImageSrc(null); }} 
+                className="px-6 py-2.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl font-bold text-sm transition-all"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={applyCrop} 
+                disabled={isUploading}
+                className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </>
+                ) : "Apply"}
+              </button>
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import imageBg from "../../assets/Loginimg.png";
 import lockIcon from "../../assets/Salinan lock.png";
 
-// --- KOMPONEN NOTIFIKASI TOAST (Sama dengan kode sebelumnya) ---
+// --- KOMPONEN NOTIFIKASI TOAST ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -14,7 +14,6 @@ const CustomAlert = ({ message, type, onClose }) => {
 
   if (!message) return null;
 
-  const accentColor = type === 'error' ? 'border-l-red-500' : 'border-l-blue-500';
   const iconBg = type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
   
   const Icon = type === 'error'
@@ -39,14 +38,18 @@ const CustomAlert = ({ message, type, onClose }) => {
     </div>
   );
 };
-// ---------------------------------------------------
 
 export default function ResetPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // State untuk toggle visibilitas password
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false); 
-  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' }); // State Alert
+  const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,7 +99,6 @@ export default function ResetPassword() {
 
       if (response.ok) {
         setIsSuccess(true); 
-        
         showAlert("Password Anda berhasil diperbarui!", 'success');
         
         localStorage.removeItem("pending_user_id");
@@ -104,7 +106,7 @@ export default function ResetPassword() {
         localStorage.removeItem("auth_mode");
         
         setTimeout(() => {
-            navigate("/login", { replace: true });
+          navigate("/login", { replace: true });
         }, 1500);
       } else {
         showAlert(res.message || "Terjadi kesalahan saat memperbarui password.", 'error');
@@ -142,28 +144,74 @@ export default function ResetPassword() {
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {/* Input Password Baru */}
             <div className="flex flex-col">
               <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 tracking-tighter">Password Baru</label>
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                required 
-                autoComplete="new-password"
-                className="w-full px-4 py-3 rounded-lg border-2 border-transparent focus:border-blue-500 outline-none shadow-sm bg-white transition-all" 
-                onChange={(e) => setNewPassword(e.target.value)} 
-              />
+              <div className="relative">
+                <input 
+                  type={showNewPassword ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  required 
+                  autoComplete="new-password"
+                  value={newPassword}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-transparent focus:border-blue-500 outline-none shadow-sm bg-white transition-all pr-10 text-sm" 
+                  onChange={(e) => setNewPassword(e.target.value)} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+                >
+                  {showNewPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                      <line x1="2" x2="22" y1="2" y2="22" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
+            {/* Input Konfirmasi Password */}
             <div className="flex flex-col">
               <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 tracking-tighter">Konfirmasi Password</label>
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                required 
-                autoComplete="new-password"
-                className="w-full px-4 py-3 rounded-lg border-2 border-transparent focus:border-blue-500 outline-none shadow-sm bg-white transition-all" 
-                onChange={(e) => setConfirmPassword(e.target.value)} 
-              />
+              <div className="relative">
+                <input 
+                  type={showConfirmPassword ? "text" : "password"} 
+                  placeholder="••••••••" 
+                  required 
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  className="w-full px-4 py-3 rounded-lg border-2 border-transparent focus:border-blue-500 outline-none shadow-sm bg-white transition-all pr-10 text-sm" 
+                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 transition-colors focus:outline-none"
+                >
+                  {showConfirmPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                      <line x1="2" x2="22" y1="2" y2="22" />
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <button 

@@ -49,7 +49,6 @@ const getRetryAfterSeconds = (response, result) => {
   return Number(result?.retryAfter) || DEFAULT_RATE_LIMIT_SECONDS;
 };
 
-// --- KOMPONEN NOTIFIKASI TOAST (Bisa di-close & Auto-close) ---
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -148,7 +147,6 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
 
-  // State untuk Custom Alert (Toast)
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const navigate = useNavigate();
@@ -263,15 +261,15 @@ export default function Login() {
       if (!response.ok) {
         const serverMessage = result?.message || responseText || response.statusText;
 
-        // 403 dengan pesan "verified" = akun belum diverifikasi, ke halaman verify
         if (response.status === 403 && /verified/i.test(serverMessage)) {
-          const pendingUserId = result?.user_id || result?.user?.id_user;
+          const pendingUserId = result?.user?.id_user || result?.user_id;
           const pendingEmail = result?.email || formData.email;
           const pendingRole = normalizeRole(result?.role || 'student');
 
           localStorage.setItem('pending_email', pendingEmail);
           localStorage.setItem('pending_role', pendingRole);
           if (pendingUserId) localStorage.setItem('pending_user_id', pendingUserId.toString());
+          localStorage.setItem('auth_mode', 'login');
 
           showAlert('Akun belum terverifikasi. Silakan masukkan kode OTP.', 'success');
           setTimeout(() => {
@@ -297,27 +295,24 @@ export default function Login() {
       localStorage.removeItem(RATE_LIMIT_STORAGE_KEY);
       setRateLimitSeconds(0);
 
+      // Simpan token saja. Info user (id, role) tidak lagi disimpan
+      // terpisah — akan diambil dengan decode token lewat getCurrentUser()
+      // dari src/utils/auth.js kapan pun dibutuhkan di halaman lain.
+      const token =
+        result.token || result.accessToken || result.access_token || result.data?.token;
+      if (token) localStorage.setItem("token", token);
+
       const userId = result.user?.id_user || result.user_id || result.id;
       const rawUserRole = result.user?.role || result.role || (result.requiresTwoFactor ? 'admin' : undefined);
       const userRole = normalizeRole(rawUserRole);
       const requiresOtp = Boolean(result.requiresOTP || result.requiresTwoFactor || false);
       const dest = ROLE_DEST[userRole];
 
-      if (result.user) {
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            ...result.user,
-            role: userRole,
-          })
-        );
-      }
-
-      // Admin dengan 2FA: ke verify
       if (userId && requiresOtp) {
         localStorage.setItem('pending_user_id', userId.toString());
         localStorage.setItem('pending_role', userRole || 'admin');
         localStorage.setItem('pending_email', formData.email);
+        localStorage.setItem('auth_mode', 'login');
 
         showAlert('Login Berhasil! Masukkan kode OTP yang dikirim ke email.', 'success');
 
@@ -335,7 +330,6 @@ export default function Login() {
         throw new Error('Role user tidak dikenali');
       }
 
-      // Login sukses tanpa OTP (guru/siswa verified): langsung ke dashboard
       window.location.replace(dest);
     } catch (error) {
       console.error('Login Error:', error);
@@ -349,7 +343,6 @@ export default function Login() {
 
   return (
     <div className="h-screen w-full flex overflow-hidden bg-[#e8ecfa] font-sans">
-      {/* Render Custom Alert (Toast Pojok Kanan Atas) */}
       {alertInfo.show && (
         <CustomAlert 
           message={alertInfo.message} 
@@ -448,12 +441,6 @@ export default function Login() {
                 Daftar Sekarang
               </Link>
             </p>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-center text-xs text-gray-500">
-              masuk sebagai siswa, guru, atau admin.
-              </p>
-            </div>
           </form>
         </div>
       </div>

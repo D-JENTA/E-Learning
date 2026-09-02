@@ -72,7 +72,7 @@ export default function BuatKelas({ user }) {
     setIsLoading(true);
 
     try {
-      const targetUrl = `/api/teachers/me/classes`;
+      const targetUrl = `/api/teachers/me/cla`;
       const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
       
       const response = await fetch(targetUrl, {

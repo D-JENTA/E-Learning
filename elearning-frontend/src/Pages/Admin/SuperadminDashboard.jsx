@@ -19,21 +19,19 @@ export default function SuperAdminDashboard() {
   }, []);
 
   const cardsData = [
-    { 
-      title: "Total Users", 
-      value: stats.totalUsers, 
-      color: "bg-slate-800", 
+    {
+      title: "Total Users",
+      value: stats.totalUsers,
+      color: "bg-slate-800",
       textAccent: "text-slate-800",
       bgSoft: "bg-slate-100",
-      path: "/admin/users" 
     },
     { 
-      title: "Admins", 
+      title: "Admin", 
       value: stats.totalAdmins, 
       color: "bg-orange-500", 
       textAccent: "text-orange-600",
-      bgSoft: "bg-orange-50",
-      path: "/admin/super-control" 
+      bgSoft: "bg-orange-50", 
     },
     { 
       title: "Teachers", 

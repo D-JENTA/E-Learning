@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import imageBg from "../../assets/Loginimg.png";
 import hide from "../../assets/hide.png";
 import witness from "../../assets/witness.png";
 
+// Komponen Alert Notifikasi
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -15,7 +16,6 @@ const CustomAlert = ({ message, type, onClose }) => {
 
   if (!message) return null;
 
-  const accentColor = type === 'error' ? 'border-l-red-500' : 'border-l-blue-500';
   const iconBg = type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
   
   const Icon = type === 'error' 
@@ -43,6 +43,84 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
+// Komponen Custom Select Dropdown
+const CustomSelect = ({ label, options, value, onChange, placeholder, disabled, error }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => String(opt.value) === String(value));
+
+  return (
+    <div className="mb-3 w-full relative" ref={dropdownRef}>
+      {label && (
+        <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+          {label}
+        </label>
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 flex justify-between items-center transition-all cursor-pointer ${
+          disabled ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''
+        } ${
+          error ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-blue-500 hover:border-gray-200'
+        }`}
+      >
+        <span className={selectedOption ? "text-gray-800 font-medium" : "text-gray-400"}>
+          {selectedOption ? selectedOption.label : placeholder || "Pilih..."}
+        </span>
+        <svg
+          className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && !disabled && (
+        <div className="absolute z-30 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+          {options.length > 0 ? (
+            options.map((opt) => (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                  String(opt.value) === String(value)
+                    ? "bg-blue-50 text-blue-600 font-semibold"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {opt.label}
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-gray-400 text-center">Tidak ada data</div>
+          )}
+        </div>
+      )}
+
+      {error && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{error}</p>}
+    </div>
+  );
+};
+
+// Komponen Input Field
 const InputField = ({ label, type, value, onChange, placeholder, name, autoComplete, icon, onIconClick, error, maxLength, hint }) => {
   return (
     <div className="mb-3 w-full relative group">
@@ -93,14 +171,15 @@ const InputField = ({ label, type, value, onChange, placeholder, name, autoCompl
 export default function Create() {
   const navigate = useNavigate();
   
+  // Halaman ini KHUSUS pendaftaran siswa. Akun guru dibuat oleh admin dari
+  // halaman Manajemen Guru (/admin/teachers), jadi tidak ada pilihan peran
+  // maupun input NIP di sini.
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'student', 
     nis: '',
-    nip: '',
     classId: ''
   });
   
@@ -129,15 +208,17 @@ export default function Create() {
           try {
             const errorData = await response.json();
             errorMsg = errorData.message || errorMsg;
-          } catch (e) {
-            // If response is not JSON, use status code only
-          }
+          } catch (e) {}
           throw new Error(errorMsg);
         }
 
         const result = await response.json();
-        setClasses(Array.isArray(result) ? result : []);
-        console.log('Kelas berhasil dimuat:', result);
+        const loadedClasses = Array.isArray(result) ? result : [];
+        setClasses(loadedClasses);
+
+        if (loadedClasses.length > 0) {
+          setFormData(prev => ({ ...prev, classId: loadedClasses[0].id_class.toString() }));
+        }
       } catch (error) {
         console.error('Error mengambil kelas:', error.message);
         setAlertInfo({ 
@@ -156,6 +237,11 @@ export default function Create() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  const handleSelectChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
@@ -182,13 +268,12 @@ export default function Create() {
       newErrors.confirmPassword = 'Password tidak cocok';
     }
 
-    if (formData.role === 'student' && !formData.classId) {
+    if (!formData.classId) {
       newErrors.classId = 'Kelas wajib dipilih';
     }
-    
-    if (formData.role === 'student' && !formData.nis) newErrors.nis = 'NIS wajib diisi';
-    if (formData.role === 'teacher' && !formData.nip) newErrors.nip = 'NIP wajib diisi';
-    
+
+    if (!formData.nis) newErrors.nis = 'NIS wajib diisi';
+
     return newErrors;
   };
 
@@ -208,14 +293,12 @@ export default function Create() {
       username: formData.fullName,
       email: formData.email,
       password: formData.password,
-      role: formData.role,
-      nis: formData.role === 'student' ? formData.nis : null,
-      nip: formData.role === 'teacher' ? formData.nip : null,
-      id_class: formData.classId ? Number(formData.classId) : null
+      nis: formData.nis,
+      id_class: Number(formData.classId)
     };
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth/registerStudent', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -228,12 +311,13 @@ export default function Create() {
         throw new Error(result.message || "Gagal melakukan registrasi.");
       }
 
-      const userId = result.user_id || result.id || (result.user && result.user.id);
+      const userId = result.user?.id_user || result.user_id || result.id || result.user?.id;
 
       if (userId) {
         localStorage.setItem("pending_user_id", userId.toString());
-        localStorage.setItem("pending_role", formData.role);
+        localStorage.setItem("pending_role", "student");
         localStorage.setItem("pending_email", formData.email);
+        localStorage.setItem("auth_mode", "register");
         
         setAlertInfo({ show: true, message: "Registrasi Berhasil! Silakan cek email untuk kode OTP.", type: 'success' });
         
@@ -251,6 +335,11 @@ export default function Create() {
     }
   };
 
+  const classOptions = classes.map((kelas) => ({
+    value: kelas.id_class.toString(),
+    label: kelas.class_name
+  }));
+
   return (
     <div className="h-screen w-full flex overflow-hidden bg-[#e8ecfa] font-sans">
       {alertInfo.show && (
@@ -263,7 +352,8 @@ export default function Create() {
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-[360px] overflow-y-auto max-h-screen py-8 px-2 no-scrollbar">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2 tracking-tight text-center">Buat Akun</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-1 tracking-tight text-center">Buat Akun</h2>
+          <p className="text-gray-500 text-sm mb-6 text-center">Daftar sebagai siswa untuk mengakses materi pembelajaran.</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col">
             <InputField
@@ -288,68 +378,27 @@ export default function Create() {
               autoComplete="email"
             />
 
-            <div className="mb-3">
-              <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Peran</label>
-              <select 
-                name="role" 
-                value={formData.role} 
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 border-transparent focus:border-blue-500 transition-all cursor-pointer"
-              >
-                <option value="student">Siswa (Student)</option>
-                <option value="teacher">Guru (Teacher)</option>
-              </select>
-            </div>
+            <CustomSelect
+              label="Pilih Kelas"
+              options={classOptions}
+              value={formData.classId}
+              onChange={(val) => handleSelectChange('classId', val)}
+              placeholder={isLoadingClasses ? "Memuat kelas..." : "Pilih Kelas"}
+              disabled={isLoadingClasses}
+              error={errors.classId}
+            />
 
-            {formData.role === 'student' && (
-              <div className="mb-3">
-                <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">Pilih Kelas</label>
-                <select
-                  name="classId"
-                  value={formData.classId}
-                  onChange={handleChange}
-                  disabled={isLoadingClasses}
-                  required
-                  className={`w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 transition-all cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100 ${errors.classId ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-blue-500'}`}
-                >
-                  <option value="">{isLoadingClasses ? 'Memuat kelas...' : 'Pilih kelas'}</option>
-                  {classes.map((kelas) => (
-                    <option key={kelas.id_class} value={kelas.id_class}>
-                      {kelas.class_name}
-                    </option>
-                  ))}
-                </select>
-                {errors.classId && <p className="text-red-500 text-[10px] ml-1 mt-1 font-medium">{errors.classId}</p>}
-              </div>
-            )}
-
-            {formData.role === 'student' ? (
-              <InputField
-                key="nis"
-                label="NIS (Nomor Induk Siswa)"
-                type="text"
-                name="nis"
-                value={formData.nis}
-                onChange={handleChange}
-                placeholder="Maks. 10 angka"
-                error={errors.nis}
-                maxLength={10}
-                hint="Boleh diisi 1–10 karakter"
-              />
-            ) : (
-              <InputField
-                key="nip"
-                label="NIP (Nomor Induk Pegawai)"
-                type="text"
-                name="nip"
-                value={formData.nip}
-                onChange={handleChange}
-                placeholder="Maks. 18 angka"
-                error={errors.nip}
-                maxLength={18}
-                hint="Boleh diisi 1–18 karakter"
-              />
-            )}
+            <InputField
+              label="NIS (Nomor Induk Siswa)"
+              type="text"
+              name="nis"
+              value={formData.nis}
+              onChange={handleChange}
+              placeholder="Maks. 10 angka"
+              error={errors.nis}
+              maxLength={10}
+              hint="Boleh diisi 1–10 karakter"
+            />
 
             <InputField
               label="Kata Sandi"
