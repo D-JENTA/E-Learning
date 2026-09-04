@@ -160,7 +160,6 @@ export default function CreateMapelAdmin() {
       fetchTakenJp(controller.signal);
     }, 300);
 
-
     return () => {
       clearTimeout(timer);
       controller.abort();
@@ -386,13 +385,12 @@ export default function CreateMapelAdmin() {
                               />
                               <span className="whitespace-nowrap font-bold text-xs sm:text-sm">JP {jp}</span>
                             </div>
-
-                            {isTaken && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600">
-                                Penuh
-                              </span>
-                            )}
                           </div>
+                          {isTaken && (
+                            <span className="self-start mt-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600">
+                              Penuh
+                            </span>
+                          )}
                         </label>
                       );
                     })}

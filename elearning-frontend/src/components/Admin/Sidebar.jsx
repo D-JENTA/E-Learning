@@ -83,12 +83,6 @@ function SidebarContent() {
       path: '/admin/classes',
       roles: ['superAdmin'],
     },
-   // {
-      //name: 'Create Mapel',
-      //icon: 'M12 4v16m8-8H4',
-     // path: '/admin/create-mapel',
-      //roles: ['superAdmin'],
-    //},
     {
       name: 'Mapel',
       icon: 'M4 6h16M4 10h16M4 14h16M4 18h16',
@@ -102,15 +96,12 @@ function SidebarContent() {
       roles: ['superAdmin'],
     },
   ];
-  // Menu "Settings" dipindahkan ke dropdown profil di Topbar.
 
   const filteredMenu = menuItems.filter((item) => item.roles.includes(userRole));
-  // Logout dipindahkan ke dropdown profil di Topbar.
 
   return (
     <>
-      {/* Sembunyikan scrollbar bawaan browser di area menu sidebar, 
-          tapi tetap bisa di-scroll kalau menu-nya kepanjangan */}
+      {/* Sembunyikan scrollbar bawaan browser di area menu sidebar */}
       <style>{`
         .custom-scrollbar {
           scrollbar-width: none; /* Firefox */
@@ -143,8 +134,10 @@ function SidebarContent() {
             </h1>
           </div>
 
-          <button onClick={closeSidebar} className="md:hidden text-blue-200 hover:text-white">
-            X
+          <button onClick={closeSidebar} className="md:hidden text-blue-200 hover:text-white" aria-label="Close sidebar">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -252,9 +245,23 @@ export const HamburgerButton = () => {
   return (
     <button
       onClick={toggleSidebar}
-      className="p-2 rounded-lg text-[#0d264f] md:hidden hover:bg-slate-100 transition-colors"
+      className="p-2 -ml-2 rounded-lg text-[#0d264f] md:hidden hover:bg-slate-100 transition-colors"
+      aria-label="Open sidebar"
     >
-      Menu
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
     </button>
   );
 };

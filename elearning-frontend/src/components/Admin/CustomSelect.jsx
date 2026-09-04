@@ -6,21 +6,25 @@ import React, { useState, useRef, useEffect } from "react";
 const VARIANTS = {
   navy: {
     button:
-      "rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-700 shadow-sm focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20",
+      "rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-700 shadow-sm hover:border-[#0d264f]/40 hover:bg-slate-50 focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20",
     placeholder: "text-gray-400",
     panel: "rounded-xl border border-gray-100",
+    panelHeader: "bg-[#0d264f]/[0.04] border-b border-gray-200/80",
     optionActive: "bg-[#0d264f]/10 text-[#0d264f] font-semibold",
     optionIdle: "text-gray-700 hover:bg-gray-50",
     check: "text-[#0d264f]",
+    search: "rounded-lg bg-white border border-gray-200 shadow-sm focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20",
   },
   sky: {
     button:
-      "rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-slate-800 font-medium shadow-sm focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20",
+      "rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-slate-800 font-medium shadow-sm hover:border-sky-300 hover:bg-white focus:bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20",
     placeholder: "text-slate-400",
     panel: "rounded-2xl border border-slate-100",
+    panelHeader: "bg-sky-50/70 border-b border-sky-100",
     optionActive: "bg-sky-50 text-sky-700 font-semibold",
     optionIdle: "text-slate-700 hover:bg-slate-50",
     check: "text-sky-600",
+    search: "rounded-lg bg-white border border-slate-200 shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20",
   },
 };
 
@@ -29,12 +33,15 @@ const VARIANTS = {
  *
  * @param {string|number} value      Nilai terpilih saat ini
  * @param {(value: string) => void} onChange  Dipanggil dengan value opsi (bukan event)
- * @param {{ value: string|number, label: string }[]} options
+ * @param {{ value: string|number, label: string, description?: string, disabled?: boolean }[]} options
  * @param {string}  placeholder      Teks saat belum ada pilihan
  * @param {boolean} disabled
  * @param {"navy"|"sky"} variant
  * @param {string}  className        Kelas tambahan untuk wrapper (mis. lebar)
  * @param {boolean} clearable        Tampilkan tombol × untuk mengosongkan pilihan (memanggil onChange(""))
+ * @param {boolean} searchable       Tampilkan kotak pencarian di panel (filter label & description)
+ * @param {string}  searchPlaceholder  Placeholder kotak pencarian
+ * @param {boolean} loading          Tampilkan baris "Memuat..." sebagai pengganti daftar opsi
  */
 export default function CustomSelect({
   value,
@@ -45,9 +52,16 @@ export default function CustomSelect({
   variant = "navy",
   className = "",
   clearable = false,
+  searchable = false,
+  searchPlaceholder = "Ketik untuk mencari...",
+  loading = false,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const ref = useRef(null);
+  const searchInputRef = useRef(null);
+  const panelRef = useRef(null);
   const styles = VARIANTS[variant] ?? VARIANTS.navy;
 
   useEffect(() => {
@@ -70,6 +84,32 @@ export default function CustomSelect({
     };
   }, [isOpen]);
 
+  // Reset pencarian + fokuskan input cari setiap kali panel dibuka,
+  // supaya user bisa langsung mengetik tanpa klik lagi.
+  useEffect(() => {
+    if (!isOpen) return;
+    setQuery("");
+    setActiveIndex(0);
+    if (searchable) {
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [isOpen, searchable]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredOptions =
+    normalizedQuery && !loading
+      ? options.filter(
+          (opt) =>
+            String(opt.label ?? "").toLowerCase().includes(normalizedQuery) ||
+            String(opt.description ?? "").toLowerCase().includes(normalizedQuery)
+        )
+      : options;
+
+  // Indeks aktif bisa "nyasar" kalau daftar hasil filter mengecil — kembalikan ke rentang valid.
+  useEffect(() => {
+    setActiveIndex((i) => Math.min(i, Math.max(filteredOptions.length - 1, 0)));
+  }, [filteredOptions.length]);
+
   const selected = options.find((opt) => String(opt.value) === String(value));
 
   const handleSelect = (optValue) => {
@@ -77,8 +117,57 @@ export default function CustomSelect({
     setIsOpen(false);
   };
 
+  const scrollToOption = (index) => {
+    const el = panelRef.current?.querySelector(`[data-option-index="${index}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  };
+
+  // Navigasi keyboard: panah bawah/atas untuk gerak, Enter untuk pilih.
+  // Dipasang di wrapper supaya tetap jalan saat fokus ada di input pencarian;
+  // Enter di-prevent supaya tidak ikut submit form modal induk.
+  const handleKeyDown = (event) => {
+    if (!isOpen || disabled) return;
+    switch (event.key) {
+      case "ArrowDown": {
+        event.preventDefault();
+        const next = Math.min(activeIndex + 1, filteredOptions.length - 1);
+        setActiveIndex(next);
+        scrollToOption(next);
+        break;
+      }
+      case "ArrowUp": {
+        event.preventDefault();
+        const prev = Math.max(activeIndex - 1, 0);
+        setActiveIndex(prev);
+        scrollToOption(prev);
+        break;
+      }
+      case "Enter": {
+        const opt = filteredOptions[activeIndex];
+        if (opt && !opt.disabled) {
+          event.preventDefault();
+          handleSelect(opt.value);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  const renderOptionBody = (opt) => (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate">{opt.label}</span>
+      {opt.description && (
+        <span className="block truncate text-xs font-normal text-gray-400">
+          {opt.description}
+        </span>
+      )}
+    </span>
+  );
+
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div ref={ref} className={`relative ${className}`} onKeyDown={handleKeyDown}>
       <button
         type="button"
         disabled={disabled}
@@ -137,23 +226,123 @@ export default function CustomSelect({
 
       {isOpen && !disabled && (
         <div
+          ref={panelRef}
+          role="listbox"
           className={`absolute left-0 right-0 z-40 mt-2 max-h-60 overflow-y-auto bg-white p-1.5 shadow-xl thin-scrollbar ${styles.panel}`}
         >
-          {options.length === 0 ? (
+          {searchable && (
+            <div
+              className={`sticky top-0 z-10 px-1.5 pt-1.5 pb-2.5 -mx-1.5 -mt-1.5 mb-1 border-b ${styles.panelHeader}`}
+            >
+              <div className="relative">
+                <svg
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className={`w-full pl-9 ${query ? "pr-8" : "pr-3"} py-2 text-sm text-gray-700 bg-white outline-none transition ${styles.search}`}
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      searchInputRef.current?.focus();
+                    }}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-200/70 hover:text-gray-600 transition-colors"
+                  >
+                    <svg
+                      className="h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      viewBox="0 0 24 24"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {!loading && normalizedQuery && options.length > 0 && (
+                <p className="mt-1.5 px-1 text-[11px] font-medium text-gray-400">
+                  {filteredOptions.length} dari {options.length} opsi
+                </p>
+              )}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-400">
+              <svg
+                className="h-4 w-4 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
+              </svg>
+              Memuat...
+            </div>
+          ) : options.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-400">Tidak ada pilihan</div>
+          ) : filteredOptions.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-gray-400">
+              Tidak ada hasil untuk &ldquo;{query.trim()}&rdquo;
+            </div>
           ) : (
-            options.map((opt) => {
+            filteredOptions.map((opt, index) => {
               const isActive = String(opt.value) === String(value);
+              const isFocused = index === activeIndex;
               return (
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => handleSelect(opt.value)}
+                  data-option-index={index}
+                  role="option"
+                  aria-selected={isActive}
+                  aria-disabled={opt.disabled}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => {
+                    if (opt.disabled) return;
+                    handleSelect(opt.value);
+                  }}
                   className={`w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     isActive ? styles.optionActive : styles.optionIdle
-                  }`}
+                  } ${
+                    opt.disabled
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer"
+                  } ${isFocused && !isActive ? "bg-gray-100" : ""}`}
                 >
-                  <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                  {renderOptionBody(opt)}
                   {isActive && (
                     <svg
                       className={`h-4 w-4 flex-shrink-0 ${styles.check}`}

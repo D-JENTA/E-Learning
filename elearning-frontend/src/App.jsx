@@ -17,7 +17,7 @@ import CreateMapelAdmin from "./Pages/Admin/CreateMapel";
 import MapelAdmin from "./Pages/Admin/MapelAdmin";
 import CalendarAdmin from "./Pages/Admin/CalendarAdmin";
 import SettingsAdmin from "./Pages/Admin/SettingsAdmin";
-import SuperAdminManageUsers from "./Pages/Admin/SuperAdminManageUsers";
+import SuperAdminManageUsers from "./Pages/Admin/SuperAdminManageUser";
 import SuperAdminDashboard from "./Pages/Admin/SuperadminDashboard";
 import AdminStudentClasses from "./Pages/Admin/Adminstudentclasses";
 import AdminStudentClassTasks from "./Pages/Admin/Adminstudenttask";

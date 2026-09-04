@@ -237,6 +237,10 @@ export default function AdminLogin() {
 
       clearLoginState();
 
+      // Hapus token sesi non-admin yang mungkin tersisa — interceptor global
+      // (setupFetchAuth.js) memprioritaskan key "token" sebelum "admin_token",
+      // jadi token basi di key itu akan terkirim dan ditolak backend (401).
+      localStorage.removeItem('token');
       if (result.token) localStorage.setItem('admin_token', result.token);
       localStorage.setItem('pending_user_id', result.user.id_user || result.user.id);
       localStorage.setItem('pending_role', result.user.role);

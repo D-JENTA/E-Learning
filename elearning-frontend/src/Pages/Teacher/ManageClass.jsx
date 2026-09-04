@@ -130,6 +130,9 @@ export default function ManageClass() {
                   <Link
                     key={idMapel}
                     to={`/teacher/assignments/${idMapel}`}
+                    // id_class wajib ikut, kalau tidak halaman tujuan pakai cache
+                    // "kelas terakhir untuk mapel ini" dan guru bisa nyasar ke kelas lain.
+                    state={{ id_class: id }}
                     className="group relative rounded-3xl border-2 border-slate-200 p-6 bg-gradient-to-br from-white to-slate-50 hover:from-blue-50 hover:to-white hover:border-[#0d264f] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 w-20 h-20 bg-blue-100 rounded-full -mr-10 -mt-10 opacity-0 group-hover:opacity-30 transition-opacity duration-300"></div>

@@ -208,18 +208,23 @@ const extractDay = (item) => {
         rawMapels = [];
       }
 
+      // Dedup per (id mapel + hari), BUKAN per id mapel saja: mapel yang
+      // berjadwal di beberapa hari muncul sebagai entry terpisah per hari
+      // (IPAS di "Senin" dan "Selasa"). Dedup per id mapel akan membuang
+      // baris hari keduanya sehingga mapel tampak hilang di hari itu.
       const seen = new Set();
       const dedupedMapels = rawMapels.filter((item) => {
         const id = item.id_mapel ?? item.id;
-        if (seen.has(id)) return false;
-        seen.add(id);
+        const key = `${id}-${extractDay(item)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       });
 
-      // Satu mapel bisa punya BANYAK jadwal (backend menyatukan mapel yang sama
-      // nama di kelas yang sama: POST hanya menambah ScheduleMapel baru).
-      // Respons API: { day: ["Senin","Selasa"], schedules: [{ day, jp }] }.
-      // Jadi tiap jadwal dipecah jadi satu baris tabel sendiri.
+      // Satu mapel bisa punya BANYAK jadwal. Respons BE (objek ber-kunci hari,
+      // mis. { Senin: [...], Selasa: [...] }) menuliskan mapel yang sama sekali
+      // per hari — IPAS muncul di key "Senin" DAN "Selasa". Tiap entry dipecah
+      // jadi satu baris tabel sendiri.
       const loadedMapels = dedupedMapels.flatMap((item, index) => {
         const teacherId =
           item.id_teacher ??
@@ -236,8 +241,18 @@ const extractDay = (item) => {
           teacher: item.teacher_name ?? item.teacher?.username ?? item.teacher ?? "Belum ada guru",
         };
 
-        const schedules = Array.isArray(item.schedules) && item.schedules.length > 0
+        // Bentuk respons bisa beda-beda antar versi BE: array jadwal datang
+        // sebagai "schedules" (dibentuk manual controller) atau "Schedules"
+        // (alias asosiasi Sequelize mentah). Kalau keduanya tidak ada, fallback
+        // satu baris dari field day/jp level atas (hanya hari pertama).
+        const scheduleSource = Array.isArray(item.schedules) && item.schedules.length > 0
           ? item.schedules
+          : Array.isArray(item.Schedules) && item.Schedules.length > 0
+          ? item.Schedules
+          : null;
+
+        const schedules = scheduleSource
+          ? scheduleSource
           : [{ day: extractDay(item), jp: item.jp }];
 
         return schedules.map((schedule, sIdx) => {
@@ -251,6 +266,10 @@ const extractDay = (item) => {
             ...base,
             // key unik per baris (mapel sama bisa muncul beberapa baris)
             rowId: `${base.id}-${day}-${sIdx}`,
+            // id jadwal spesifik (bukan id mapel) — dipakai saat edit supaya
+            // BE bisa meng-update jadwal yang tepat, bukan jadwal pertama.
+            // Belum dikirim BE versi sekarang; dikirim kalau tersedia.
+            scheduleId: schedule.id_schedule ?? null,
             jp,
             day: String(day).toLowerCase(),
           };
@@ -382,11 +401,14 @@ const extractDay = (item) => {
     if (!list.length) return <span className="text-sm text-gray-400">-</span>;
 
     return (
-      <div className="flex flex-wrap gap-1">
+      // Di layar kecil (tablet/laptop kecil) badge dibuat kompak supaya beberapa JP
+      // muat berdampingan dalam satu baris (tanpa melebarkan tabel/scrollbar);
+      // di layar lg ke atas ukuran tetap seperti biasa.
+      <div className="flex flex-wrap gap-0.5 lg:gap-1">
         {list.map((jp, idx) => (
           <span
             key={jp}
-            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold ring-1 ring-inset ${JP_BADGE_STYLES[idx % JP_BADGE_STYLES.length]}`}
+            className={`inline-flex items-center whitespace-nowrap rounded-md px-1.5 lg:px-2 py-0.5 text-[10px] lg:text-[11px] font-bold ring-1 ring-inset ${JP_BADGE_STYLES[idx % JP_BADGE_STYLES.length]}`}
           >
             JP {jp}
           </span>
@@ -470,8 +492,14 @@ const extractDay = (item) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // JP milik baris yang sedang diedit. GET /api/schedule tidak mengembalikan
+  // id_mapel, jadi JP milik mapel sendiri ikut terhitung "terpakai" di takenJp —
+  // JP tersebut tetap boleh di-toggle supaya user bisa melepas/milih ulang jamnya.
+  const ownJpSet = new Set(editing ? expandJp(editing.jp) : []);
+  const isJpTaken = (jpValue) => takenJp.includes(jpValue) && !ownJpSet.has(jpValue);
+
   const toggleJp = (jpValue) => {
-    if (takenJp.includes(jpValue)) return;
+    if (isJpTaken(jpValue)) return;
     setEditForm((prev) => {
       const already = prev.jp.includes(jpValue);
       return {
@@ -668,6 +696,31 @@ const extractDay = (item) => {
     try {
       const token = localStorage.getItem("token");
       const jpString = editForm.jp.join(",");
+
+      // Mapel yang berjadwal di beberapa hari muncul sebagai >1 baris dalam
+      // satu kelas. Deteksi dua bentuk: (a) mapel yang sama (id sama) punya
+      // beberapa jadwal, atau (b) ada baris lain bernama sama di kelas ini
+      // (mapel kembar dengan id berbeda). Untuk kasus itu, jadwal
+      // (jp/day/id_schedule) hanya dikirim kalau memang diubah — mengisi
+      // guru/nama saja tidak boleh memicu notif "tidak bisa mengedit" dari BE
+      // karena jadwalnya dikirim ulang tanpa perubahan. Mapel satu jadwal
+      // tetap mengirim lengkap seperti sebelumnya.
+      const isMultiScheduleMapel =
+        mapels.filter((m) => String(m.id) === String(editing.id)).length > 1 ||
+        mapels.some(
+          (m) =>
+            String(m.id) !== String(editing.id) &&
+            String(m.mapelName || "").trim().toLowerCase() ===
+              String(editing.mapelName || "").trim().toLowerCase()
+        );
+      const dayChanged =
+        String(editForm.day).toLowerCase() !== String(editing.day).toLowerCase();
+      const jpChanged =
+        editForm.jp.join(",") !==
+        [...expandJp(editing.jp)].sort((a, b) => Number(a) - Number(b)).join(",");
+      const scheduleChanged =
+        !isMultiScheduleMapel || dayChanged || jpChanged;
+
       const response = await fetch(`/api/admin/mapels/${editing.id}`, {
         method: "PUT",
         credentials: "include",
@@ -678,8 +731,14 @@ const extractDay = (item) => {
         body: JSON.stringify({
           mapel_name: editForm.mapel_name.trim(),
           id_teacher: editForm.id_teacher || null,
-          jp: jpString,
-          day: editForm.day,
+          ...(scheduleChanged && {
+            jp: jpString,
+            // Backend menyimpan day kapital awal ("Senin"), sama seperti saat create.
+            day: toApiDay(editForm.day),
+            // Diteruskan kalau BE menyediakan id_schedule di daftar mapel —
+            // supaya jadwal yang di-update adalah jadwal baris ini, bukan yang pertama.
+            ...(editing.scheduleId ? { id_schedule: editing.scheduleId } : {}),
+          }),
         }),
       });
 
@@ -688,10 +747,11 @@ const extractDay = (item) => {
         throw new Error(errorData?.message || "Gagal menyimpan perubahan.");
       }
 
-      // Refetch dari server, bukan update optimis: satu mapel bisa punya
-      // beberapa baris jadwal, dan PUT backend hanya menyimpan nama mapel &
-      // guru — day/JP per jadwal tetap dari data server.
+      // Refetch dari server, bukan update optimis: backend meng-update Mapel
+      // (nama, guru) + ScheduleMapel (day, jp) sekaligus, jadi data terbaru
+      // paling aman diambil ulang dari GET /api/classes/:id/mapels.
       await loadMapels();
+      setAlertInfo({ show: true, message: "Mapel berhasil diperbarui.", type: 'success' });
       setEditing(null);
     } catch (error) {
       console.error("Update mapel error:", error);
@@ -785,6 +845,8 @@ const extractDay = (item) => {
               })}
               placeholder={isLoadingClasses ? "Memuat kelas..." : "Pilih kelas"}
               disabled={isLoadingClasses}
+              searchable
+              searchPlaceholder="Cari nama kelas..."
               variant="navy"
               className="w-full sm:w-52 lg:w-64"
             />
@@ -943,6 +1005,8 @@ const extractDay = (item) => {
                       label: t.username,
                     }))}
                     placeholder="Pilih guru (opsional)"
+                    searchable
+                    searchPlaceholder="Cari nama guru..."
                     variant="navy"
                     clearable
                   />
@@ -988,7 +1052,7 @@ const extractDay = (item) => {
 
                       <div className="grid grid-cols-3 gap-2.5 max-h-52 overflow-y-auto pr-1 custom-scrollbar">
                         {JP_OPTIONS.map((jp) => {
-                          const isTaken = takenJp.includes(jp);
+                          const isTaken = isJpTaken(jp);
                           const isChecked = editForm.jp.includes(jp);
 
                           return (
@@ -1087,6 +1151,8 @@ const extractDay = (item) => {
                         })}
                         placeholder={isLoadingClasses ? "Memuat kelas..." : "Pilih kelas"}
                         disabled={isLoadingClasses}
+                        searchable
+                        searchPlaceholder="Cari nama kelas..."
                         variant="sky"
                       />
                     </div>
@@ -1101,6 +1167,8 @@ const extractDay = (item) => {
                           label: t.username,
                         }))}
                         placeholder="Pilih guru (opsional)"
+                        searchable
+                        searchPlaceholder="Cari nama guru..."
                         variant="sky"
                         clearable
                       />
@@ -1175,13 +1243,12 @@ const extractDay = (item) => {
                                       />
                                       <span className="whitespace-nowrap font-bold text-xs sm:text-sm">JP {jp}</span>
                                     </div>
-
-                                    {isTaken && (
-                                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600">
-                                        Penuh
-                                      </span>
-                                    )}
                                   </div>
+                                  {isTaken && (
+                                    <span className="self-start mt-1 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-600">
+                                      Penuh
+                                    </span>
+                                  )}
                                 </label>
                               );
                             })}
@@ -1227,9 +1294,12 @@ const extractDay = (item) => {
           >
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
               <h3 className="text-xl font-bold text-gray-800 mb-2">Hapus Mapel</h3>
-              <p className="text-gray-500 mb-6">
+              <p className="text-gray-500 mb-2">
                 Yakin ingin menghapus mapel{" "}
-                <span className="font-semibold text-gray-700">"{deleteTarget.name}"</span>? Tindakan ini tidak dapat dibatalkan.
+                <span className="font-semibold text-gray-700">"{deleteTarget.name}"</span>?
+              </p>
+              <p className="text-sm text-red-600 mb-6">
+                Semua jadwal, tugas, dan nilai ikut terhapus. Tidak dapat dibatalkan.
               </p>
               <div className="flex justify-end gap-2">
                 <button

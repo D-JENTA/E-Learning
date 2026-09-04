@@ -240,6 +240,9 @@ export default function Verify() {
       if (!response.ok) throw new Error(result.message || "OTP Salah.");
 
       const token = result.token || result.accessToken || result.access_token || result.data?.token;
+      // Bersihkan token admin lama supaya interceptor global (setupFetchAuth.js)
+      // tidak mengirim token basi dari sesi sebelumnya.
+      localStorage.removeItem("admin_token");
       if (token) localStorage.setItem("token", token);
 
       if (authMode === "reset_password") {

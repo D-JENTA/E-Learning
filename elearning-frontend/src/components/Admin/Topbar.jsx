@@ -3,15 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { HamburgerButton } from './Sidebar';
 import authService from '../../services/authService';
 
+const TOPBAR_CACHE_KEY = "admin_topbar_user";
+
+function readCachedUser() {
+  try {
+    const cached = localStorage.getItem(TOPBAR_CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    if (parsed && typeof parsed.username === "string") return parsed;
+  } catch {
+    // cache korup / tidak bisa dibaca — abaikan
+  }
+  return null;
+}
+
 export default function TopbarTeacher() {
   const navigate = useNavigate();
-  
-  const [userData, setUserData] = useState({
-    username: "",
+
+  const [userData, setUserData] = useState(() => ({
+    username: "User",
     profile_picture_url: null,
-    role: "Admin"
-  });
-  const [isLoading, setIsLoading] = useState(true);
+    role: "Admin",
+    ...readCachedUser(),
+  }));
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
@@ -30,10 +44,18 @@ export default function TopbarTeacher() {
       if (resUser.ok) {
         const result = await resUser.json().catch(() => null);
         const finalData = result?.data || result?.user || result || {};
-        setUserData({
-          username: finalData.username || "User",
-          profile_picture_url: finalData.profile_picture_url || null,
-          role: finalData.role || "Admin",
+        setUserData((prev) => {
+          const next = {
+            username: finalData.username || prev.username,
+            profile_picture_url: finalData.profile_picture_url || prev.profile_picture_url,
+            role: finalData.role || prev.role,
+          };
+          try {
+            localStorage.setItem(TOPBAR_CACHE_KEY, JSON.stringify(next));
+          } catch {
+            // storage penuh / diblokir — abaikan
+          }
+          return next;
         });
       } else {
         console.error("Gagal mengambil user data:", resUser.status);
@@ -47,13 +69,20 @@ export default function TopbarTeacher() {
       if (resPic.ok) {
         const picResult = await resPic.json().catch(() => null);
         if (picResult?.profile_picture_url) {
-          setUserData((prev) => ({ ...prev, profile_picture_url: picResult.profile_picture_url }));
+          setUserData((prev) => {
+            if (prev.profile_picture_url === picResult.profile_picture_url) return prev;
+            const next = { ...prev, profile_picture_url: picResult.profile_picture_url };
+            try {
+              localStorage.setItem(TOPBAR_CACHE_KEY, JSON.stringify(next));
+            } catch {
+              // storage penuh / diblokir — abaikan
+            }
+            return next;
+          });
         }
       }
     } catch (error) {
       console.error("Fetch Topbar Gagal:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -91,6 +120,7 @@ export default function TopbarTeacher() {
       localStorage.removeItem('pending_user_id');
       localStorage.removeItem('pending_role');
       localStorage.removeItem('pending_email');
+      localStorage.removeItem(TOPBAR_CACHE_KEY);
 
       window.dispatchEvent(new Event('user-logout'));
       navigate('/login', { replace: true });
@@ -111,7 +141,7 @@ export default function TopbarTeacher() {
         
         <div className="text-right hidden sm:block">
           <p className="text-sm font-bold text-slate-800">
-            {isLoading ? "Memuat..." : userData.username}
+            {userData.username}
           </p>
           <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">
             {userData.role}

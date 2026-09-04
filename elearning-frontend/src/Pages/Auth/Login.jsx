@@ -300,6 +300,9 @@ export default function Login() {
       // dari src/utils/auth.js kapan pun dibutuhkan di halaman lain.
       const token =
         result.token || result.accessToken || result.access_token || result.data?.token;
+      // Hapus token admin yang mungkin tersisa supaya interceptor global
+      // (setupFetchAuth.js) tidak sempat mengirim token basi dari sesi sebelumnya.
+      localStorage.removeItem("admin_token");
       if (token) localStorage.setItem("token", token);
 
       const userId = result.user?.id_user || result.user_id || result.id;

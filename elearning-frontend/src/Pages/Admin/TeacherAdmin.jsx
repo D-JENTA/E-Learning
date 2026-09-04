@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
 import CustomSelect from "../../components/Admin/CustomSelect";
 
@@ -70,6 +70,91 @@ const ERROR_MESSAGES = {
 
 const translateError = (message) => ERROR_MESSAGES[message] || message;
 
+// --- Cache mapel per kelas (sessionStorage, TTL singkat) ---
+// GET /api/classes/:id/mapels dipakai dua arah: pengayaan kolom mapel di
+// tabel guru dan dropdown mapel di modal tambah guru. Tanpa cache, endpoint
+// yang sama di-fetch berulang tiap kali modal dibuka — mahal lewat tunnel.
+const MAPEL_CACHE_PREFIX = "teacher_admin_mapels_";
+const MAPEL_CACHE_TTL = 2 * 60 * 1000; // 2 menit
+
+const readMapelCache = (classId) => {
+  try {
+    const raw = sessionStorage.getItem(MAPEL_CACHE_PREFIX + classId);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    return Date.now() - ts <= MAPEL_CACHE_TTL ? data : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeMapelCache = (classId, list) => {
+  try {
+    sessionStorage.setItem(
+      MAPEL_CACHE_PREFIX + classId,
+      JSON.stringify({ ts: Date.now(), data: list })
+    );
+  } catch {
+    // storage penuh / private mode — cache opsional, abaikan
+  }
+};
+
+const clearMapelCache = () => {
+  try {
+    Object.keys(sessionStorage)
+      .filter((k) => k.startsWith(MAPEL_CACHE_PREFIX))
+      .forEach((k) => sessionStorage.removeItem(k));
+  } catch {
+    // abaikan
+  }
+};
+
+// Normalisasi respons GET /api/classes/:id/mapels: BE balik objek per hari,
+// mis. { Senin: [...], Selasa: [...] }. Tiap mapel muncul lagi di hari lain
+// kalau berjadwal beberapa hari, jadi di-flatten lalu di-dedupe per id_mapel.
+const normalizeMapelList = (data) => {
+  const raw = Array.isArray(data)
+    ? data
+    : data && typeof data === "object"
+      ? Object.values(data).flat()
+      : [];
+  const seen = new Set();
+  return raw.filter((m) => {
+    if (!m || m.id_mapel == null || seen.has(m.id_mapel)) return false;
+    seen.add(m.id_mapel);
+    return true;
+  });
+};
+
+// Dedupe request in-flight per kelas: kalau tabel dan modal sama-sama butuh
+// mapel kelas yang sama bersamaan, cukup satu request yang jalan.
+const mapelFetchInFlight = new Map();
+
+const fetchMapelsForClass = async (classId) => {
+  const cached = readMapelCache(classId);
+  if (cached) return cached;
+
+  const existing = mapelFetchInFlight.get(classId);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`/api/classes/${classId}/mapels`, {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return [];
+    const list = normalizeMapelList(await res.json());
+    writeMapelCache(classId, list);
+    return list;
+  })();
+
+  mapelFetchInFlight.set(classId, request);
+  // Hapus dari daftar in-flight setelah selesai (sukses/gagal) supaya retry bisa jalan.
+  request.catch(() => {}).finally(() => mapelFetchInFlight.delete(classId));
+  return request;
+};
+
 const FormField = ({ label, name, value, onChange, error, placeholder, maxLength, type = "text", hint }) => (
   <div>
     <label htmlFor={name} className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -98,10 +183,20 @@ const FormField = ({ label, name, value, onChange, error, placeholder, maxLength
 );
 
 export default function TeacherAdmin() {
+  // Pagination: 6 baris per halaman di desktop, 3 di mobile (selaras ClassAdmin).
+  const ITEMS_PER_PAGE_DESKTOP = 6;
+  const ITEMS_PER_PAGE_MOBILE = 3;
   const [teachers, setTeachers] = useState([]);
-  const [mapels, setMapels] = useState([]);
+  // Mapel per kelas (id kelas -> daftar mapel). Satu sumber data untuk kolom
+  // mapel di tabel dan dropdown modal tambah guru — tidak ada fetch ganda.
+  const [mapelsByClass, setMapelsByClass] = useState({});
+  const [isMapelLoading, setIsMapelLoading] = useState(false);
+  // Daftar kelas + kelas terpilih untuk dropdown "pilih kelas dulu" di modal tambah guru.
+  const [classes, setClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
@@ -121,10 +216,10 @@ export default function TeacherAdmin() {
     try {
       const response = await fetch(BASE_URL);
       const result = await response.json();
-
-      const teacherList = result.filter((u) => u.role === "teacher");
+      const teacherList = Array.isArray(result)
+        ? result.filter((u) => u.role === "teacher")
+        : [];
       setTeachers(teacherList);
-      enrichSubjects();
     } catch (err) {
       console.error("Fetch Error:", err);
     } finally {
@@ -132,68 +227,93 @@ export default function TeacherAdmin() {
     }
   };
 
-  const enrichSubjects = async () => {
+  // Ambil daftar kelas SEKALI, lalu langsung ambil mapel semua kelas secara
+  // paralel. Sebelumnya /api/classes di-fetch dua kali dan pengayaan mapel
+  // menunggu daftar guru selesai — sekarang berjalan bersamaan dengan
+  // fetchTeachers, bukan berurutan.
+  const loadClassesAndMapels = async () => {
     try {
-      const classesRes = await fetch("/api/classes", { credentials: "include" });
-      const classesJson = classesRes.ok ? await classesRes.json() : [];
-      const classArr = Array.isArray(classesJson) ? classesJson : (classesJson.data ?? []);
+      const res = await fetch("/api/classes", { credentials: "include" });
+      if (!res.ok) return;
+      const json = await res.json();
+      const list = Array.isArray(json) ? json : (json?.data ?? []);
+      const classList = list
+        .map((c) => ({
+          id: c.id_class ?? c.id,
+          class_name: c.class_name ?? c.className ?? c.name,
+        }))
+        .filter((c) => c.id != null);
+      setClasses(classList);
 
       const mapelLists = await Promise.all(
-        classArr.map((c) =>
-          fetch(`/api/classes/${c.id_class ?? c.id}/mapels`, { credentials: "include" })
-            .then((r) => (r.ok ? r.json() : []))
-            .then((d) => {
-              if (Array.isArray(d)) return d;
-              if (Array.isArray(d?.data)) return d.data;
-              if (d && typeof d === "object") return Object.values(d).flat();
-              return [];
-            })
-            .catch(() => [])
-        )
+        classList.map((c) => fetchMapelsForClass(c.id).catch(() => []))
       );
-
-      const byTeacherName = {};
-      mapelLists.flat().forEach((m) => {
-        if (!m?.teacher_name || !m.mapel_name) return;
-        const key = m.teacher_name.trim().toLowerCase();
-        (byTeacherName[key] ||= new Set()).add(m.mapel_name);
+      const byClass = {};
+      classList.forEach((c, i) => {
+        byClass[c.id] = mapelLists[i];
       });
-
-      setTeachers((prev) =>
-        prev.map((t) => {
-          const key = (t.username || "").trim().toLowerCase();
-          const names = byTeacherName[key];
-          return names && names.size ? { ...t, subject: [...names].join(", ") } : t;
-        })
-      );
+      setMapelsByClass(byClass);
     } catch (err) {
-      console.error("Enrich subjects error:", err);
+      console.error("Load classes & mapels error:", err);
     }
   };
 
-  const fetchMapels = async () => {
-    try {
-      let res = await fetch("/api/auth/mapels", { credentials: "include" });
-      if (!res.ok) res = await fetch("/api/mapels", { credentials: "include" });
-      if (!res.ok) return;
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data?.data ?? []);
-      setMapels(list.filter((m) => m && m.id_mapel != null));
-    } catch (err) {
-      console.error("Fetch mapels error:", err);
-    }
+  // Setelah tambah/edit guru: data mapel (siapa mengajar apa) ikut berubah,
+  // jadi bersihkan cache lalu muat ulang semuanya secara paralel.
+  const refreshData = () => {
+    clearMapelCache();
+    fetchTeachers();
+    loadClassesAndMapels();
   };
 
   useEffect(() => {
     fetchTeachers();
-    fetchMapels();
+    loadClassesAndMapels();
   }, []);
+
+  // Mapel kelas yang dipilih di modal tambah guru. Biasanya sudah termuat
+  // bersama data tabel; kalau belum (cache kedaluwarsa dsb.), ambil khusus
+  // kelas itu saja.
+  const classMapels = mapelsByClass[selectedClassId] ?? [];
+
+  useEffect(() => {
+    if (!selectedClassId || mapelsByClass[selectedClassId]) {
+      setIsMapelLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsMapelLoading(true);
+    fetchMapelsForClass(selectedClassId)
+      .then((list) => {
+        if (!cancelled) {
+          setMapelsByClass((prev) => ({ ...prev, [selectedClassId]: list }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsMapelLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClassId, mapelsByClass]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setNewTeacher((prev) => ({ ...prev, [name]: value }));
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleClassChange = (value) => {
+    setSelectedClassId(value);
+    // Ganti kelas = mapel yang tadinya terpilih bisa jadi bukan milik kelas baru,
+    // jadi kosongkan pilihan mapelnya.
+    setNewTeacher((prev) => ({ ...prev, id_mapel: "" }));
+    if (formErrors.id_mapel) {
+      setFormErrors((prev) => ({ ...prev, id_mapel: undefined }));
     }
   };
 
@@ -208,6 +328,7 @@ export default function TeacherAdmin() {
     if (isSubmitting) return;
     setIsCreateOpen(false);
     setNewTeacher(EMPTY_TEACHER_FORM);
+    setSelectedClassId("");
     setFormErrors({});
   };
 
@@ -259,12 +380,13 @@ export default function TeacherAdmin() {
         throw new Error(translateError(result?.message) || "Gagal membuat akun guru.");
       }
 
-      const mapelName = mapels.find(
+      const mapelName = classMapels.find(
         (m) => String(m.id_mapel) === String(newTeacher.id_mapel)
       )?.mapel_name;
 
       setIsCreateOpen(false);
       setNewTeacher(EMPTY_TEACHER_FORM);
+      setSelectedClassId("");
       setFormErrors({});
       setAlertInfo({
         show: true,
@@ -272,7 +394,9 @@ export default function TeacherAdmin() {
         type: 'success'
       });
 
-      fetchTeachers();
+      // Guru baru = mapel yang tadinya kosong kini punya guru → muat ulang
+      // tabel + daftar mapel bersamaan (cache lama tidak berlaku lagi).
+      refreshData();
     } catch (err) {
       setAlertInfo({ show: true, message: err.message, type: 'error' });
     } finally {
@@ -334,7 +458,7 @@ export default function TeacherAdmin() {
           type: 'success'
         });
         setEditingUser(null);
-        fetchTeachers();
+        refreshData();
       } else {
         const msg = result?.message || "Gagal memperbarui data guru.";
         setAlertInfo({ show: true, message: translateError(msg), type: 'error' });
@@ -385,9 +509,59 @@ export default function TeacherAdmin() {
     }
   };
 
-  const filteredTeachers = teachers.filter((t) =>
+  // Mapel tiap guru dihitung saat render dari data mapel yang sudah termuat.
+  // Tidak lagi menunggu daftar guru selesai di-fetch dulu, jadi mapel bisa
+  // tampil begitu datanya sampai, apa pun urutannya.
+  const teachersWithSubjects = useMemo(() => {
+    const byTeacherName = {};
+    Object.values(mapelsByClass)
+      .flat()
+      .forEach((m) => {
+        if (!m?.teacher_name || !m.mapel_name) return;
+        const key = m.teacher_name.trim().toLowerCase();
+        (byTeacherName[key] ||= new Set()).add(m.mapel_name);
+      });
+
+    return teachers.map((t) => {
+      const key = (t.username || "").trim().toLowerCase();
+      const names = byTeacherName[key];
+      return names && names.size ? { ...t, subject: [...names].join(", ") } : t;
+    });
+  }, [teachers, mapelsByClass]);
+
+  const filteredTeachers = teachersWithSubjects.filter((t) =>
     t.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Potong daftar guru sesuai halaman aktif.
+  const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTeachers = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Kalau hasil filter mengecil sampai halaman aktif kosong, balik ke halaman 1.
+  useEffect(() => {
+    if (currentPage > 1 && currentPage > Math.ceil(filteredTeachers.length / itemsPerPage)) {
+      setCurrentPage(1);
+    }
+  }, [filteredTeachers.length, itemsPerPage, currentPage]);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  // Opsi mapel untuk dropdown modal tambah guru: langsung dari response
+  // GET /api/classes/:id_class/mapels untuk kelas yang dipilih.
+  // Mapel yang sudah memiliki guru di-disable + diberi keterangan,
+  // karena BE menolak registerTeacher untuk mapel yang sudah diguru.
+  const classMapelOptions = classMapels.map((m) => ({
+    value: m.id_mapel,
+    // Nama kelas tidak perlu ikut label — kelasnya sudah dipilih di atas.
+    label: m.mapel_name,
+    description: m.teacher_name ? `Sudah diajar oleh ${m.teacher_name}` : undefined,
+    disabled: Boolean(m.teacher_name),
+  }));
 
   const renderSubjectInfo = (teacher) => {
     const subject = teacher.subject || teacher.subject_name || teacher.mapel;
@@ -444,7 +618,10 @@ export default function TeacherAdmin() {
               placeholder="Cari nama pengajar..."
               className="w-full pl-12 pr-4 py-3 rounded-lg bg-slate-50 border border-transparent focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-slate-700"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -471,7 +648,7 @@ export default function TeacherAdmin() {
                     </td>
                   </tr>
                 ) : filteredTeachers.length > 0 ? (
-                  filteredTeachers.map((t) => (
+                  currentTeachers.map((t) => (
                     <tr key={t.id_user || t.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div>
@@ -514,6 +691,45 @@ export default function TeacherAdmin() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination — tampil hanya jika guru lebih dari satu halaman */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 p-4 border-t border-slate-100">
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {[...Array(totalPages).keys()].map((page) => {
+                const pageNumber = page + 1;
+                const isActive = currentPage === pageNumber;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => paginate(pageNumber)}
+                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm ${isActive ? 'bg-[#0d264f] text-white' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
@@ -565,16 +781,34 @@ export default function TeacherAdmin() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Kelas
+                </label>
+                <CustomSelect
+                  value={selectedClassId}
+                  onChange={handleClassChange}
+                  options={classes.map((c) => ({
+                    value: c.id,
+                    label: c.class_name,
+                  }))}
+                  placeholder="Pilih kelas..."
+                  searchable
+                  searchPlaceholder="Cari nama kelas..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                   Mata Pelajaran
                 </label>
                 <CustomSelect
                   value={newTeacher.id_mapel}
                   onChange={handleMapelChange}
-                  options={mapels.map((m) => ({
-                    value: m.id_mapel,
-                    label: m.mapel_name,
-                  }))}
-                  placeholder="Pilih mapel..."
+                  options={classMapelOptions}
+                  disabled={!selectedClassId}
+                  loading={isMapelLoading}
+                  placeholder={selectedClassId ? "Pilih mapel..." : "Pilih kelas dulu..."}
+                  searchable
+                  searchPlaceholder="Cari nama mapel..."
                 />
                 {formErrors.id_mapel ? (
                   <p className="mt-1 text-xs font-medium text-red-500">{formErrors.id_mapel}</p>
