@@ -126,25 +126,12 @@ const registerTeacher = async (req, res) => {
   let t;
   const SALT_ROUNDS = 10;
   try {
-    const { username, email, nip, id_mapel } = req.body;
+    const { username, email, nip } = req.body;
 
     if (!username || !email || !nip)
       return res.status(400).json({ message: "all fields must be filled in" });
 
     t = await sequelize.transaction();
-
-    const mapel = await Mapel.findByPk(id_mapel);
-    if (!mapel) {
-      await t.rollback();
-      return res.status(403).json({ message: "mapel not found" });
-    }
-
-    if (mapel.id_teacher) {
-      await t.rollback();
-      return res
-        .status(400)
-        .json({ message: "This mapel already has a teacher assigned" });
-    }
 
     const tempPassword = generateTempPassword(6);
     const hashedPassword = await bcrypt.hash(tempPassword, SALT_ROUNDS);
@@ -166,7 +153,6 @@ const registerTeacher = async (req, res) => {
       { id_teacher: newUser.id_user, nip },
       { transaction: t },
     );
-    await mapel.update({ id_teacher: newUser.id_user }, { transaction: t });
     await t.commit();
 
     setImmediate(() => {
@@ -181,7 +167,6 @@ const registerTeacher = async (req, res) => {
         id_user: newUser.id_user,
         username: newUser.username,
         role: newUser.role,
-        id_mapel: mapel.id_mapel,
       },
     });
   } catch (err) {

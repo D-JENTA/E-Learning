@@ -1,5 +1,6 @@
 const path = require("path");
-const { Assignment, assignmentStudent, Student, User } = require("../models");
+const { Op } = require("sequelize");
+const { Assignment, assignmentStudent, Student, User,Mapel } = require("../models");
 const { destroyCloudinaryFiles } = require("../config/cloudinary");
 const assertOwnsMapel = require("../utils/assertOwnsMapel");
 
@@ -400,6 +401,114 @@ const getMySubmissions = async (req, res) => {
       .json({ message: "Server error saat mengambil data pengumpulan" });
   }
 };
+//getMySubmissionsProgres
+const getMSProgress = async (req, res) => {
+  try {
+    const { id_student } = req.params;
+
+    const student = await Student.findByPk(id_student, {
+      attributes: ["id_student", "id_class"],
+      include: [{ model: User, attributes: ["username"] }],
+    });
+
+    if (!student) {
+      return res.status(404).json({ message: "Siswa tidak ditemukan" });
+    }
+    if (!student.id_class) {
+      return res.status(400).json({ message: "Siswa belum terdaftar di kelas manapun" });
+    }
+
+    const mapels = await Mapel.findAll({
+      where: { id_class: student.id_class },
+      attributes: ["id_mapel", "mapel_name"],
+    });
+
+    const mapelIds = mapels.map((m) => m.id_mapel);
+
+    if (mapelIds.length === 0) {
+      return res.status(200).json({
+        student: { id_student: student.id_student, username: student.username },
+        summary: { total: 0, sudah: 0, belum: 0, persentase: 0 },
+        mapels: [],
+      });
+    }
+
+    const [assignments, submissions] = await Promise.all([
+      Assignment.findAll({
+        where: { id_mapel: { [Op.in]: mapelIds } },
+        attributes: ["id_assignment", "assignment_title", "deadline", "id_mapel"],
+        order: [["deadline", "ASC"]],
+      }),
+      assignmentStudent.findAll({
+        where: { id_student, id_mapel: { [Op.in]: mapelIds } },
+        attributes: ["id_assignment", "score", "createdAt", "file_url"],
+        order: [["createdAt", "DESC"]], // submission terbaru menang
+      }),
+    ]);
+
+    const submissionMap = new Map();
+    for (const s of submissions) {
+      if (!submissionMap.has(s.id_assignment)) submissionMap.set(s.id_assignment, s);
+    }
+
+    const buildItem = (a) => {
+      const sub = submissionMap.get(a.id_assignment);
+      const isLate =
+        sub && a.deadline ? new Date(sub.createdAt) > new Date(a.deadline) : false;
+
+      return {
+        id_assignment: a.id_assignment,
+        assignment_title: a.assignment_title,
+        deadline: a.deadline,
+        status: sub ? (isLate ? "terlambat" : "sudah") : "belum",
+        score: sub?.score ?? null,
+        submitted_at: sub?.createdAt ?? null,
+        file_url: sub?.file_url ?? null,
+      };
+    };
+
+    const perMapel = mapels.map((m) => {
+      const items = assignments
+        .filter((a) => a.id_mapel === m.id_mapel)
+        .map(buildItem);
+
+      const done = items.filter((i) => i.status !== "belum").length;
+
+      return {
+        id_mapel: m.id_mapel,
+        mapel_name: m.mapel_name,
+        summary: {
+          total: items.length,
+          sudah: done,
+          belum: items.length - done,
+          persentase: items.length ? Math.round((done / items.length) * 100) : 0,
+        },
+        assignments: items,
+      };
+    });
+
+    const total = assignments.length;
+    const done = perMapel.reduce((acc, m) => acc + m.summary.sudah, 0);
+
+    return res.status(200).json({
+      student: {
+        id_student: student.id_student,
+        username: student.username,
+        id_class: student.id_class,
+      },
+      summary: {
+        total,
+        sudah: done,
+        belum: total - done,
+        persentase: total ? Math.round((done / total) * 100) : 0,
+      },
+      mapels: perMapel,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 // DELETE method assignment teacher
 const deleteAssignment = async (req, res) => {
@@ -585,6 +694,7 @@ module.exports = {
   getAssignmentStudent,
   getAssignmentStudentById,
   getMySubmissions,
+  getMSProgress,
   totalScore,
   deleteAssignmentStudent,
   deleteAssignment,
