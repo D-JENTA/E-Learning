@@ -32,6 +32,7 @@ import PlustaskStudent from "./Pages/Student/PlustaskStudent";
 import CalendarStudent from "./Pages/Student/CalendarStudent";
 import SettingsStudent from "./Pages/Student/SettingsStudent";
 import JoinClass from "./Pages/Student/JoinClass";
+import ProgressStudent from "./Pages/Student/ProgressStudent";
 
 import TeacherDashboard from "./Pages/Teacher/TeacherDashboard";
 import ClassList from "./Pages/Teacher/ClassList";
@@ -226,6 +227,7 @@ function App() {
         <Route path="/student/calendar" element={<Guard allowedRoles="student" user={authState.user}><CalendarStudent /></Guard>} />
         <Route path="/student/settings" element={<Guard allowedRoles="student" user={authState.user}><SettingsStudent /></Guard>} />
         <Route path="/student/join-class" element={<Guard allowedRoles="student" user={authState.user}><JoinClass /></Guard>} />
+        <Route path="/student/progress" element={<Guard allowedRoles="student" user={authState.user}><ProgressStudent /></Guard>} />
 
         <Route path="/teacher/dashboard" element={<Guard allowedRoles="teacher" user={authState.user}><TeacherDashboard user={authState.user} /></Guard>} />
         <Route path="/teacher/classes" element={<Guard allowedRoles="teacher" user={authState.user}><ClassList user={authState.user} /></Guard>} />

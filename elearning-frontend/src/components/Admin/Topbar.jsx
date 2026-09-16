@@ -129,16 +129,16 @@ export default function TopbarTeacher() {
 
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 fixed top-0 right-0 left-0 md:left-60 z-40 transition-all duration-300 shadow-sm">
-      
+
       <div className="flex items-center gap-4 flex-1">
-        
+
         <HamburgerButton />
-        
+
         <h1 className="font-bold text-xl text-slate-800 hidden sm:block">EduSpace Admin</h1>
       </div>
 
       <div className="flex items-center gap-4">
-        
+
         <div className="text-right hidden sm:block">
           <p className="text-sm font-bold text-slate-800">
             {userData.username}
@@ -149,15 +149,15 @@ export default function TopbarTeacher() {
         </div>
 
         <div ref={profileMenuRef} className="relative">
-          <button 
+          <button
             onClick={() => setIsProfileMenuOpen((prev) => !prev)}
             className="relative group cursor-pointer"
             title="Menu profil"
           >
-            <img 
-              src={profileSrc} 
-              alt="Profile" 
-              key={userData.profile_picture_url} 
+            <img
+              src={profileSrc}
+              alt="Profile"
+              key={userData.profile_picture_url}
               className="h-10 w-10 rounded-full border-2 border-white shadow-md object-cover bg-slate-100 group-hover:scale-105 transition-transform duration-300"
             />
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>

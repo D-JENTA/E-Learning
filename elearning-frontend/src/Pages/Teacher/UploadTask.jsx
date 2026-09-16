@@ -96,6 +96,16 @@ export default function UploadTask() {
     setFormData((prev) => ({ ...prev, date: dateStr }));
   };
 
+  // Hanya tautan http/https yang diterima — teks biasa bukan link.
+  const isValidLink = (value) => {
+    try {
+      const u = new URL(value.trim());
+      return u.protocol === "http:" || u.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -116,10 +126,7 @@ export default function UploadTask() {
         setAlertInfo({ show: true, message: "Wajib upload file atau isi link tugas!", type: 'error' });
         return;
       }
-      try {
-        const u = new URL(link);
-        if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error();
-      } catch {
+      if (!isValidLink(link)) {
         setAlertInfo({ show: true, message: "Link tidak valid, gunakan format URL http/https", type: 'error' });
         return;
       }
@@ -251,13 +258,25 @@ export default function UploadTask() {
     return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // Label zona waktu mengikuti lokasi user (WIB/WITA/WIT/GMT+X),
+  // karena jam yang dipilih adalah jam lokal browser mereka.
+  const getTimezoneLabel = () => {
+    try {
+      const parts = new Intl.DateTimeFormat("id-ID", { timeZoneName: "short" }).formatToParts(new Date());
+      return parts.find((p) => p.type === "timeZoneName")?.value || "";
+    } catch {
+      return "";
+    }
+  };
+  const timezoneLabel = getTimezoneLabel();
+
   const timePresets = [
-    { label: "08:00 WIB (Pagi)", value: "08:00" },
-    { label: "12:00 WIB (Siang)", value: "12:00" },
-    { label: "15:00 WIB (Sore)", value: "15:00" },
-    { label: "17:00 WIB (Petang)", value: "17:00" },
-    { label: "21:00 WIB (Malam)", value: "21:00" },
-    { label: "23:59 WIB (Tenggat Akhir)", value: "23:59" },
+    { label: "08:00 (Pagi)", value: "08:00" },
+    { label: "12:00 (Siang)", value: "12:00" },
+    { label: "15:00 (Sore)", value: "15:00" },
+    { label: "17:00 (Petang)", value: "17:00" },
+    { label: "21:00 (Malam)", value: "21:00" },
+    { label: "23:59 (Tenggat Akhir)", value: "23:59" },
   ];
 
   return (
@@ -283,28 +302,44 @@ export default function UploadTask() {
           <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-8">
             
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
-                Judul Tugas
-              </label>
+              <div className="flex items-center justify-between ml-1">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Judul Tugas
+                </label>
+                <span
+                  className={`text-[10px] font-semibold ${formData.title.length >= 100 ? "text-rose-500" : "text-slate-400"}`}
+                >
+                  {formData.title.length}/100
+                </span>
+              </div>
               <input
                 type="text"
                 required
+                maxLength={100}
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                 placeholder="Contoh: Kuis Matematika Bab 1"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-bold text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400"
               />
-            </div>      
+            </div>
 
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
-                Deskripsi / Instruksi
-              </label>
+              <div className="flex items-center justify-between ml-1">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Deskripsi / Instruksi
+                </label>
+                <span
+                  className={`text-[10px] font-semibold ${formData.description.length >= 255 ? "text-rose-500" : "text-slate-400"}`}
+                >
+                  {formData.description.length}/255
+                </span>
+              </div>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 placeholder="Apa yang harus dilakukan siswa?"
                 rows="5"
+                maxLength={255}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-medium text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400 resize-none"
               />
             </div>
@@ -441,13 +476,13 @@ export default function UploadTask() {
 
                 {/* Custom Time Picker Modal Trigger */}
                 <div className="relative" ref={timePickerRef}>
-                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Pilih Jam Batas (WIB)</label>
+                  <label className="block text-[11px] font-semibold text-slate-400 mb-1">Pilih Jam Batas{timezoneLabel ? ` (${timezoneLabel})` : ""}</label>
                   <button
                     type="button"
                     onClick={() => setShowTimePicker(!showTimePicker)}
                     className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 hover:border-[#0d264f] focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all cursor-pointer shadow-2xs"
                   >
-                    <span className="text-slate-800 font-bold">{formData.time} WIB</span>
+                    <span className="text-slate-800 font-bold">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -455,33 +490,93 @@ export default function UploadTask() {
 
                   {/* Dropdown Jam Custom */}
                   {showTimePicker && (
-                    <div className="absolute top-full right-0 mt-2 z-50 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl p-3 animate-fade-in-up">
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
-                        Pilihan Jam Populer
+                    <div className="absolute top-full right-0 mt-2 z-50 w-[320px] bg-white border border-slate-200 rounded-2xl shadow-xl p-3 animate-fade-in-up">
+                      {/* Jam kustom — grid Jam & Menit, langsung tersinkron */}
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                        Pilih Jam Kustom
                       </div>
-                      <div className="space-y-1">
-                        {timePresets.map((preset) => (
-                          <button
-                            key={preset.value}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ ...formData, time: preset.value });
-                              setShowTimePicker(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
-                              formData.time === preset.value
-                                ? 'bg-blue-50 text-[#0d264f] font-bold'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <span>{preset.label}</span>
-                            {formData.time === preset.value && (
-                              <svg className="w-4 h-4 text-[#0d264f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                              </svg>
-                            )}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 mb-1.5 px-1">Jam</div>
+                          <div className="grid grid-cols-4 gap-1 max-h-36 overflow-y-auto custom-scrollbar pr-0.5">
+                            {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((hh) => (
+                              <button
+                                key={hh}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, time: `${hh}:${formData.time.slice(3, 5)}` })}
+                                className={`h-8 rounded-lg text-xs font-bold transition-all ${
+                                  formData.time.slice(0, 2) === hh
+                                    ? "bg-[#0d264f] text-white shadow-md"
+                                    : "hover:bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {hh}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 mb-1.5 px-1">Menit</div>
+                          <div className="grid grid-cols-3 gap-1">
+                            {Array.from({ length: 12 }, (_, m) => String(m * 5).padStart(2, "0")).map((mm) => (
+                              <button
+                                key={mm}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, time: `${formData.time.slice(0, 2)}:${mm}` })}
+                                className={`h-8 rounded-lg text-xs font-bold transition-all ${
+                                  formData.time.slice(3, 5) === mm
+                                    ? "bg-[#0d264f] text-white shadow-md"
+                                    : "hover:bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {mm}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Preview jam terpilih + tombol konfirmasi */}
+                      <div className="mt-3 flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                        <span className="text-sm font-black text-[#0d264f] tracking-wide">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowTimePicker(false)}
+                          className="px-3 py-1.5 rounded-lg bg-[#0d264f] text-white text-xs font-bold hover:bg-blue-900 transition-all active:scale-95 cursor-pointer"
+                        >
+                          Gunakan
+                        </button>
+                      </div>
+
+                      {/* Preset jam populer */}
+                      <div className="border-t border-slate-100 mt-3 pt-3">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                          Pilihan Jam Populer
+                        </div>
+                        <div className="space-y-1">
+                          {timePresets.map((preset) => (
+                            <button
+                              key={preset.value}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, time: preset.value });
+                                setShowTimePicker(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
+                                formData.time === preset.value
+                                  ? 'bg-blue-50 text-[#0d264f] font-bold'
+                                  : 'hover:bg-slate-50 text-slate-700'
+                              }`}
+                            >
+                              <span>{preset.label}</span>
+                              {formData.time === preset.value && (
+                                <svg className="w-4 h-4 text-[#0d264f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              )}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -498,7 +593,7 @@ export default function UploadTask() {
                 <div className="text-xs">
                   {formData.date ? (
                     <p className="text-slate-700 font-medium">
-                      Tugas dikumpulkan paling lambat <span className="font-bold text-[#0d264f]">{formData.date}</span> pukul <span className="font-bold text-[#0d264f]">{formData.time} WIB</span>.
+                      Tugas dikumpulkan paling lambat <span className="font-bold text-[#0d264f]">{formData.date}</span> pukul <span className="font-bold text-[#0d264f]">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>.
                     </p>
                   ) : (
                     <p className="text-slate-400">
@@ -531,7 +626,7 @@ export default function UploadTask() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                   </svg>
-                  Upload File
+                  Upload File / Media
                 </button>
                 <button
                   type="button"
@@ -592,23 +687,49 @@ export default function UploadTask() {
               </div>
               ) : (
               <div className="space-y-2">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                    </svg>
-                  </div>
-                  <input
-                    type="url"
-                    value={formData.link}
-                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                    placeholder="https://drive.google.com/..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-5 py-4 text-base font-medium text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400"
-                  />
-                </div>
-                <p className="text-xs text-slate-400 ml-1">
-                  Tempelkan tautan tugas (Google Drive, YouTube, dsb). Harus diawali http:// atau https://
-                </p>
+                {(() => {
+                  const linkFilled = formData.link.trim() !== "";
+                  const linkValid = linkFilled && isValidLink(formData.link);
+                  const linkInvalid = linkFilled && !linkValid;
+                  return (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                          </svg>
+                        </div>
+                        <input
+                          type="url"
+                          value={formData.link}
+                          onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                          placeholder="https://drive.google.com/..."
+                          className={`w-full bg-slate-50 border rounded-xl pl-12 pr-12 py-4 text-base font-medium text-slate-800 focus:bg-white focus:ring-2 outline-none transition-all placeholder:text-slate-400
+                            ${linkInvalid
+                              ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
+                              : linkValid
+                                ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/10"
+                                : "border-slate-200 focus:border-[#0d264f] focus:ring-[#0d264f]/10"
+                            }`}
+                        />
+                        {linkFilled && (
+                          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                            {linkValid ? (
+                              <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            ) : (
+                              <svg className="h-5 w-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <p className={`text-xs ml-1 ${linkInvalid ? "text-rose-500 font-semibold" : "text-slate-400"}`}>
+                        {linkInvalid
+                          ? "Ini bukan link yang valid — harus diawali http:// atau https://"
+                          : "Tempelkan tautan tugas (Google Drive, YouTube, dsb). Harus diawali http:// atau https://"}
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
               )}
             </div>

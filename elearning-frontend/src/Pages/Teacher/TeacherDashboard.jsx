@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 import Clock from "../../components/Clock";
 
@@ -22,14 +22,34 @@ const IconClipboard = () => (
   </svg>
 );
 
-const StatCard = ({ icon, label, value, color }) => (
-  <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
-    <div className={`p-3 rounded-2xl ${color}`}>{icon}</div>
-    <div>
-      <p className="text-3xl font-extrabold text-slate-900 leading-none">{value}</p>
-      <p className="text-sm text-slate-500 font-medium mt-1">{label}</p>
+// Stat card bergaya sama dengan dashboard admin: label kecil uppercase,
+// angka besar, ikon di kanan atas dengan latar lembut, dan footer garis
+// tipis "Lihat Detail" dengan titik warna. Semua card mengarah ke daftar
+// kelas — hub untuk mengelola kelas, siswa, dan tugas.
+const StatCard = ({ data }) => (
+  <Link to={data.path} className="block group">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 h-full relative overflow-hidden group-hover:border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+      <div className={`absolute -right-4 -top-4 w-24 h-24 ${data.color} rounded-full opacity-0 group-hover:opacity-5 transition-opacity duration-500 blur-2xl`}></div>
+
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+            {data.title}
+          </p>
+          <h3 className="text-4xl font-black text-slate-800">{data.value}</h3>
+        </div>
+
+        <div className={`p-3 rounded-xl ${data.bgSoft} ${data.textAccent} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+          {data.icon}
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+        <span className="text-xs text-slate-400 font-medium">Lihat Detail</span>
+        <div className={`w-2 h-2 rounded-full ${data.color}`}></div>
+      </div>
     </div>
-  </div>
+  </Link>
 );
 
 export default function DashboardTeacher({ user }) {
@@ -42,17 +62,17 @@ export default function DashboardTeacher({ user }) {
       const res = await fetch("/api/teachers/me/mapels", { credentials: "include" });
       if (!res.ok) return;
       const json = await res.json();
-      const mapels = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      const mapelList = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
 
-      const classIds = [...new Set(mapels.map((m) => m.id_class).filter(Boolean))];
+      const classIds = [...new Set(mapelList.map((m) => m.id_class).filter(Boolean))];
 
-      const [assignmentCounts, studentCounts] = await Promise.all([
+      const [assignmentLists, studentCounts] = await Promise.all([
         Promise.all(
-          mapels.map((m) =>
+          mapelList.map((m) =>
             fetch(`/api/me/mapel/${m.id_mapel}/assignmentsTeacher`, { credentials: "include" })
               .then((r) => (r.ok ? r.json() : null))
-              .then((d) => (Array.isArray(d?.data) ? d.data.length : 0))
-              .catch(() => 0)
+              .then((d) => (Array.isArray(d?.data) ? d.data : []))
+              .catch(() => [])
           )
         ),
         Promise.all(
@@ -72,7 +92,7 @@ export default function DashboardTeacher({ user }) {
       setStats({
         total_classes: classIds.length,
         total_students: studentCounts.reduce((a, b) => a + b, 0),
-        total_assignments: assignmentCounts.reduce((a, b) => a + b, 0),
+        total_assignments: assignmentLists.reduce((a, list) => a + list.length, 0),
       });
     } catch (error) {
       console.error("Gagal mengambil statistik:", error);
@@ -87,6 +107,39 @@ export default function DashboardTeacher({ user }) {
     };
     loadData();
   }, []);
+
+  // Buka hub daftar kelas — pusat pengelolaan kelas, siswa, dan tugas.
+  const openClasses = () => navigate("/teacher/classes");
+
+  const cardsData = [
+    {
+      title: "Total Kelas",
+      value: stats.total_classes,
+      color: "bg-indigo-500",
+      textAccent: "text-indigo-600",
+      bgSoft: "bg-indigo-50",
+      icon: <IconAcademic />,
+      path: "/teacher/classes",
+    },
+    {
+      title: "Total Siswa",
+      value: stats.total_students,
+      color: "bg-emerald-500",
+      textAccent: "text-emerald-600",
+      bgSoft: "bg-emerald-50",
+      icon: <IconUsers />,
+      path: "/teacher/classes",
+    },
+    {
+      title: "Total Tugas",
+      value: stats.total_assignments,
+      color: "bg-amber-500",
+      textAccent: "text-amber-600",
+      bgSoft: "bg-amber-50",
+      icon: <IconClipboard />,
+      path: "/teacher/classes",
+    },
+  ];
 
   return (
     <MainLayoutTeacher user={user}>
@@ -110,17 +163,17 @@ export default function DashboardTeacher({ user }) {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <StatCard icon={<IconAcademic />} label="Total Kelas" value={stats.total_classes} color="bg-indigo-50 text-indigo-600" />
-              <StatCard icon={<IconUsers />} label="Total Siswa" value={stats.total_students} color="bg-emerald-50 text-emerald-600" />
-              <StatCard icon={<IconClipboard />} label="Total Tugas" value={stats.total_assignments} color="bg-amber-50 text-amber-600" />
+              {cardsData.map((card) => (
+                <StatCard key={card.title} data={card} />
+              ))}
             </div>
 
-            <div className="cursor-pointer group" onClick={() => navigate("/teacher/classes")}>
+            <div className="cursor-pointer group" onClick={openClasses}>
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-300 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-2xl md:text-3xl font-bold text-slate-900 group-hover:text-indigo-700 transition-colors">
-                      Lihat Daftar Kelas 
+                      Lihat Daftar Kelas
                     </h3>
                     <p className="mt-2 text-sm text-slate-500">Kelola Kelas, tugas, dan siswa dengan mudah.</p>
                   </div>
@@ -130,6 +183,7 @@ export default function DashboardTeacher({ user }) {
                 </div>
               </div>
             </div>
+
           </>
         )}
       </div>

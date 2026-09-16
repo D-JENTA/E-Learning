@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useLocation } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 import MainLayoutAdmin from "../../components/Admin/MainLayout"; // TAMBAHAN
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -68,6 +69,10 @@ const IconPdf = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
 );
 
+const IconLink = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+);
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 const getFileExtension = (fileUrl = "") => {
@@ -104,6 +109,32 @@ const getMimeType = (ext) => ({
   webm: "video/webm",
 }[ext] || "video/mp4");
 
+// Tugas berbasis link. Kontrak respons BE untuk tugas link belum pasti,
+// jadi deteksinya defensif: field link khusus (assignment_link / link)
+// ATAU fileUrl berupa URL eksternal (bukan Cloudinary) tanpa ekstensi file.
+const getTaskLink = (task) =>
+  task.assignment_link || task.assignmentLink || task.link || null;
+
+const isExternalLink = (url) => {
+  const value = String(url || "");
+  return (
+    /^https?:\/\//i.test(value) &&
+    !/res\.cloudinary\.com/i.test(value) &&
+    !getFileExtension(value)
+  );
+};
+
+// Link YouTube dikonversi ke bentuk embed agar bisa dipratinjau di modal.
+const getYouTubeEmbed = (url) => {
+  const value = String(url || "");
+  const watch = value.match(/[?&]v=([\w-]{6,})/);
+  if (watch) return `https://www.youtube.com/embed/${watch[1]}`;
+  const short = value.match(/youtu\.be\/([\w-]{6,})/);
+  if (short) return `https://www.youtube.com/embed/${short[1]}`;
+  if (/^https:\/\/(www\.)?youtube\.com\/embed\//.test(value)) return value;
+  return null;
+};
+
 const PreviewModal = ({ fileUrl, onClose }) => {
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
@@ -118,16 +149,28 @@ const PreviewModal = ({ fileUrl, onClose }) => {
   if (!fileUrl) return null;
 
   const ext = getFileExtension(fileUrl);
+  const isLink = isExternalLink(fileUrl);
+  const embedUrl = isLink ? getYouTubeEmbed(fileUrl) : null;
   const isPdf = ext === "pdf";
   const isImage = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext);
   const isVideo = ["mp4", "mov", "webm"].includes(ext);
   const isDocument = ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext);
 
+  // Hostname untuk panel link (drive.google.com, youtube.com, dst).
+  let linkHostname = "";
+  try {
+    linkHostname = new URL(fileUrl).hostname;
+  } catch {
+    linkHostname = "";
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in" onClick={handleBackdropClick}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-scale-up">
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">Pratinjau File</span>
+          <span className="font-bold text-slate-700 text-sm uppercase tracking-wide">
+            {isLink ? "Pratinjau Link" : "Pratinjau File"}
+          </span>
           <div className="flex items-center gap-4">
             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
               Buka di Tab Baru
@@ -139,7 +182,29 @@ const PreviewModal = ({ fileUrl, onClose }) => {
         </div>
         <div className="p-4 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
           <div className="bg-white rounded-xl p-2 shadow-sm min-h-[300px] flex items-center justify-center">
-            {isPdf || isDocument ? (
+            {isLink ? (
+              embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  className="w-full h-[500px] rounded-lg border border-slate-200"
+                  title="Video YouTube"
+                  allowFullScreen
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-4 py-12 px-6 text-center">
+                  <div className="p-4 rounded-2xl bg-blue-50 text-[#0d264f]">
+                    <IconLink />
+                  </div>
+                  {linkHostname && (
+                    <p className="text-slate-800 text-base font-bold">{linkHostname}</p>
+                  )}
+                  <p className="text-slate-400 text-xs break-all max-w-md">{fileUrl}</p>
+                  <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-md hover:shadow-lg">
+                    Buka Link
+                  </a>
+                </div>
+              )
+            ) : isPdf || isDocument ? (
               <div className="flex flex-col gap-3 w-full h-full">
                 <iframe 
                   src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`} 
@@ -183,27 +248,27 @@ const DescriptionText = ({ text }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const description = text || "Tidak ada deskripsi";
 
-  if (!text || text.length <= 150) {
-    return (
-      <div className="border border-slate-200 rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-500 break-words whitespace-pre-wrap">
-        {description}
-      </div>
-    );
-  }
+  // Semua deskripsi dirender dalam kotak dengan tinggi yang sama (h-24)
+  // supaya tata letak card seragam — panjang atau pendek, kotaknya identik.
+  // Tombol buka/tutup hanya muncul untuk deskripsi yang berpotensi
+  // melebihi 3 baris muatan kotaknya.
+  const isLong = description.length > 100;
 
   return (
     <div className="space-y-3 text-sm">
-      <div className={`border border-slate-200 rounded-2xl bg-slate-50 p-4 transition-all duration-300 overflow-hidden ${!isExpanded ? 'max-h-24' : ''}`}>
+      <div className={`border border-slate-200 rounded-2xl bg-slate-50 p-4 transition-all duration-300 overflow-hidden ${!isExpanded ? "h-24" : ""}`}>
         <p className="text-slate-500 leading-relaxed break-words whitespace-pre-wrap">
           {description}
         </p>
       </div>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="text-blue-600 font-bold text-xs hover:underline focus:outline-none"
-      >
-        {isExpanded ? "Lebih Sedikit" : "Lebih Banyak"}
-      </button> 
+      {isLong && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-blue-600 font-bold text-xs hover:underline focus:outline-none"
+        >
+          {isExpanded ? "Lebih Sedikit" : "Lebih Banyak"}
+        </button>
+      )}
     </div>
   );
 };
@@ -216,6 +281,9 @@ export default function TeacherAssignments({ user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
+  // Tugas yang sedang dikonfirmasi untuk dihapus + status penghapusannya.
+  const [deletingAssignment, setDeletingAssignment] = useState(null);
+  const [isDeleteSubmitting, setIsDeleteSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
 
   // Admin cuma boleh melihat data di halaman ini (read-only).
@@ -285,14 +353,29 @@ export default function TeacherAssignments({ user }) {
     setPreviewUrl(url);
   };
 
-  const handleDelete = async (id_assignment) => {
+  // Tombol hapus hanya membuka modal konfirmasi; request DELETE baru
+  // dikirim setelah guru menekan "Ya, Hapus" di modal.
+  const handleDelete = (task) => {
     if (isAdmin) return; // guard tambahan di FE, aksi ini bukan untuk admin
+    setDeletingAssignment(task);
+  };
 
+  const closeDeleteModal = () => {
+    if (isDeleteSubmitting) return;
+    setDeletingAssignment(null);
+  };
+
+  const confirmDeleteAssignment = async () => {
+    if (!deletingAssignment || isDeleteSubmitting) return;
+
+    const id_assignment = deletingAssignment.id || deletingAssignment.id_assignment;
     if (!id_assignment) {
+      setDeletingAssignment(null);
       setAlertInfo({ show: true, message: "ID tugas tidak ditemukan!", type: 'error' });
       return;
     }
-    
+
+    setIsDeleteSubmitting(true);
     try {
       const response = await fetch(`/api/teachers/assignments/${id_assignment}`, {
         method: "DELETE",
@@ -302,13 +385,16 @@ export default function TeacherAssignments({ user }) {
 
       if (response.ok) {
         setAlertInfo({ show: true, message: "Tugas berhasil dihapus.", type: 'success' });
-        fetchAssignments(); 
+        fetchAssignments();
       } else {
         const result = await response.json().catch(() => ({}));
         setAlertInfo({ show: true, message: result.message || "Terjadi kesalahan server.", type: 'error' });
       }
     } catch (err) {
       setAlertInfo({ show: true, message: "Terjadi kesalahan jaringan.", type: 'error' });
+    } finally {
+      setIsDeleteSubmitting(false);
+      setDeletingAssignment(null);
     }
   };
 
@@ -379,11 +465,16 @@ export default function TeacherAssignments({ user }) {
               {currentAssignments.map((task, index) => {
                 const targetID = task.id || task.id_assignment;
                 const originalFileUrl = task.fileUrl || task.file_url;
-                const fileLink = buildFileUrl(originalFileUrl);
+                // Tugas link: pakai field link khusus kalau ada, kalau tidak
+                // cek apakah fileUrl-nya URL eksternal tanpa ekstensi file.
+                const taskLink = getTaskLink(task);
+                const isLink = Boolean(taskLink) || isExternalLink(originalFileUrl);
+                const fileLink = buildFileUrl(taskLink || originalFileUrl);
                 const ext = getFileExtension(originalFileUrl);
-                
+
                 let fileLabel = "Lihat File";
-                if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) fileLabel = "Lihat Gambar";
+                if (isLink) fileLabel = "Buka Link";
+                else if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) fileLabel = "Lihat Gambar";
                 else if (["mp4", "mov", "webm"].includes(ext)) fileLabel = "Lihat Video";
                 else if (ext === "pdf") fileLabel = "Lihat PDF";
                 else if (["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext)) fileLabel = "Lihat Dokumen";
@@ -391,10 +482,18 @@ export default function TeacherAssignments({ user }) {
                 return (
                   <article key={targetID || index} className="group bg-white rounded-2xl border border-slate-200 hover:border-blue-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col overflow-hidden relative">
                     <div className="p-5 border-b border-slate-100 flex justify-between items-start gap-3 bg-slate-50/50 group-hover:bg-white transition-colors">
-                      <h3 className="text-xl font-bold text-slate-900 leading-tight line-clamp-2">
+                      {/* Header dikunci 3 baris (min-h + line-clamp-3) supaya
+                          tinggi card serugam. Batas 100 karakter di form buat
+                          tugas membuat judul baru selalu muat dalam 3 baris
+                          pada ukuran font ini; untuk kasus tepat di batas
+                          (huruf-huruf lebar), sisa teksnya terlihat lewat
+                          tooltip. */}                      <h3
+                        title={task.title}
+                        className="min-w-0 flex-1 text-base font-bold text-slate-900 leading-snug break-words line-clamp-3 min-h-[4.125rem]"
+                      >
                         {task.title}
                       </h3>
-                      <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap group-hover:text-slate-500 transition-colors">
+                      <span className="shrink-0 text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md whitespace-nowrap group-hover:text-slate-500 transition-colors">
                         #{index + 1 + indexOfFirstItem}
                       </span>
                     </div>
@@ -404,12 +503,12 @@ export default function TeacherAssignments({ user }) {
                       </div>
 
                       <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center group-hover:border-blue-200 group-hover:bg-blue-50/30 transition-colors mt-auto">
-                        {originalFileUrl ? (
-                          <button 
+                        {fileLink ? (
+                          <button
                             onClick={(e) => handleFileAction(e, fileLink)}
                             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-bold text-xs bg-white text-slate-700 hover:text-blue-600 hover:bg-blue-50 transition-all border border-slate-200 hover:border-blue-200 w-full justify-center shadow-sm"
                           >
-                            {getFileIcon(ext)}
+                            {isLink ? <IconLink /> : getFileIcon(ext)}
                             <span>{fileLabel}</span>
                           </button>
                         ) : (
@@ -436,7 +535,7 @@ export default function TeacherAssignments({ user }) {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(targetID);
+                            handleDelete(task);
                           }} 
                           className="relative z-10 p-2.5 rounded-lg text-red-500 bg-red-50 hover:bg-red-600 hover:text-white hover:shadow-md hover:shadow-red-200 transition-all duration-300 border border-red-100 shrink-0 flex justify-center items-center cursor-pointer lg:mr-2"
                           title="Hapus Tugas"
@@ -451,44 +550,32 @@ export default function TeacherAssignments({ user }) {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex flex-wrap justify-center items-center gap-2 mt-8 py-4">
-                <button
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center gap-1"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Sebelumnya
-                </button>
-
-                <div className="flex items-center gap-1 overflow-x-auto max-w-[200px] sm:max-w-none py-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() => paginate(page)}
-                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+              <div className="px-4 sm:px-6 py-4 mt-8 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+                <div>
+                  Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
                 </div>
-
-                <button
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center gap-1"
-                >
-                  Selanjutnya
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Kembali
+                  </button>
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    Lanjut
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -497,6 +584,17 @@ export default function TeacherAssignments({ user }) {
 
       {previewUrl && (
         <PreviewModal fileUrl={previewUrl} onClose={() => setPreviewUrl(null)} />
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS TUGAS */}
+      {deletingAssignment && (
+        <ConfirmDeleteModal
+          title="Hapus Tugas?"
+          message={`Tugas "${deletingAssignment.title || "tanpa judul"}" beserta semua pengumpulan siswa akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteAssignment}
+          onClose={closeDeleteModal}
+          isDeleting={isDeleteSubmitting}
+        />
       )}
 
       <style>{`

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import MainLayoutStudent from "../../components/Student/MainLayout";
 import Toast from "../../components/Toast";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const IconBook = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,8 +30,15 @@ const classes = [
 export default function LessonStudent() {
   const [openJoin, setOpenJoin] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
+  // Kelas yang sedang dikonfirmasi untuk dihapus.
+  const [deletingClassId, setDeletingClassId] = useState(null);
 
   const handleDeleteClass = (id) => {
+    setDeletingClassId(id);
+  };
+
+  const confirmDeleteClass = () => {
+    setDeletingClassId(null);
     setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
   };
 
@@ -81,6 +89,17 @@ export default function LessonStudent() {
       </div>
 
       {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} onNotify={(msg) => setAlertInfo({ show: true, message: msg, type: 'success' })} />}
+
+      {/* MODAL KONFIRMASI HAPUS KELAS */}
+      {deletingClassId !== null && (
+        <ConfirmDeleteModal
+          title="Hapus Kelas?"
+          message={`Kelas "${classes.find((c) => c.id === deletingClassId)?.title || "ini"}" akan dikeluarkan dari daftarmu. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteClass}
+          onClose={() => setDeletingClassId(null)}
+          isDeleting={false}
+        />
+      )}
     </MainLayoutStudent>
   );
 }

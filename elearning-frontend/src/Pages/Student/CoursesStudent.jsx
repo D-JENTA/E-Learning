@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayoutStudent from "../../components/Student/MainLayout";
 import Toast from "../../components/Toast";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const IconBook = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -39,8 +40,15 @@ export default function StudentClass() {
   const navigate = useNavigate();
   const [openJoin, setOpenJoin] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
+  // Status konfirmasi hapus kelas.
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const handleDeleteClass = () => {
+    setIsConfirmingDelete(true);
+  };
+
+  const confirmDeleteClass = () => {
+    setIsConfirmingDelete(false);
     setAlertInfo({ show: true, message: "Kelas berhasil dihapus.", type: 'success' });
     navigate("/student/class");
   };
@@ -136,6 +144,17 @@ export default function StudentClass() {
       </div>
 
       {openJoin && <JoinClassModal onClose={() => setOpenJoin(false)} onNotify={(msg, type = 'success') => setAlertInfo({ show: true, message: msg, type })} />}
+
+      {/* MODAL KONFIRMASI HAPUS KELAS */}
+      {isConfirmingDelete && (
+        <ConfirmDeleteModal
+          title="Hapus Kelas?"
+          message={`Kelas "${classInfo.name}" akan dikeluarkan dari daftarmu. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteClass}
+          onClose={() => setIsConfirmingDelete(false)}
+          isDeleting={false}
+        />
+      )}
     </MainLayoutStudent>
   );
 }

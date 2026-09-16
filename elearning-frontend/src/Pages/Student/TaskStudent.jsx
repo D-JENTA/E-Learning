@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import MainLayoutStudent from "../../components/Student/MainLayout";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -248,6 +249,17 @@ const DeadlineBadge = ({ deadline }) => {
   );
 };
 
+// Hanya tautan http/https yang diterima — teks biasa bukan link.
+// (Logika sama dengan validasi link di form buat tugas guru.)
+const isValidSubmissionLink = (value) => {
+  try {
+    const u = new URL(value.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export default function TaskStudent() {
   const { id_class } = useParams();
   const [tasks, setTasks] = useState([]);
@@ -259,9 +271,14 @@ export default function TaskStudent() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [deleteLoadingId, setDeleteLoadingId] = useState(null);
+  // Pengumpulan yang sedang dikonfirmasi untuk dibatalkan (dihapus).
+  const [confirmTask, setConfirmTask] = useState(null);
+
+  // File terpilih (dari klik picker maupun drag & drop) + status drag.
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const fileInputRef = useRef(null);
-  const [displayFileName, setDisplayFileName] = useState("");
   const [previewData, setPreviewData] = useState(null);
 
   // Sumber pengumpulan: "file" atau "link" (submission_link) —
@@ -272,12 +289,27 @@ export default function TaskStudent() {
   const ITEMS_PER_PAGE = 6;
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Tugas yang diminta dibuka dari halaman lain (mis. dari halaman Progress)
+  const location = useLocation();
+  const deepLinkAssignmentId = location.state?.openAssignmentId ?? null;
+  const deepLinkHandledRef = useRef(false);
+
   const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
     return {
       "ngrok-skip-browser-warning": "69420",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
+  };
+
+  const handleOpenUploadModal = (task) => {
+    setSelectedTask(task);
+    setSelectedFile(null);
+    setIsDragging(false);
+    setAttachmentMode('file');
+    setSubmissionLink("");
+    setIsModalOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const resolveAssignmentsEndpoint = async (mapelId) => {
@@ -383,6 +415,25 @@ export default function TaskStudent() {
         });
 
         setTasks(merged);
+
+        // Deep-link dari halaman Progress: tampilkan halaman yang memuat tugas
+        // yang diklik, lalu buka modalnya kalau tugas itu masih bisa dikumpulkan.
+        if (deepLinkAssignmentId && !deepLinkHandledRef.current) {
+          deepLinkHandledRef.current = true;
+
+          const idx = merged.findIndex(
+            (t) => Number(t.id ?? t.id_assignment) === Number(deepLinkAssignmentId)
+          );
+
+          if (idx !== -1) {
+            setCurrentPage(Math.floor(idx / ITEMS_PER_PAGE) + 1);
+
+            const target = merged[idx];
+            if (!target.submission_id && !isDeadlinePassed(target.deadline)) {
+              handleOpenUploadModal(target);
+            }
+          }
+        }
       } else {
         setAlertInfo({
           show: true,
@@ -404,29 +455,22 @@ export default function TaskStudent() {
     fetchTasks();
   }, [id_class]);
 
-  const handleOpenUploadModal = (task) => {
-    setSelectedTask(task);
-    setDisplayFileName("");
-    setAttachmentMode('file');
-    setSubmissionLink("");
-    setIsModalOpen(true);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const handleFileChange = (e) => {
     const file = e.target.files && e.target.files[0];
-    if (!file) {
-      setDisplayFileName("");
-      return;
-    }
-    // cek di sisi klien biar tidak sia-sia upload (backend juga menolak >100MB)
+    if (!file) return;
+    acceptFile(file, () => { e.target.value = ""; });
+  };
+
+  // Terima file dari picker maupun drag & drop — cek ukuran di sisi klien
+  // biar tidak sia-sia upload (backend juga menolak >100MB).
+  const acceptFile = (file, onReject) => {
     if (file.size > MAX_FILE_SIZE) {
-      e.target.value = "";
-      setDisplayFileName("");
+      if (onReject) onReject();
+      setSelectedFile(null);
       setAlertInfo({ show: true, message: "File terlalu besar. Maksimum 100 MB.", type: 'error' });
       return;
     }
-    setDisplayFileName(file.name);
+    setSelectedFile(file);
   };
 
   const handleUpload = async () => {
@@ -442,23 +486,13 @@ export default function TaskStudent() {
         setAlertInfo({ show: true, message: "Wajib upload file atau isi link tugas!", type: 'error' });
         return;
       }
-      try {
-        const u = new URL(link);
-        if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error();
-      } catch {
+      if (!isValidSubmissionLink(link)) {
         setAlertInfo({ show: true, message: "Link tidak valid, gunakan format URL http/https", type: 'error' });
         return;
       }
-    } else {
-      const fileToUpload = fileInputRef.current?.files[0];
-      if (!fileToUpload) {
-        setAlertInfo({ show: true, message: "Wajib upload file atau isi link tugas!", type: 'error' });
-        return;
-      }
-      if (fileToUpload.size > MAX_FILE_SIZE) {
-        setAlertInfo({ show: true, message: "File terlalu besar. Maksimum 100 MB.", type: 'error' });
-        return;
-      }
+    } else if (!selectedFile) {
+      setAlertInfo({ show: true, message: "Wajib upload file atau isi link tugas!", type: 'error' });
+      return;
     }
 
     try {
@@ -471,7 +505,7 @@ export default function TaskStudent() {
       if (attachmentMode === 'link') {
         formdata.append("submission_link", submissionLink.trim());
       } else {
-        formdata.append("file", fileInputRef.current.files[0]);
+        formdata.append("file", selectedFile);
       }
 
       const response = await fetch(
@@ -489,7 +523,7 @@ export default function TaskStudent() {
         setAlertInfo({ show: true, message: "Tugas berhasil dikumpulkan!", type: 'success' });
         fetchTasks();
         setIsModalOpen(false);
-        setDisplayFileName("");
+        setSelectedFile(null);
         setSubmissionLink("");
         if (fileInputRef.current) fileInputRef.current.value = "";
       } else {
@@ -502,7 +536,9 @@ export default function TaskStudent() {
     }
   };
 
-  const handleDeleteSubmission = async (task) => {
+  // Tombol batal hanya membuka modal konfirmasi; request DELETE baru
+  // dikirim setelah siswa menekan "Ya, Hapus" di modal.
+  const handleDeleteSubmission = (task) => {
     if (!task.submission_id) return;
 
     if (isSubmissionGraded(task)) {
@@ -514,6 +550,18 @@ export default function TaskStudent() {
       setAlertInfo({ show: true, message: "Deadline sudah lewat.", type: 'error' });
       return;
     }
+
+    setConfirmTask(task);
+  };
+
+  const closeConfirmModal = () => {
+    if (deleteLoadingId) return;
+    setConfirmTask(null);
+  };
+
+  const confirmDeleteSubmission = async () => {
+    const task = confirmTask;
+    if (!task?.submission_id || deleteLoadingId) return;
 
     try {
       setDeleteLoadingId(task.submission_id);
@@ -537,6 +585,7 @@ export default function TaskStudent() {
       setAlertInfo({ show: true, message: "Terjadi kesalahan jaringan.", type: 'error' });
     } finally {
       setDeleteLoadingId(null);
+      setConfirmTask(null);
     }
   };
 
@@ -604,7 +653,9 @@ export default function TaskStudent() {
 
         {/* Header */}
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight truncate">
+          {/* truncate tetap dipakai (nama kelas bisa panjang), tapi `pb-1` perlu
+              supaya overflow-hidden tidak memotong ekor huruf g/y. */}
+          <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight truncate pb-1">
             Daftar Tugas {classTitle && `- ${classTitle}`}
           </h1>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5 truncate">
@@ -880,63 +931,93 @@ export default function TaskStudent() {
                 </div>
 
                 {attachmentMode === 'file' ? (
-                <>
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer bg-slate-50/50 hover:bg-slate-100/60 hover:border-slate-300 transition-all group">
-                    <div className="flex flex-col items-center justify-center p-4 text-center">
-                      <div className="p-2.5 rounded-full bg-slate-100 group-hover:bg-slate-200/80 text-slate-600 transition-colors mb-2">
-                        <IconUpload />
-                      </div>
-                      <p className="text-xs text-slate-600 font-medium">
-                        <span className="font-bold text-blue-600 hover:underline">Klik untuk unggah</span> atau seret file ke sini
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-1">PDF, DOC/DOCX, PPT/PPTX, Video (MP4/MOV/WEBM), JPG, PNG, WEBP, GIF • maks 100 MB</p>
-                    </div>
+                  <div
+                    className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 cursor-pointer group
+                      ${isDragging ? 'border-[#0d264f] bg-blue-50 scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'}
+                      ${selectedFile ? 'border-green-500 bg-green-50' : ''}
+                    `}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files[0]) acceptFile(e.dataTransfer.files[0]);
+                    }}
+                  >
                     <input
                       ref={fileInputRef}
                       type="file"
-                      className="hidden"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       accept={ACCEPTED_FILE_TYPES}
                       onChange={handleFileChange}
                     />
-                  </label>
-                </div>
-                {displayFileName && (
-                  <div className="mt-3 flex items-center gap-2 bg-slate-100 p-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 min-w-0">
-                    <IconPaperclip />
-                    <span className="truncate flex-1">{displayFileName}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDisplayFileName("");
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                      className="text-slate-400 hover:text-red-500 transition-colors p-0.5 flex-shrink-0"
-                      aria-label="Hapus file terpilih"
-                    >
-                      <IconX />
-                    </button>
-                  </div>
-                )}
-                </>
-                ) : (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                      <IconPaperclip />
+                    <div className="flex flex-col items-center gap-4 relative z-0">
+                      <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110
+                        ${selectedFile ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-[#0d264f]'}`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-slate-700 font-semibold text-base">
+                          {selectedFile ? (
+                            <span className="text-green-700 truncate max-w-[240px] block mx-auto">{selectedFile.name}</span>
+                          ) : (
+                            <>
+                              <span className="text-[#0d264f]">Klik untuk mengunggah</span> atau drag & drop
+                            </>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">PDF, DOC/DOCX, PPT/PPTX, Video, Gambar (Maks. 100MB)</p>
+                      </div>
                     </div>
-                    <input
-                      type="url"
-                      value={submissionLink}
-                      onChange={(e) => setSubmissionLink(e.target.value)}
-                      placeholder="https://drive.google.com/..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-3.5 text-sm font-medium text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400"
-                    />
                   </div>
-                  <p className="text-[10px] text-slate-400">
-                    Tempelkan tautan jawaban tugas (Google Drive, YouTube, dsb). Harus diawali http:// atau https://
-                  </p>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(() => {
+                      const linkFilled = submissionLink.trim() !== "";
+                      const linkValid = linkFilled && isValidSubmissionLink(submissionLink);
+                      const linkInvalid = linkFilled && !linkValid;
+                      return (
+                        <>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                              </svg>
+                            </div>
+                            <input
+                              type="url"
+                              value={submissionLink}
+                              onChange={(e) => setSubmissionLink(e.target.value)}
+                              placeholder="https://drive.google.com/..."
+                              className={`w-full bg-slate-50 border rounded-xl pl-12 pr-12 py-3.5 text-sm font-medium text-slate-800 focus:bg-white focus:ring-2 outline-none transition-all placeholder:text-slate-400
+                                ${linkInvalid
+                                  ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
+                                  : linkValid
+                                    ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/10"
+                                    : "border-slate-200 focus:border-[#0d264f] focus:ring-[#0d264f]/10"
+                                }`}
+                            />
+                            {linkFilled && (
+                              <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                {linkValid ? (
+                                  <svg className="h-5 w-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                ) : (
+                                  <svg className="h-5 w-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <p className={`text-xs ${linkInvalid ? "text-rose-500 font-semibold" : "text-slate-400"}`}>
+                            {linkInvalid
+                              ? "Ini bukan link yang valid — harus diawali http:// atau https://"
+                              : "Tempelkan tautan jawaban tugas (Google Drive, YouTube, dsb). Harus diawali http:// atau https://"}
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
             </div>
@@ -975,6 +1056,18 @@ export default function TaskStudent() {
           fileUrl={previewData.url}
           title={previewData.title}
           onClose={() => setPreviewData(null)}
+        />
+      )}
+
+      {/* MODAL KONFIRMASI BATALKAN PENGUMPULAN */}
+      {confirmTask && (
+        <ConfirmDeleteModal
+          title="Batalkan Pengumpulan?"
+          message={`Pengumpulan tugas "${confirmTask.title || "tanpa judul"}" akan dihapus dan harus dikumpulkan ulang. Tindakan ini tidak bisa dibatalkan.`}
+          confirmText="Ya, Batalkan"
+          onConfirm={confirmDeleteSubmission}
+          onClose={closeConfirmModal}
+          isDeleting={Boolean(deleteLoadingId)}
         />
       )}
     </MainLayoutStudent>

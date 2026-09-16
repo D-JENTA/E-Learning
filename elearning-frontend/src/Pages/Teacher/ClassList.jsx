@@ -42,7 +42,6 @@ const CustomAlert = ({ message, type, onClose }) => {
 export default function ClassList({ user }) {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [teacherName, setTeacherName] = useState("");
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const navigate = useNavigate();
 
@@ -82,27 +81,6 @@ export default function ClassList({ user }) {
 
   useEffect(() => {
     fetchMyClasses();
-  }, []);
-
-  useEffect(() => {
-    const fetchTeacherName = async () => {
-      try {
-        const res = await fetch("/api/auth/users/me", {
-          headers: {
-            "ngrok-skip-browser-warning": "69420",
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-          },
-          credentials: "include",
-        });
-        const data = await res.json().catch(() => null);
-        if (res.ok && data) {
-          setTeacherName(data.username || data.data?.username || data.user?.username || "");
-        }
-      } catch (err) {
-        console.error("Gagal ambil nama guru:", err);
-      }
-    };
-    fetchTeacherName();
   }, []);
 
   const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
@@ -154,7 +132,6 @@ export default function ClassList({ user }) {
                     <TeacherClassCard
                       key={mapelId || index}
                       data={item}
-                      teacherName={teacherName || user?.username || "Guru"}
                       onManage={() => {
                         if (mapelId) {
                           navigate(`/teacher/assignments/${mapelId}`, {
@@ -179,40 +156,32 @@ export default function ClassList({ user }) {
             )}
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-10 pb-4">
-                <button 
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                {[...Array(totalPages).keys()].map((page) => {
-                  const pageNumber = page + 1;
-                  const isActive = currentPage === pageNumber;
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => paginate(pageNumber)}
-                      className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm ${isActive ? 'bg-[#0d264f] text-white' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                })}
-              
-                <button 
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+              <div className="px-4 sm:px-6 py-4 mt-10 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+                <div>
+                  Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Kembali
+                  </button>
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    Lanjut
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -232,7 +201,7 @@ export default function ClassList({ user }) {
   );
 }
 
-function TeacherClassCard({ data, onManage, teacherName }) {
+function TeacherClassCard({ data, onManage }) {
   const mapelName = data.mapel_name || data.class_name || "Mata Pelajaran";
   const className = data.class_name || "-";
 
@@ -265,10 +234,10 @@ function TeacherClassCard({ data, onManage, teacherName }) {
         </div>
       </div>
 
-      {/* Footer Card: Nama Pengajar */}
+      {/* Footer Card: Aksi */}
       <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
         <span className="text-sm sm:text-base font-semibold text-slate-600 truncate mr-2 group-hover:text-[#0d264f] transition-colors">
-          {teacherName}
+          Lihat Tugas &amp; Materi
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#0d264f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

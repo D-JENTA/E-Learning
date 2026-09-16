@@ -43,10 +43,23 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
-// Komponen Custom Select Dropdown
-const CustomSelect = ({ label, options, value, onChange, placeholder, disabled, error }) => {
+// Komponen Custom Select Dropdown — mendukung kotak pencarian
+// (bentuk sama dengan searchbar dropdown kelas di halaman admin).
+const CustomSelect = ({
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  error,
+  searchable = false,
+  searchPlaceholder = "Ketik untuk mencari...",
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -58,7 +71,26 @@ const CustomSelect = ({ label, options, value, onChange, placeholder, disabled, 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredOptions = normalizedQuery
+    ? options.filter((opt) => String(opt.label ?? "").toLowerCase().includes(normalizedQuery))
+    : options;
+
   const selectedOption = options.find((opt) => String(opt.value) === String(value));
+
+  const toggleDropdown = () => {
+    if (disabled) return;
+    const opening = !isOpen;
+    setIsOpen(!isOpen);
+    if (opening) {
+      // Reset pencarian tiap kali dropdown dibuka, lalu langsung fokuskan
+      // kotak pencarian supaya user bisa mengetik tanpa klik lagi.
+      setQuery("");
+      if (searchable) {
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+    }
+  };
 
   return (
     <div className="mb-3 w-full relative" ref={dropdownRef}>
@@ -70,7 +102,7 @@ const CustomSelect = ({ label, options, value, onChange, placeholder, disabled, 
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         className={`w-full px-4 py-3 rounded-lg bg-white text-sm outline-none border-2 flex justify-between items-center transition-all cursor-pointer ${
           disabled ? 'bg-gray-100 cursor-not-allowed opacity-70' : ''
         } ${
@@ -92,23 +124,85 @@ const CustomSelect = ({ label, options, value, onChange, placeholder, disabled, 
 
       {isOpen && !disabled && (
         <div className="absolute z-30 w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-          {options.length > 0 ? (
-            options.map((opt) => (
-              <div
-                key={opt.value}
-                onClick={() => {
-                  onChange(opt.value);
-                  setIsOpen(false);
-                }}
-                className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                  String(opt.value) === String(value)
-                    ? "bg-blue-50 text-blue-600 font-semibold"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {opt.label}
+          {searchable && (
+            <div className="sticky top-0 z-10 px-2 pt-2 pb-2.5 border-b bg-[#f6f7fa] border-gray-200/80">
+              <div className="relative">
+                <svg
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className={`w-full pl-9 ${query ? "pr-8" : "pr-3"} py-2 text-sm text-gray-700 bg-white outline-none transition rounded-lg bg-white border border-gray-200 shadow-sm focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20`}
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      searchInputRef.current?.focus();
+                    }}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:bg-gray-200/70 hover:text-gray-600 transition-colors"
+                  >
+                    <svg
+                      className="h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      viewBox="0 0 24 24"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            ))
+              {!normalizedQuery || options.length === 0 ? null : (
+                <p className="mt-1.5 px-1 text-[11px] font-medium text-gray-400">
+                  {filteredOptions.length} dari {options.length} opsi
+                </p>
+              )}
+            </div>
+          )}
+
+          {options.length > 0 ? (
+            filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                  }}
+                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                    String(opt.value) === String(value)
+                      ? "bg-blue-50 text-blue-600 font-semibold"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {opt.label}
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-gray-400 text-center">
+                Tidak ada hasil untuk &ldquo;{query.trim()}&rdquo;
+              </div>
+            )
           ) : (
             <div className="px-4 py-3 text-sm text-gray-400 text-center">Tidak ada data</div>
           )}
@@ -208,7 +302,9 @@ export default function Create() {
           try {
             const errorData = await response.json();
             errorMsg = errorData.message || errorMsg;
-          } catch (e) {}
+          } catch {
+            // respons bukan JSON — pakai pesan default
+          }
           throw new Error(errorMsg);
         }
 
@@ -385,6 +481,8 @@ export default function Create() {
               onChange={(val) => handleSelectChange('classId', val)}
               placeholder={isLoadingClasses ? "Memuat kelas..." : "Pilih Kelas"}
               disabled={isLoadingClasses}
+              searchable
+              searchPlaceholder="Cari kelas..."
               error={errors.classId}
             />
 

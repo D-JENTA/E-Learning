@@ -252,7 +252,7 @@ export default function Verify() {
         const normalizedRole = String(savedRole || "student").toLowerCase();
         saveVerifiedAccount(emailFromState || localStorage.getItem("pending_email") || "", normalizedRole);
         
-        const redirectDelay = isRegisterFlow ? 5000 : 0;
+        const redirectDelay = isRegisterFlow ? 6500 : 0;
 
         setTimeout(() => {
           localStorage.removeItem("pending_user_id");

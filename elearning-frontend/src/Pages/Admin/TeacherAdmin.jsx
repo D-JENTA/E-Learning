@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
-import CustomSelect from "../../components/Admin/CustomSelect";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 // --- KOMPONEN NOTIFIKASI TOAST (Custom Alert) ---
 const CustomAlert = ({ message, type, onClose }) => {
@@ -57,12 +57,10 @@ const IconPlus = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 );
 
-const EMPTY_TEACHER_FORM = { username: "", email: "", nip: "", id_mapel: "" };
+const EMPTY_TEACHER_FORM = { username: "", email: "", nip: "" };
 
 const ERROR_MESSAGES = {
   "all fields must be filled in": "Semua kolom wajib diisi",
-  "mapel not found": "Mata pelajaran tidak ditemukan",
-  "This mapel already has a teacher assigned": "Mapel ini sudah memiliki guru",
   "NIP is already used": "NIP sudah terdaftar",
   "email is registered, please log in": "Email sudah terdaftar, silakan login",
   "server error": "Terjadi kesalahan server",
@@ -71,9 +69,8 @@ const ERROR_MESSAGES = {
 const translateError = (message) => ERROR_MESSAGES[message] || message;
 
 // --- Cache mapel per kelas (sessionStorage, TTL singkat) ---
-// GET /api/classes/:id/mapels dipakai dua arah: pengayaan kolom mapel di
-// tabel guru dan dropdown mapel di modal tambah guru. Tanpa cache, endpoint
-// yang sama di-fetch berulang tiap kali modal dibuka — mahal lewat tunnel.
+// GET /api/classes/:id/mapels dipakai untuk pengayaan kolom mapel di tabel
+// guru. Tanpa cache, endpoint yang sama di-fetch berulang — mahal lewat tunnel.
 const MAPEL_CACHE_PREFIX = "teacher_admin_mapels_";
 const MAPEL_CACHE_TTL = 2 * 60 * 1000; // 2 menit
 
@@ -99,16 +96,6 @@ const writeMapelCache = (classId, list) => {
   }
 };
 
-const clearMapelCache = () => {
-  try {
-    Object.keys(sessionStorage)
-      .filter((k) => k.startsWith(MAPEL_CACHE_PREFIX))
-      .forEach((k) => sessionStorage.removeItem(k));
-  } catch {
-    // abaikan
-  }
-};
-
 // Normalisasi respons GET /api/classes/:id/mapels: BE balik objek per hari,
 // mis. { Senin: [...], Selasa: [...] }. Tiap mapel muncul lagi di hari lain
 // kalau berjadwal beberapa hari, jadi di-flatten lalu di-dedupe per id_mapel.
@@ -126,8 +113,8 @@ const normalizeMapelList = (data) => {
   });
 };
 
-// Dedupe request in-flight per kelas: kalau tabel dan modal sama-sama butuh
-// mapel kelas yang sama bersamaan, cukup satu request yang jalan.
+// Dedupe request in-flight per kelas: kalau beberapa kelas di-load bersamaan
+// lewat jalur yang sama, cukup satu request yang jalan.
 const mapelFetchInFlight = new Map();
 
 const fetchMapelsForClass = async (classId) => {
@@ -187,13 +174,9 @@ export default function TeacherAdmin() {
   const ITEMS_PER_PAGE_DESKTOP = 6;
   const ITEMS_PER_PAGE_MOBILE = 3;
   const [teachers, setTeachers] = useState([]);
-  // Mapel per kelas (id kelas -> daftar mapel). Satu sumber data untuk kolom
-  // mapel di tabel dan dropdown modal tambah guru — tidak ada fetch ganda.
+  // Mapel per kelas (id kelas -> daftar mapel), untuk pengayaan kolom mapel
+  // di tabel guru.
   const [mapelsByClass, setMapelsByClass] = useState({});
-  const [isMapelLoading, setIsMapelLoading] = useState(false);
-  // Daftar kelas + kelas terpilih untuk dropdown "pilih kelas dulu" di modal tambah guru.
-  const [classes, setClasses] = useState([]);
-  const [selectedClassId, setSelectedClassId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -208,6 +191,10 @@ export default function TeacherAdmin() {
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState({ username: "", email: "" });
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+
+  // Akun guru yang sedang dikonfirmasi untuk dihapus + status penghapusannya.
+  const [deletingTeacher, setDeletingTeacher] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const BASE_URL = "/api/auth/users";
 
@@ -228,8 +215,7 @@ export default function TeacherAdmin() {
   };
 
   // Ambil daftar kelas SEKALI, lalu langsung ambil mapel semua kelas secara
-  // paralel. Sebelumnya /api/classes di-fetch dua kali dan pengayaan mapel
-  // menunggu daftar guru selesai — sekarang berjalan bersamaan dengan
+  // paralel untuk pengayaan kolom mapel di tabel. Berjalan bersamaan dengan
   // fetchTeachers, bukan berurutan.
   const loadClassesAndMapels = async () => {
     try {
@@ -243,7 +229,6 @@ export default function TeacherAdmin() {
           class_name: c.class_name ?? c.className ?? c.name,
         }))
         .filter((c) => c.id != null);
-      setClasses(classList);
 
       const mapelLists = await Promise.all(
         classList.map((c) => fetchMapelsForClass(c.id).catch(() => []))
@@ -258,46 +243,10 @@ export default function TeacherAdmin() {
     }
   };
 
-  // Setelah tambah/edit guru: data mapel (siapa mengajar apa) ikut berubah,
-  // jadi bersihkan cache lalu muat ulang semuanya secara paralel.
-  const refreshData = () => {
-    clearMapelCache();
-    fetchTeachers();
-    loadClassesAndMapels();
-  };
-
   useEffect(() => {
     fetchTeachers();
     loadClassesAndMapels();
   }, []);
-
-  // Mapel kelas yang dipilih di modal tambah guru. Biasanya sudah termuat
-  // bersama data tabel; kalau belum (cache kedaluwarsa dsb.), ambil khusus
-  // kelas itu saja.
-  const classMapels = mapelsByClass[selectedClassId] ?? [];
-
-  useEffect(() => {
-    if (!selectedClassId || mapelsByClass[selectedClassId]) {
-      setIsMapelLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setIsMapelLoading(true);
-    fetchMapelsForClass(selectedClassId)
-      .then((list) => {
-        if (!cancelled) {
-          setMapelsByClass((prev) => ({ ...prev, [selectedClassId]: list }));
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setIsMapelLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedClassId, mapelsByClass]);
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -307,28 +256,10 @@ export default function TeacherAdmin() {
     }
   };
 
-  const handleClassChange = (value) => {
-    setSelectedClassId(value);
-    // Ganti kelas = mapel yang tadinya terpilih bisa jadi bukan milik kelas baru,
-    // jadi kosongkan pilihan mapelnya.
-    setNewTeacher((prev) => ({ ...prev, id_mapel: "" }));
-    if (formErrors.id_mapel) {
-      setFormErrors((prev) => ({ ...prev, id_mapel: undefined }));
-    }
-  };
-
-  const handleMapelChange = (value) => {
-    setNewTeacher((prev) => ({ ...prev, id_mapel: value }));
-    if (formErrors.id_mapel) {
-      setFormErrors((prev) => ({ ...prev, id_mapel: undefined }));
-    }
-  };
-
   const closeCreateModal = () => {
     if (isSubmitting) return;
     setIsCreateOpen(false);
     setNewTeacher(EMPTY_TEACHER_FORM);
-    setSelectedClassId("");
     setFormErrors({});
   };
 
@@ -341,7 +272,6 @@ export default function TeacherAdmin() {
       errs.email = "Format email salah";
     }
     if (!newTeacher.nip.trim()) errs.nip = "NIP wajib diisi";
-    if (!newTeacher.id_mapel) errs.id_mapel = "Mata pelajaran wajib dipilih";
     return errs;
   };
 
@@ -369,8 +299,7 @@ export default function TeacherAdmin() {
         body: JSON.stringify({
           username,
           email,
-          nip: newTeacher.nip.trim(),
-          id_mapel: newTeacher.id_mapel
+          nip: newTeacher.nip.trim()
         })
       });
 
@@ -380,23 +309,18 @@ export default function TeacherAdmin() {
         throw new Error(translateError(result?.message) || "Gagal membuat akun guru.");
       }
 
-      const mapelName = classMapels.find(
-        (m) => String(m.id_mapel) === String(newTeacher.id_mapel)
-      )?.mapel_name;
-
       setIsCreateOpen(false);
       setNewTeacher(EMPTY_TEACHER_FORM);
-      setSelectedClassId("");
       setFormErrors({});
       setAlertInfo({
         show: true,
-        message: `Akun ${username} dibuat${mapelName ? ` untuk mapel ${mapelName}` : ""}. Password sementara dikirim ke ${email}.`,
+        message: `Akun ${username} dibuat. Password sementara dikirim ke ${email}.`,
         type: 'success'
       });
 
-      // Guru baru = mapel yang tadinya kosong kini punya guru → muat ulang
-      // tabel + daftar mapel bersamaan (cache lama tidak berlaku lagi).
-      refreshData();
+      // Guru baru masuk ke daftar — cukup muat ulang daftar guru; pembuatan
+      // akun tidak lagi mengubah data mapel.
+      fetchTeachers();
     } catch (err) {
       setAlertInfo({ show: true, message: err.message, type: 'error' });
     } finally {
@@ -458,7 +382,7 @@ export default function TeacherAdmin() {
           type: 'success'
         });
         setEditingUser(null);
-        refreshData();
+        fetchTeachers();
       } else {
         const msg = result?.message || "Gagal memperbarui data guru.";
         setAlertInfo({ show: true, message: translateError(msg), type: 'error' });
@@ -471,13 +395,29 @@ export default function TeacherAdmin() {
     }
   };
 
-  const handleDelete = async (teacher) => {
+  // Tombol hapus hanya membuka modal konfirmasi; request DELETE baru
+  // dikirim setelah admin menekan "Ya, Hapus" di modal.
+  const handleDelete = (teacher) => {
+    setDeletingTeacher(teacher);
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeletingTeacher(null);
+  };
+
+  const confirmDeleteTeacher = async () => {
+    if (!deletingTeacher || isDeleting) return;
+
+    const teacher = deletingTeacher;
     const userId = teacher.id_user || teacher.id;
     if (!userId) {
+      setDeletingTeacher(null);
       setAlertInfo({ show: true, message: "ID Guru tidak ditemukan", type: 'error' });
       return;
     }
 
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
@@ -487,13 +427,13 @@ export default function TeacherAdmin() {
       });
 
       const contentType = response.headers.get("content-type");
-      
+
       if (response.ok) {
         setTeachers((prev) => prev.filter((t) => (t.id_user || t.id) !== userId));
-        setAlertInfo({ 
-          show: true, 
-          message: `Akun guru ${teacher.username} berhasil dihapus.`, 
-          type: 'success' 
+        setAlertInfo({
+          show: true,
+          message: `Akun guru ${teacher.username} berhasil dihapus.`,
+          type: 'success'
         });
       } else {
         let errorMsg = "Gagal menghapus data pengajar.";
@@ -506,6 +446,9 @@ export default function TeacherAdmin() {
     } catch (err) {
       console.error("Network Error:", err);
       setAlertInfo({ show: true, message: "Tidak bisa terhubung ke server.", type: 'error' });
+    } finally {
+      setIsDeleting(false);
+      setDeletingTeacher(null);
     }
   };
 
@@ -550,18 +493,6 @@ export default function TeacherAdmin() {
   const paginate = (pageNumber) => {
     setCurrentPage(pageNumber);
   };
-
-  // Opsi mapel untuk dropdown modal tambah guru: langsung dari response
-  // GET /api/classes/:id_class/mapels untuk kelas yang dipilih.
-  // Mapel yang sudah memiliki guru di-disable + diberi keterangan,
-  // karena BE menolak registerTeacher untuk mapel yang sudah diguru.
-  const classMapelOptions = classMapels.map((m) => ({
-    value: m.id_mapel,
-    // Nama kelas tidak perlu ikut label — kelasnya sudah dipilih di atas.
-    label: m.mapel_name,
-    description: m.teacher_name ? `Sudah diajar oleh ${m.teacher_name}` : undefined,
-    disabled: Boolean(m.teacher_name),
-  }));
 
   const renderSubjectInfo = (teacher) => {
     const subject = teacher.subject || teacher.subject_name || teacher.mapel;
@@ -694,40 +625,32 @@ export default function TeacherAdmin() {
 
           {/* Pagination — tampil hanya jika guru lebih dari satu halaman */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 p-4 border-t border-slate-100">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-
-              {[...Array(totalPages).keys()].map((page) => {
-                const pageNumber = page + 1;
-                const isActive = currentPage === pageNumber;
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() => paginate(pageNumber)}
-                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm ${isActive ? 'bg-[#0d264f] text-white' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+              <div>
+                Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Kembali
+                </button>
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  Lanjut
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -778,46 +701,6 @@ export default function TeacherAdmin() {
                 maxLength={18}
                 hint="Boleh diisi 1–18 karakter"
               />
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Kelas
-                </label>
-                <CustomSelect
-                  value={selectedClassId}
-                  onChange={handleClassChange}
-                  options={classes.map((c) => ({
-                    value: c.id,
-                    label: c.class_name,
-                  }))}
-                  placeholder="Pilih kelas..."
-                  searchable
-                  searchPlaceholder="Cari nama kelas..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Mata Pelajaran
-                </label>
-                <CustomSelect
-                  value={newTeacher.id_mapel}
-                  onChange={handleMapelChange}
-                  options={classMapelOptions}
-                  disabled={!selectedClassId}
-                  loading={isMapelLoading}
-                  placeholder={selectedClassId ? "Pilih mapel..." : "Pilih kelas dulu..."}
-                  searchable
-                  searchPlaceholder="Cari nama mapel..."
-                />
-                {formErrors.id_mapel ? (
-                  <p className="mt-1 text-xs font-medium text-red-500">{formErrors.id_mapel}</p>
-                ) : (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Guru hanya bisa dibuat untuk mapel yang belum memiliki guru.
-                  </p>
-                )}
-              </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button
@@ -896,6 +779,17 @@ export default function TeacherAdmin() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS GURU */}
+      {deletingTeacher && (
+        <ConfirmDeleteModal
+          title="Hapus Akun Guru?"
+          message={`Akun ${deletingTeacher.username} akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteTeacher}
+          onClose={closeDeleteModal}
+          isDeleting={isDeleting}
+        />
       )}
 
       <style>{`

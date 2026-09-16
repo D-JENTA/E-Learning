@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -143,6 +144,10 @@ export default function StudentAdmin() {
   const [editForm, setEditForm] = useState({ username: "", email: "" });
   const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
+  // Akun siswa yang sedang dikonfirmasi untuk dihapus + status penghapusannya.
+  const [deletingStudent, setDeletingStudent] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const BASE_URL = "/api/auth/users";
 
   const fetchStudents = async () => {
@@ -266,14 +271,29 @@ export default function StudentAdmin() {
     }
   };
 
-  // --- PERUBAHAN DI SINI: alert konfirmasi browser dihapus & notifikasi disesuaikan ---
-  const handleDelete = async (student) => {
+  // Tombol hapus hanya membuka modal konfirmasi; request DELETE baru
+  // dikirim setelah admin menekan "Ya, Hapus" di modal.
+  const handleDelete = (student) => {
+    setDeletingStudent(student);
+  };
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeletingStudent(null);
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!deletingStudent || isDeleting) return;
+
+    const student = deletingStudent;
     const userId = student.id_user || student.id;
     if (!userId) {
+      setDeletingStudent(null);
       setAlertInfo({ show: true, message: "ID Siswa tidak ditemukan", type: 'error' });
       return;
     }
 
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
@@ -286,10 +306,10 @@ export default function StudentAdmin() {
 
       if (response.ok) {
         setStudents((prev) => prev.filter((s) => (s.id_user || s.id) !== userId));
-        setAlertInfo({ 
-          show: true, 
-          message: `Akun siswa ${student.username} berhasil dihapus.`, 
-          type: 'success' 
+        setAlertInfo({
+          show: true,
+          message: `Akun siswa ${student.username} berhasil dihapus.`,
+          type: 'success'
         });
       } else {
         let errorMsg = "Gagal menghapus siswa.";
@@ -304,6 +324,9 @@ export default function StudentAdmin() {
     } catch (err) {
       console.error("Network Error:", err);
       setAlertInfo({ show: true, message: "Tidak bisa terhubung ke server.", type: 'error' });
+    } finally {
+      setIsDeleting(false);
+      setDeletingStudent(null);
     }
   };
 
@@ -450,6 +473,17 @@ export default function StudentAdmin() {
           onSubmit={handleEditSubmit}
           onClose={closeEditModal}
           isSubmitting={isEditSubmitting}
+        />
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS SISWA */}
+      {deletingStudent && (
+        <ConfirmDeleteModal
+          title="Hapus Akun Siswa?"
+          message={`Akun ${deletingStudent.username} akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteStudent}
+          onClose={closeDeleteModal}
+          isDeleting={isDeleting}
         />
       )}
 

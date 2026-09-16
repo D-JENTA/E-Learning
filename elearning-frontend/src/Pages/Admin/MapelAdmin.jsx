@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
 import CustomSelect from "../../components/Admin/CustomSelect";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 import Toast from "../../components/Toast";
 
 const JP_OPTIONS = Array.from({ length: 11 }, (_, i) => String(i + 1));
@@ -78,6 +79,9 @@ const extractDay = (item) => {
 
   export default function MapelAdmin() {
   const navigate = useNavigate();
+  const ITEMS_PER_PAGE_DESKTOP = 6;
+  const ITEMS_PER_PAGE_MOBILE = 3;
+  const [currentPage, setCurrentPage] = useState(1);
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedDay, setSelectedDay] = useState("all");
@@ -91,6 +95,7 @@ const extractDay = (item) => {
   const [isSaving, setIsSaving] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
   // State untuk dropdown JP di modal edit
@@ -340,9 +345,44 @@ const extractDay = (item) => {
       ? mapels
       : mapels.filter((m) => String(m.day || "").toLowerCase() === selectedDay);
 
+  // Pagination hanya aktif saat filter "Semua Hari" — daftar per hari
+  // pendek, semua barisnya ditampilkan tanpa dipecah halaman.
+  const isPaginated = selectedDay === "all" && !isLoadingMapels && !fetchError;
+  const itemsPerPage = window.innerWidth >= 768 ? ITEMS_PER_PAGE_DESKTOP : ITEMS_PER_PAGE_MOBILE;
+  const totalPages = isPaginated ? Math.ceil(filteredMapels.length / itemsPerPage) : 1;
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const visibleMapels = isPaginated
+    ? filteredMapels.slice(indexOfFirstItem, indexOfLastItem)
+    : filteredMapels;
+  const rowNumberOffset = isPaginated ? indexOfFirstItem : 0;
+
+  // Kalau daftar mengecil (ganti kelas/hapus mapel) sampai halaman aktif
+  // kosong, mundur ke halaman terakhir yang valid. Saat pagination tidak
+  // aktif (filter hari spesifik), kembalikan ke halaman 1.
+  useEffect(() => {
+    if (isPaginated) {
+      if (currentPage > 1 && currentPage > totalPages) {
+        setCurrentPage(Math.max(1, totalPages));
+      }
+    } else if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [isPaginated, totalPages, currentPage]);
+
+  // Ganti hari filter: mulai lagi dari halaman 1.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedDay, selectedClass]);
+
+  const paginate = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
   const confirmDelete = async () => {
     const id = deleteTarget.id;
 
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem("token");
       const response = await fetch("/api/mapels", {
@@ -365,6 +405,7 @@ const extractDay = (item) => {
       console.error("Delete mapel error:", error);
       setAlertInfo({ show: true, message: error.message || "Tidak dapat menghapus mapel.", type: 'error' });
     } finally {
+      setIsDeleting(false);
       setDeleteTarget(null);
     }
   };
@@ -919,9 +960,9 @@ const extractDay = (item) => {
                       </td>
                     </tr>
                   ) : (
-                    filteredMapels.map((item, i) => (
+                    visibleMapels.map((item, i) => (
                       <tr key={item.rowId ?? item.id} className="hover:bg-gray-50 transition-colors duration-150 group">
-                        <td className="px-3 lg:px-6 py-4 text-sm font-medium text-gray-500">{i + 1}</td>
+                        <td className="px-3 lg:px-6 py-4 text-sm font-medium text-gray-500">{rowNumberOffset + i + 1}</td>
                         <td className="px-3 lg:px-6 py-4">
                           <span className="text-sm font-bold text-gray-800">{item.mapelName}</span>
                         </td>
@@ -976,8 +1017,40 @@ const extractDay = (item) => {
               </table>
             )}
           </div>
+
+          {/* Pagination — tampil hanya saat "Semua Hari" dipilih dan baris
+              mapel lebih dari satu halaman */}
+          {isPaginated && totalPages > 1 && (
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+              <div>
+                Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Kembali
+                </button>
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  Lanjut
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      
+
         {editing && (
           <div
             onClick={(e) => { if (e.target === e.currentTarget) setEditing(null); }}
@@ -1288,37 +1361,13 @@ const extractDay = (item) => {
         )}
 
         {deleteTarget && (
-          <div
-            onClick={(e) => { if (e.target === e.currentTarget) setDeleteTarget(null); }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          >
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Hapus Mapel</h3>
-              <p className="text-gray-500 mb-2">
-                Yakin ingin menghapus mapel{" "}
-                <span className="font-semibold text-gray-700">"{deleteTarget.name}"</span>?
-              </p>
-              <p className="text-sm text-red-600 mb-6">
-                Semua jadwal, tugas, dan nilai ikut terhapus. Tidak dapat dibatalkan.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmDeleteModal
+            title="Hapus Mapel?"
+            message={`Mapel "${deleteTarget.name}" beserta semua jadwal, tugas, dan nilainya akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+            onConfirm={confirmDelete}
+            onClose={() => setDeleteTarget(null)}
+            isDeleting={isDeleting}
+          />
         )}
       </div>
     </MainLayout>

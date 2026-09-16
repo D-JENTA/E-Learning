@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
 import Toast from "../../components/Toast";
-import ConfirmDialog from "../../components/ConfirmDialog";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 // Ambil sebuah endpoint yang mengembalikan array lalu kembalikan panjangnya.
 // Dipakai untuk menghitung jumlah siswa / mapel per kelas dari sisi FE.
@@ -64,16 +64,22 @@ export default function ClassAdmin() {
   const [fetchError, setFetchError] = useState(null);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
   // Konfirmasi custom berbasis promise: resolve(true) saat "Ya", resolve(false) saat "Batal".
-  const [confirmInfo, setConfirmInfo] = useState({ show: false, message: '' });
+  const [confirmInfo, setConfirmInfo] = useState({ show: false, title: '', message: '', resolve: null });
 
-  const askConfirm = (message) =>
+  // Cache jumlah siswa/mapel per id kelas, plus penanda request yang sedang berjalan,
+  // supaya hitungan tidak diambil dua kali (mis. saat StrictMode double-render atau
+  // bolak-balik halaman pagination).
+  const countCache = useRef({});
+  const inFlight = useRef(new Set());
+
+  const askConfirm = (title, message) =>
     new Promise((resolve) => {
-      setConfirmInfo({ show: true, message, resolve });
+      setConfirmInfo({ show: true, title, message, resolve });
     });
 
   const closeConfirm = (answer) => {
     confirmInfo.resolve?.(answer);
-    setConfirmInfo({ show: false, message: '' });
+    setConfirmInfo({ show: false, title: '', message: '', resolve: null });
   };
 
   const loadClasses = async () => {
@@ -105,17 +111,11 @@ export default function ClassAdmin() {
           }))
         : [];
 
-      const withCounts = await Promise.all(
-        loadedClasses.map(async (cls) => {
-          const [studentCount, mapelCount] = await Promise.all([
-            fetchCount(`/api/auth/users/${cls.id}/students`, token),
-            fetchMapelCount(`/api/classes/${cls.id}/mapels`, token),
-          ]);
-          return { ...cls, studentCount, mapelCount };
-        })
-      );
-
-      setClasses(withCounts);
+      // Render tabel langsung; jumlah siswa/mapel diambil terpisah per halaman
+      // (lihat useEffect di bawah) supaya halaman tidak menunggu 2×N request.
+      countCache.current = {};
+      inFlight.current.clear();
+      setClasses(loadedClasses);
     } catch (error) {
       console.error('Load classes error:', error);
       setFetchError(error.message || 'Unable to load classes.');
@@ -134,6 +134,48 @@ export default function ClassAdmin() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentClasses = classes.slice(indexOfFirstItem, indexOfLastItem);
 
+  // Ambil jumlah siswa/mapel hanya untuk kelas di halaman yang sedang dilihat,
+  // satu request per kelas per data, lalu isi sel secara bertahap ("-" lalu angka).
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    let cancelled = false;
+
+    currentClasses.forEach((cls) => {
+      const entry = countCache.current[cls.id] || {};
+      const jobs = [];
+
+      if (entry.studentCount === undefined && !inFlight.current.has(`s:${cls.id}`)) {
+        inFlight.current.add(`s:${cls.id}`);
+        jobs.push(
+          fetchCount(`/api/auth/users/${cls.id}/students`, token).then((count) => {
+            countCache.current[cls.id] = { ...countCache.current[cls.id], studentCount: count };
+            if (!cancelled && count !== null) {
+              setClasses((prev) => prev.map((c) => (c.id === cls.id ? { ...c, studentCount: count } : c)));
+            }
+          }).finally(() => inFlight.current.delete(`s:${cls.id}`))
+        );
+      }
+
+      if (entry.mapelCount === undefined && !inFlight.current.has(`m:${cls.id}`)) {
+        inFlight.current.add(`m:${cls.id}`);
+        jobs.push(
+          fetchMapelCount(`/api/classes/${cls.id}/mapels`, token).then((count) => {
+            countCache.current[cls.id] = { ...countCache.current[cls.id], mapelCount: count };
+            if (!cancelled && count !== null) {
+              setClasses((prev) => prev.map((c) => (c.id === cls.id ? { ...c, mapelCount: count } : c)));
+            }
+          }).finally(() => inFlight.current.delete(`m:${cls.id}`))
+        );
+      }
+
+      // Fire-and-forget: request berjalan paralel antar kelas, halaman sudah tampil.
+      Promise.allSettled(jobs);
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentClasses.map((c) => c.id).join(','), isLoading]);
+
   // Kalau kelas dihapus sampai halaman sekarang kosong, mundur ke halaman terakhir yang valid.
   useEffect(() => {
     if (currentPage > 1 && currentPage > Math.ceil(classes.length / itemsPerPage)) {
@@ -150,6 +192,16 @@ export default function ClassAdmin() {
   const [editingClass, setEditingClass] = useState(null);
 
   const handleDelete = async (id) => {
+    const cls = classes.find((item) => item.id === id);
+
+    // Konfirmasi FE dulu sebelum request pertama — dulu DELETE langsung
+    // dikirim dan konfirmasi hanya muncul kalau BE menolak (409) karena
+    // kelas masih punya mapel.
+    const baseMsg = cls
+      ? `Kelas "${cls.className}" akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`
+      : 'Kelas ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.';
+    if (!(await askConfirm('Hapus Kelas?', baseMsg))) return;
+
     const deleteRequest = (confirmDelete) =>
       fetch('/api/classes', {
         method: 'DELETE',
@@ -175,7 +227,7 @@ export default function ClassAdmin() {
           const msg =
             errorData?.message ||
             'Kelas ini masih memiliki mapel. Hapus kelas beserta seluruh mapelnya?';
-          if (!(await askConfirm(msg))) return;
+          if (!(await askConfirm('Hapus Kelas Beserta Mapelnya?', msg))) return;
           response = await deleteRequest(true);
         }
 
@@ -249,8 +301,6 @@ export default function ClassAdmin() {
       const classItem = {
         id: createdClass.id || createdClass.id_class || Date.now(),
         className: createdClass.class_name || createdClass.name || newClassData.className,
-        studentCount: 0,
-        mapelCount: 0,
       };
 
       setClasses((prev) => [...prev, classItem]);
@@ -268,12 +318,11 @@ export default function ClassAdmin() {
         <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
       )}
       {confirmInfo.show && (
-        <ConfirmDialog
+        <ConfirmDeleteModal
+          title={confirmInfo.title || 'Hapus Kelas?'}
           message={confirmInfo.message}
-          confirmText="Ya, Hapus"
-          type="danger"
           onConfirm={() => closeConfirm(true)}
-          onCancel={() => closeConfirm(false)}
+          onClose={() => closeConfirm(false)}
         />
       )}
       <div className="animate-fade-in-up">
@@ -359,40 +408,32 @@ export default function ClassAdmin() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 p-4 border-t border-gray-100">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-
-              {[...Array(totalPages).keys()].map((page) => {
-                const pageNumber = page + 1;
-                const isActive = currentPage === pageNumber;
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() => paginate(pageNumber)}
-                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm ${isActive ? 'bg-[#0d264f] text-white' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+              <div>
+                Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Kembali
+                </button>
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                >
+                  Lanjut
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import MainLayout from "../../components/Admin/MainLayout";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 const CustomAlert = ({ message, type, onClose }) => {
   const [timer, setTimer] = useState(null);
@@ -56,6 +57,10 @@ export default function SuperAdminManageUsers() {
 
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
+  // User yang sedang dikonfirmasi untuk dihapus + status penghapusannya.
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const fetchAllUsers = async () => {
     setIsLoading(true);
     try {
@@ -73,12 +78,32 @@ export default function SuperAdminManageUsers() {
     fetchAllUsers();
   }, []);
 
-  const handleDelete = async (user) => {
+  // Tombol hapus hanya membuka modal konfirmasi; request DELETE baru
+  // dikirim setelah superadmin menekan "Ya, Hapus" di modal.
+  const handleDelete = (user) => {
     if (user.role === "superAdmin") {
       setAlertInfo({ show: true, message: "Akun ini dilindungi!", type: 'error' });
       return;
     }
+    setDeletingUser(user);
+  };
 
+  const closeDeleteModal = () => {
+    if (isDeleting) return;
+    setDeletingUser(null);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deletingUser || isDeleting) return;
+
+    const user = deletingUser;
+    if (user.role === "superAdmin") {
+      setDeletingUser(null);
+      setAlertInfo({ show: true, message: "Akun ini dilindungi!", type: 'error' });
+      return;
+    }
+
+    setIsDeleting(true);
     try {
       const token = localStorage.getItem("admin_token");
       const response = await fetch(`/api/auth/admin/users/${user.id_user || user.id}`, {
@@ -94,6 +119,9 @@ export default function SuperAdminManageUsers() {
       }
     } catch (err) {
       setAlertInfo({ show: true, message: "Terjadi kesalahan saat menghapus data.", type: 'error' });
+    } finally {
+      setIsDeleting(false);
+      setDeletingUser(null);
     }
   };
 
@@ -229,6 +257,18 @@ export default function SuperAdminManageUsers() {
         </div>
 
       </div>
+
+      {/* MODAL KONFIRMASI HAPUS USER */}
+      {deletingUser && (
+        <ConfirmDeleteModal
+          title="Hapus Pengguna?"
+          message={`Akun ${deletingUser.username} (${deletingUser.role}) akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+          onConfirm={confirmDeleteUser}
+          onClose={closeDeleteModal}
+          isDeleting={isDeleting}
+        />
+      )}
+
       <style>{`
         @keyframes slideIn {
           from { opacity:0; transform: translateX(100%); }

@@ -7,6 +7,67 @@ const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
 // Tab tambahan (muncul hanya kalau ada mapel yang belum punya jadwal).
 const NO_SCHEDULE = "Tanpa Jadwal";
 
+// Warna aksen bergilir untuk kartu mapel, supaya tiap mapel kelihatan
+// beda dan daftarnya tidak monoton. Class Tailwind ditulis lengkap di sini
+// (bukan dirakit dari template string) supaya tetap terdeteksi saat build.
+const MAPEL_ACCENTS = [
+  {
+    bg: "from-blue-50 to-white",
+    border: "border-blue-100",
+    wash: "bg-blue-100/40",
+    tile: "bg-blue-100 text-blue-700 group-hover:bg-blue-600 group-hover:text-white",
+    title: "group-hover:text-blue-900",
+    accent: "text-blue-600",
+    bar: "from-blue-500 to-blue-400",
+  },
+  {
+    bg: "from-emerald-50 to-white",
+    border: "border-emerald-100",
+    wash: "bg-emerald-100/40",
+    tile: "bg-emerald-100 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white",
+    title: "group-hover:text-emerald-900",
+    accent: "text-emerald-600",
+    bar: "from-emerald-500 to-emerald-400",
+  },
+  {
+    bg: "from-amber-50 to-white",
+    border: "border-amber-100",
+    wash: "bg-amber-100/40",
+    tile: "bg-amber-100 text-amber-700 group-hover:bg-amber-500 group-hover:text-white",
+    title: "group-hover:text-amber-900",
+    accent: "text-amber-600",
+    bar: "from-amber-500 to-amber-400",
+  },
+  {
+    bg: "from-violet-50 to-white",
+    border: "border-violet-100",
+    wash: "bg-violet-100/40",
+    tile: "bg-violet-100 text-violet-700 group-hover:bg-violet-600 group-hover:text-white",
+    title: "group-hover:text-violet-900",
+    accent: "text-violet-600",
+    bar: "from-violet-500 to-violet-400",
+  },
+  {
+    bg: "from-rose-50 to-white",
+    border: "border-rose-100",
+    wash: "bg-rose-100/40",
+    tile: "bg-rose-100 text-rose-700 group-hover:bg-rose-600 group-hover:text-white",
+    title: "group-hover:text-rose-900",
+    accent: "text-rose-600",
+    bar: "from-rose-500 to-rose-400",
+  },
+  {
+    bg: "from-cyan-50 to-white",
+    border: "border-cyan-100",
+    wash: "bg-cyan-100/40",
+    tile: "bg-cyan-100 text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white",
+    title: "group-hover:text-cyan-900",
+    accent: "text-cyan-600",
+    bar: "from-cyan-500 to-cyan-400",
+  },
+];
+const accentFor = (index) => MAPEL_ACCENTS[index % MAPEL_ACCENTS.length];
+
 // Default tab = Senin.
 function getTodayDay() {
   return "Senin";
@@ -276,11 +337,16 @@ export default function ClassStudent() {
       <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 animate-fade-in-up">
 
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Mapel Saya</h1>
             {studentClassName && (
-              <span className="ml-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 text-base font-extrabold border border-blue-100 shadow-sm">
-                {studentClassName}
+              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                </svg>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Kelas</span>
+                <span className="text-base font-extrabold text-[#0d264f]">{studentClassName}</span>
               </span>
             )}
           </div>
@@ -347,10 +413,13 @@ export default function ClassStudent() {
                   </p>
                 </div>
               ) : (
-                currentClasses.map((item) => (
+                currentClasses.map((item, i) => (
                   <StudentClassCard
                     key={item.id_mapel}
                     data={item}
+                    /* index di daftar penuh, bukan di halaman ini, supaya
+                       warna kartu tidak berpindah saat pindah halaman */
+                    colorIndex={indexOfFirstItem + i}
                     onOpen={() => handleOpenClass(item.id_mapel)}
                   />
                 ))
@@ -358,40 +427,32 @@ export default function ClassStudent() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-10 pb-4">
-                <button
-                  onClick={() => paginate(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-[#0d264f] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                {[...Array(totalPages).keys()].map((page) => {
-                  const pageNumber = page + 1;
-                  const isActive = currentPage === pageNumber;
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => paginate(pageNumber)}
-                      className={`w-10 h-10 rounded-xl font-bold text-sm transition-all shadow-sm duration-300 transform hover:scale-105 ${isActive ? 'bg-[#0d264f] text-white shadow-lg' : 'text-slate-500 hover:bg-white hover:text-[#0d264f]'}`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                })}
-
-                <button
-                  onClick={() => paginate(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-[#0d264f] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+              <div className="px-4 sm:px-6 py-4 mt-10 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+                <div>
+                  Halaman <span className="font-bold text-slate-800">{currentPage}</span> dari <span className="font-bold text-slate-800">{totalPages}</span>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Kembali
+                  </button>
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-bold transition-all inline-flex items-center gap-1 shadow-sm"
+                  >
+                    Lanjut
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -401,25 +462,28 @@ export default function ClassStudent() {
   );
 }
 
-function StudentClassCard({ data, onOpen }) {
+function StudentClassCard({ data, colorIndex = 0, onOpen }) {
+  const accent = accentFor(colorIndex);
+
   return (
     <div
       onClick={onOpen}
-      className="group relative bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between"
+      className={`group relative rounded-3xl shadow-sm border p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between bg-gradient-to-br ${accent.bg} ${accent.border}`}
     >
-      <div className="absolute inset-0 bg-blue-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0"></div>
+      <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r z-20 ${accent.bar}`} />
+      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0 ${accent.wash}`}></div>
 
       <div className="relative z-10 space-y-4">
         {/* Header Kartu: Hanya Ikon */}
         <div className="flex justify-between items-start">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm ${accent.tile}`}>
             <IconBook />
           </div>
         </div>
 
         {/* Informasi Mapel & Guru */}
         <div>
-          <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-900 transition-colors line-clamp-2 leading-snug">
+          <h3 className={`text-xl font-black text-slate-900 transition-colors line-clamp-2 leading-snug ${accent.title}`}>
             {data.mapel_name}
           </h3>
           {data.teacher_name && (
@@ -436,7 +500,7 @@ function StudentClassCard({ data, onOpen }) {
       {/* Footer Aksi */}
       <div className="relative z-10 pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
         <span className="text-xs text-slate-400 font-semibold">Klik untuk lihat tugas</span>
-        <div className="text-blue-600 font-extrabold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1">
+        <div className={`font-extrabold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1 ${accent.accent}`}>
           Buka
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />

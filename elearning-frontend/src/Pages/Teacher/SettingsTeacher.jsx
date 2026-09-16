@@ -239,13 +239,16 @@ export default function Settings() {
         />
       )}
 
-      <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">
-        
-        <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Pengaturan</h1>
-          <p className="text-slate-500 text-lg mt-1">Kelola identitas dan keamanan akun.</p>
+      <div className="max-w-4xl mx-auto">
+        {/* Banner biru: -mt-20 menariknya ke paling atas area konten (menutup
+            padding pt-20 milik <main>) sehingga latar biru menempel penuh di
+            bawah topbar; kartu profil putih lalu menumpuk di bagian bawahnya. */}
+        <div className="-mt-20 bg-gradient-to-br from-[#0d264f] to-[#1a3a75] rounded-b-3xl px-6 md:px-10 pt-24 pb-20 md:pb-24 shadow-lg">
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Pengaturan</h1>
+          <p className="text-blue-100/80 text-lg mt-1">Kelola identitas dan keamanan akun.</p>
         </div>
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden -mt-12 md:-mt-16 relative z-10 mx-6 md:mx-10 mb-6 md:mb-10">
           <div className="p-8 md:p-12">
             
             <div className="flex flex-col md:flex-row items-center gap-8 mb-12">
