@@ -7,6 +7,7 @@ const { initSocket } = require("./socket/index");
 const app = express();
 const server = http.createServer(app);
 const cronCleaner = require("./middleware/cronCleaner");
+const {cleanExpiredAssignments} = require("./middleware/cloudinaryCleaner");
 const PORT = process.env.PORT;
 const authRoutes = require("./routes/auth");
 const tugasRoutes = require("./routes/tugasRoute");
@@ -16,6 +17,7 @@ const path = require("path");
 
 initSocket(server);
 app.set("trust proxy", 1);
+
 
 app.use(
   cors({
@@ -61,6 +63,7 @@ app.use((err, req, res, next) => {
 
 sequelize.sync();
 cronCleaner();
+cleanExpiredAssignments();
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
