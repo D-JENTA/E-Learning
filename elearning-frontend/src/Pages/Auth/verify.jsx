@@ -3,26 +3,16 @@ import { useNavigate, useLocation } from "react-router-dom";
 import imageBg from "../../assets/Loginimg.png";
 import lockIcon from "../../assets/Salinan lock.png";
 import logoAnimation from "../../assets/EDUSpace_logo_animation.mp4";
+import {
+  formatCooldown,
+  getRetryAfterSeconds,
+  rateLimitMessage,
+  useRateLimit,
+} from "../../hooks/useRateLimit";
+import { isOtpExpired, toIndonesianMessage } from "../../utils/authMessages";
 
-const VERIFIED_ACCOUNTS_STORAGE_KEY = 'verified_accounts';
-
-const saveVerifiedAccount = (email, role) => {
-  if (!email) return;
-
-  try {
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const normalizedRole = String(role || 'student').trim().toLowerCase();
-    const existing = JSON.parse(localStorage.getItem(VERIFIED_ACCOUNTS_STORAGE_KEY) || '[]');
-    const next = existing.filter(
-      (entry) => !(entry?.email === normalizedEmail && entry?.role === normalizedRole)
-    );
-
-    next.push({ email: normalizedEmail, role: normalizedRole });
-    localStorage.setItem(VERIFIED_ACCOUNTS_STORAGE_KEY, JSON.stringify(next));
-  } catch (error) {
-    console.warn('Gagal menyimpan akun terverifikasi:', error);
-  }
-};
+const RATE_LIMIT_STORAGE_KEY = 'verify_rate_limit_until';
+const RESEND_COOLDOWN_SECONDS = 60;
 
 // --- KOMPONEN NOTIFIKASI TOAST ---
 const CustomAlert = ({ message, type, onClose }) => {
@@ -82,9 +72,19 @@ export default function Verify() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState(0);
-  const [canResend, setCanResend] = useState(true);
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
-  
+
+  const {
+    rateLimitSeconds,
+    isRateLimited,
+    startCooldown: startRateLimitCooldown,
+  } = useRateLimit(RATE_LIMIT_STORAGE_KEY);
+
+  // Kirim ulang terbuka tepat saat hitung mundur habis. Diturunkan dari `timer`
+  // alih-alih disimpan sebagai state terpisah, supaya efek timer di bawah tidak
+  // perlu memanggil setState di dalam tubuhnya.
+  const canResend = timer === 0;
+
   const inputRefs = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -124,22 +124,17 @@ export default function Verify() {
   }, [emailFromState, navigate, isRegisterFlow]);
 
   useEffect(() => {
-    let interval = null;
-    if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else {
-      setCanResend(true);
-      if (interval) clearInterval(interval);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    if (timer <= 0) return undefined;
+
+    const interval = setInterval(() => {
+      setTimer((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [timer]);
 
   const handleResendOtp = async () => {
-    if (!canResend) return; 
+    if (!canResend || isRateLimited) return;
     if (!emailFromState) {
       setAlertInfo({ show: true, message: "Email tidak ditemukan.", type: 'error' });
       return;
@@ -150,22 +145,43 @@ export default function Verify() {
       const response = await fetch('/api/auth/resend-otp', {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',
         body: JSON.stringify({
           email: emailFromState,
           ...(savedUserId ? { user_id: savedUserId } : {}),
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result?.id_user) {
-          localStorage.setItem('pending_user_id', result.id_user.toString());
-        }
-        setCanResend(false);
-        setTimer(60); 
-        setAlertInfo({ show: true, message: "Kode OTP berhasil dikirim ulang.", type: 'success' });
+      const result = await response.json().catch(() => null);
+
+      if (response.status === 429) {
+        const retryAfter = startRateLimitCooldown(
+          getRetryAfterSeconds(response, result)
+        );
+        setAlertInfo({ show: true, message: rateLimitMessage(retryAfter), type: 'error' });
+        return;
       }
+
+      // Cabang gagal harus tetap terlihat: sebelumnya hanya ada `if (response.ok)`,
+      // jadi kirim ulang yang gagal tampak seperti tombolnya tidak berfungsi.
+      if (!response.ok) {
+        setAlertInfo({
+          show: true,
+          message: toIndonesianMessage(result?.message, 'Gagal mengirim ulang kode OTP.'),
+          type: 'error',
+        });
+        return;
+      }
+
+      // Endpoint ini tidak lagi mengembalikan id_user, tapi tetap disimpan bila ada.
+      if (result?.id_user) {
+        localStorage.setItem('pending_user_id', result.id_user.toString());
+      }
+
+      setTimer(RESEND_COOLDOWN_SECONDS);
+      setAlertInfo({ show: true, message: "Kode OTP berhasil dikirim ulang.", type: 'success' });
     } catch (e) {
+      console.error('Resend OTP error:', e);
       setAlertInfo({ show: true, message: "Terjadi kesalahan pada server.", type: 'error' });
     }
   };
@@ -214,11 +230,16 @@ export default function Verify() {
     const savedUserId = localStorage.getItem("pending_user_id");
     const savedRole = localStorage.getItem("pending_role");
 
+    if (isRateLimited) {
+      setAlertInfo({ show: true, message: rateLimitMessage(rateLimitSeconds), type: 'error' });
+      return;
+    }
+
     if (code.length < 6) {
       setAlertInfo({ show: true, message: "Masukkan 6 digit kode OTP.", type: 'error' });
       return;
     }
-    
+
     if (!savedUserId) {
       setAlertInfo({ show: true, message: "Sesi berakhir. Silakan login kembali.", type: 'error' });
       return navigate("/login");
@@ -229,15 +250,34 @@ export default function Verify() {
       const response = await fetch('/api/auth/verifyOtp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          user_id: savedUserId, 
-          otp: code 
+        credentials: 'include',
+        body: JSON.stringify({
+          user_id: savedUserId,
+          otp: code
         })
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
 
-      if (!response.ok) throw new Error(result.message || "OTP Salah.");
+      if (response.status === 429) {
+        const retryAfter = startRateLimitCooldown(
+          getRetryAfterSeconds(response, result)
+        );
+        throw new Error(rateLimitMessage(retryAfter));
+      }
+
+      if (!response.ok) {
+        const rawMessage = result?.message || "invalid otp";
+
+        // Kode kedaluwarsa → langsung buka kunci tombol kirim ulang supaya user
+        // tidak perlu menunggu hitung mundur 60 detik untuk minta kode baru.
+        if (isOtpExpired(rawMessage)) {
+          setOtp(new Array(6).fill(""));
+          setTimer(0); // buka kunci tombol kirim ulang
+        }
+
+        throw new Error(toIndonesianMessage(rawMessage));
+      }
 
       const token = result.token || result.accessToken || result.access_token || result.data?.token;
       // Bersihkan token admin lama supaya interceptor global (setupFetchAuth.js)
@@ -250,8 +290,7 @@ export default function Verify() {
         navigate("/reset-password", { state: { email: emailFromState } });
       } else {
         const normalizedRole = String(savedRole || "student").toLowerCase();
-        saveVerifiedAccount(emailFromState || localStorage.getItem("pending_email") || "", normalizedRole);
-        
+
         const redirectDelay = isRegisterFlow ? 6500 : 0;
 
         setTimeout(() => {
@@ -317,25 +356,32 @@ export default function Verify() {
                 />
               ))}
             </div>
-            <button 
-              type="submit" 
-              disabled={isLoading} 
+            <button
+              type="submit"
+              disabled={isLoading || isRateLimited}
               className="w-full bg-[#0d264f] text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50"
             >
-              {isLoading ? 'Memverifikasi...' : 'Verifikasi & Lanjutkan'}
+              {isLoading
+                ? 'Memverifikasi...'
+                : isRateLimited
+                  ? `Coba lagi dalam ${formatCooldown(rateLimitSeconds)}`
+                  : 'Verifikasi & Lanjutkan'}
             </button>
 
             <div className="mt-6">
-              {canResend ? (
-                <p 
-                  onClick={handleResendOtp} 
-                  className="text-blue-600 cursor-pointer text-xs font-bold hover:underline uppercase"
+              {canResend && !isRateLimited ? (
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  className="text-blue-600 text-xs font-bold hover:underline uppercase"
                 >
                   Kirim Ulang OTP
-                </p>
+                </button>
               ) : (
                 <p className="text-gray-400 text-xs font-bold uppercase tracking-tight">
-                  Tunggu {timer} detik untuk kirim ulang
+                  {isRateLimited
+                    ? `Coba lagi dalam ${formatCooldown(rateLimitSeconds)}`
+                    : `Tunggu ${timer} detik untuk kirim ulang`}
                 </p>
               )}
             </div>

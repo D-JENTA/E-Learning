@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import imageBg from '../../assets/Loginimg.png';
+import {
+  formatCooldown,
+  getRetryAfterSeconds,
+  rateLimitMessage,
+  useRateLimit,
+} from '../../hooks/useRateLimit';
+import { toIndonesianMessage } from '../../utils/authMessages';
 
 const RATE_LIMIT_STORAGE_KEY = 'login_rate_limit_until';
-const DEFAULT_RATE_LIMIT_SECONDS = 60;
 
 const ROLE_DEST = {
   student: '/student/home',
@@ -21,34 +27,6 @@ const normalizeRole = (role) => {
   return role;
 };
 
-const formatCooldown = (seconds) => {
-  const safeSeconds = Math.max(0, seconds);
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainingSeconds = safeSeconds % 60;
-  return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-};
-
-const getRetryAfterSeconds = (response, result) => {
-  const retryAfterHeader = response.headers.get('Retry-After');
-  const rateLimitResetHeader = response.headers.get('RateLimit-Reset');
-
-  if (retryAfterHeader) {
-    const retryAfterNumber = Number(retryAfterHeader);
-    if (!Number.isNaN(retryAfterNumber) && retryAfterNumber > 0) return Math.ceil(retryAfterNumber);
-    const retryAfterDate = Date.parse(retryAfterHeader);
-    if (!Number.isNaN(retryAfterDate)) return Math.max(1, Math.ceil((retryAfterDate - Date.now()) / 1000));
-  }
-
-  if (rateLimitResetHeader) {
-    const resetNumber = Number(rateLimitResetHeader);
-    if (!Number.isNaN(resetNumber) && resetNumber > 0) {
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      return resetNumber > nowSeconds ? resetNumber - nowSeconds : resetNumber;
-    }
-  }
-  return Number(result?.retryAfter) || DEFAULT_RATE_LIMIT_SECONDS;
-};
-
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -59,7 +37,6 @@ const CustomAlert = ({ message, type, onClose }) => {
 
   if (!message) return null;
 
-  const accentColor = type === 'error' ? 'border-l-red-500' : 'border-l-blue-500';
   const iconBg = type === 'error' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
   
   const Icon = type === 'error' 
@@ -145,35 +122,16 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
 
   const [alertInfo, setAlertInfo] = useState({ show: false, message: '', type: 'success' });
 
   const navigate = useNavigate();
-  const isRateLimited = rateLimitSeconds > 0;
-
-  useEffect(() => {
-    const updateCooldown = () => {
-      const storedUntil = Number(localStorage.getItem(RATE_LIMIT_STORAGE_KEY) || 0);
-      const remaining = Math.ceil((storedUntil - Date.now()) / 1000);
-      if (remaining > 0) {
-        setRateLimitSeconds(remaining);
-      } else {
-        setRateLimitSeconds(0);
-        localStorage.removeItem(RATE_LIMIT_STORAGE_KEY);
-      }
-    };
-    updateCooldown();
-    const interval = setInterval(updateCooldown, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const startRateLimitCooldown = (seconds = DEFAULT_RATE_LIMIT_SECONDS) => {
-    const cooldownSeconds = Number(seconds) > 0 ? Number(seconds) : DEFAULT_RATE_LIMIT_SECONDS;
-    const until = Date.now() + cooldownSeconds * 1000;
-    localStorage.setItem(RATE_LIMIT_STORAGE_KEY, String(until));
-    setRateLimitSeconds(cooldownSeconds);
-  };
+  const {
+    rateLimitSeconds,
+    isRateLimited,
+    startCooldown: startRateLimitCooldown,
+    clearCooldown: clearRateLimit,
+  } = useRateLimit(RATE_LIMIT_STORAGE_KEY);
 
   const showAlert = (message, type = 'success') => {
     setAlertInfo({ show: true, message, type });
@@ -212,9 +170,9 @@ export default function Login() {
     if (isLoading) return;
 
     if (isRateLimited) {
-      const message = `Terlalu banyak percobaan login. Coba lagi dalam ${formatCooldown(rateLimitSeconds)}.`;
+      const message = rateLimitMessage(rateLimitSeconds);
       setErrors({ general: message });
-      showAlert(message, 'error'); 
+      showAlert(message, 'error');
       return;
     }
 
@@ -233,6 +191,7 @@ export default function Login() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+
         body: JSON.stringify(formData),
       });
 
@@ -245,17 +204,14 @@ export default function Login() {
       try {
         if (isJson) result = await response.json();
         else responseText = await response.text();
-      } catch (parseErr) {
+      } catch {
         responseText = await response.text().catch(() => '');
       }
 
       if (response.status === 429) {
         const retryAfter = getRetryAfterSeconds(response, result);
         startRateLimitCooldown(retryAfter);
-        throw new Error(
-          result?.message ||
-            `Terlalu banyak percobaan login. Coba lagi dalam ${formatCooldown(retryAfter)}.`
-        );
+        throw new Error(rateLimitMessage(retryAfter));
       }
 
       if (!response.ok) {
@@ -288,20 +244,17 @@ export default function Login() {
           responseText,
           result,
         });
-        const errorMessage = serverMessage || 'Server bermasalah atau URL salah';
+        const errorMessage = toIndonesianMessage(
+          serverMessage,
+          'Server bermasalah atau URL salah'
+        );
         throw new Error(errorMessage);
       }
 
-      localStorage.removeItem(RATE_LIMIT_STORAGE_KEY);
-      setRateLimitSeconds(0);
+      clearRateLimit();
 
-      // Simpan token saja. Info user (id, role) tidak lagi disimpan
-      // terpisah — akan diambil dengan decode token lewat getCurrentUser()
-      // dari src/utils/auth.js kapan pun dibutuhkan di halaman lain.
       const token =
         result.token || result.accessToken || result.access_token || result.data?.token;
-      // Hapus token admin yang mungkin tersisa supaya interceptor global
-      // (setupFetchAuth.js) tidak sempat mengirim token basi dari sesi sebelumnya.
       localStorage.removeItem("admin_token");
       if (token) localStorage.setItem("token", token);
 
@@ -357,7 +310,7 @@ export default function Login() {
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4 relative z-10">
         <div className="w-full max-w-[360px]">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 tracking-tight text-center">
-            Selamat Datang Kembali
+            Selamat Datang
           </h2>
 
           <form onSubmit={handleLogin} className="flex flex-col">
