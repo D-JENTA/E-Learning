@@ -1,8 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const { uploadAssignment, uploadAssignmentStudent,
-     deleteAssignment, deleteAssignmentStudent, inputScore, totalScore, getAssignmentStudent, getAssignmentTeacher,
-      getAssignmentStudentById, getMySubmissions } = require("../controllers/tugasController");
+const {
+  uploadAssignment,
+  uploadAssignmentStudent,
+  deleteAssignment,
+  deleteAssignmentStudent,
+  inputScore,
+  totalScore,
+  getAssignmentStudent,
+  getAssignmentTeacher,
+  getAssignmentStudentById,
+  getMySubmissions,
+  getMSProgress
+} = require("../controllers/tugasController");
 const { uploadTeacher, uploadStudent } = require("../config/cloudinary");
 const verifyToken = require("../middleware/verifyToken");
 const { isTeacher, isAdmin, isStudent, onlyStudent, onlyTeacher } = require("../middleware/roleMiddleware");
@@ -31,6 +41,7 @@ router.post("/students/:id_assignment/assignments", verifyToken, isStudent, canS
 router.get("/me/mapel/:id_mapel/assignmentsTeacher", verifyToken, getAssignmentTeacher);
 router.get("/me/mapel/:id_mapel/assignmentsStudent", verifyToken, isTeacher, getAssignmentStudent);
 router.get("/students/assignments", verifyToken, isStudent, getMySubmissions);
+    router.get("/students/progress/:id_student", verifyToken, isStudent, getMSProgress);
 router.post("/assignment/:id/score", verifyToken, isTeacher, inputScore);
 router.get("/student/totalScore",verifyToken,isTeacher, totalScore);
 router.get("/teachers/assignments/:id_assignment", verifyToken, isTeacher, getAssignmentStudentById);
