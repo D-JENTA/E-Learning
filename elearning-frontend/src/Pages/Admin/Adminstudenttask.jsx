@@ -55,7 +55,7 @@ const FilePreview = ({ fileUrl }) => {
   if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
     return (
       <div className="flex justify-center bg-slate-50 rounded-xl p-2 border border-slate-200">
-        <img src={fileUrl} alt="Preview" className="max-h-[70vh] rounded-lg object-contain shadow-sm" />
+        <img src={fileUrl} alt="Preview" loading="lazy" decoding="async" className="max-h-[70vh] rounded-lg object-contain shadow-sm" />
       </div>
     );
   }

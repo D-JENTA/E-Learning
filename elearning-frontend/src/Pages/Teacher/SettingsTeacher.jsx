@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Cropper from "react-easy-crop";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
+import LoadError from "../../components/LoadError";
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -91,6 +92,7 @@ export default function Settings() {
   const [username, setUsername] = useState("");
   const [originalUsername, setOriginalUsername] = useState(""); 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
@@ -109,17 +111,7 @@ export default function Settings() {
   const fetchUserData = async () => {
     try {
       setIsLoading(true);
-      
-      const resPic = await fetch("/api/auth/profile-picture", {
-        method: "GET",
-        headers: {
-          "ngrok-skip-browser-warning": "69420",
-          "Cache-Control": "no-cache, no-store, must-revalidate"
-        },
-        credentials: "include", 
-      });
-      const picResult = await resPic.json().catch(() => null);
-      if (resPic.ok && picResult) setProfilePic(picResult.profile_picture_url);
+      setLoadError(null);
 
       const resUser = await fetch("/api/auth/users/me", {
         method: "GET",
@@ -137,11 +129,14 @@ export default function Settings() {
         const fetchedPic = userResult.profile_picture_url || userResult.data?.profile_picture_url || userResult.user?.profile_picture_url || null;
         
         setUsername(fetchedUsername);
-        setOriginalUsername(fetchedUsername); 
-        if (fetchedPic) setProfilePic(fetchedPic);
+        setOriginalUsername(fetchedUsername);
+        // Dipakai apa adanya — termasuk null — supaya foto yang sudah dihapus
+        // di backend ikut hilang dari tampilan, bukan tertinggal versi lama.
+        setProfilePic(fetchedPic);
       }
     } catch (err) {
       console.error("Gagal sinkronisasi data:", err);
+      setLoadError(err);
     } finally {
       setIsLoading(false);
     }
@@ -239,6 +234,17 @@ export default function Settings() {
         />
       )}
 
+      {loadError && !isLoading ? (
+        <LoadError
+          message="Gagal memuat data pengaturan."
+          hint={
+            loadError?.name === "TimeoutError"
+              ? "Server tidak merespons tepat waktu. Periksa koneksi Anda, lalu coba lagi."
+              : undefined
+          }
+          onRetry={fetchUserData}
+        />
+      ) : (
       <div className="max-w-4xl mx-auto">
         {/* Banner biru: -mt-20 menariknya ke paling atas area konten (menutup
             padding pt-20 milik <main>) sehingga latar biru menempel penuh di
@@ -255,7 +261,7 @@ export default function Settings() {
               <div className="relative group cursor-pointer" onClick={() => profilePic && setIsImageModalOpen(true)}>
                 <div className="w-36 h-36 rounded-full overflow-hidden bg-slate-100 border-4 border-white shadow-xl ring-1 ring-slate-200">
                   {profilePic ? (
-                    <img src={profilePic} alt="Profile" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    <img src={profilePic} alt="Profile" width={144} height={144} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                   ) : null}
                 </div>
 
@@ -352,9 +358,11 @@ export default function Settings() {
               >
                 <IconX />
               </button>
-              <img 
-                src={profilePic} 
-                alt="Full Profile" 
+              <img
+                src={profilePic}
+                alt="Full Profile"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-auto rounded-lg shadow-2xl object-contain max-h-[80vh]"
                 onClick={(e) => e.stopPropagation()} 
               />
@@ -420,7 +428,8 @@ export default function Settings() {
         )}
 
       </div>
-      
+      )}
+
       <style>{`
         @keyframes slideIn {
           from { opacity: 0; transform: translateX(100%); }

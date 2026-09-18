@@ -1,50 +1,66 @@
 import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
+import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
 
 import { AuthProvider } from "./context/AuthContext";
 
+// LandingPage sengaja TIDAK di-lazy: itu halaman pertama yang dilihat
+// pengunjung publik, jadi menundanya hanya menambah waktu tampil.
 import LandingPage from "./Pages/Auth/LandingPage";
-import Login from "./Pages/Auth/Login";
-import Create from "./Pages/Auth/Create";
-import Forgot from "./Pages/Auth/Forgot";
-import Verify from "./Pages/Auth/verify";
-import Resetpassword from "./Pages/Auth/Resetpassword";
 
-import StudentAdmin from "./Pages/Admin/StudentAdmin";
-import TeacherAdmin from "./Pages/Admin/TeacherAdmin";
-import ClassAdmin from "./Pages/Admin/ClassAdmin";
-import CreateMapelAdmin from "./Pages/Admin/CreateMapel";
-import MapelAdmin from "./Pages/Admin/MapelAdmin";
-import CalendarAdmin from "./Pages/Admin/CalendarAdmin";
-import SettingsAdmin from "./Pages/Admin/SettingsAdmin";
-import SuperAdminManageUsers from "./Pages/Admin/SuperAdminManageUser";
-import SuperAdminDashboard from "./Pages/Admin/SuperadminDashboard";
-import AdminStudentClasses from "./Pages/Admin/Adminstudentclasses";
-import AdminStudentClassTasks from "./Pages/Admin/Adminstudenttask";
+// Halaman lain dipisah per-route dengan React.lazy supaya satu halaman tidak
+// perlu mengunduh kode SEMUA halaman sekaligus (sebelumnya satu bundel 788KB).
+// Yang paling terbantu: @fullcalendar yang cuma dipakai 3 halaman kalender,
+// dan video 2,5MB yang cuma dipakai halaman verifikasi OTP.
+const Login = lazy(() => import("./Pages/Auth/Login"));
+const Create = lazy(() => import("./Pages/Auth/Create"));
+const Forgot = lazy(() => import("./Pages/Auth/Forgot"));
+const Verify = lazy(() => import("./Pages/Auth/verify"));
+const Resetpassword = lazy(() => import("./Pages/Auth/Resetpassword"));
 
-import HomeStudent from "./Pages/Student/HomeStudent";
-import ClassStudent from "./Pages/Student/ClassStudent";
-import TaskStudent from "./Pages/Student/TaskStudent";
-import CoursesStudent from "./Pages/Student/CoursesStudent";
-import LessonStudent from "./Pages/Student/LessonStudent";
-import MateriStudent from "./Pages/Student/MateriStudent";
-import PlustaskStudent from "./Pages/Student/PlustaskStudent";
-import CalendarStudent from "./Pages/Student/CalendarStudent";
-import SettingsStudent from "./Pages/Student/SettingsStudent";
-import JoinClass from "./Pages/Student/JoinClass";
-import ProgressStudent from "./Pages/Student/ProgressStudent";
+const StudentAdmin = lazy(() => import("./Pages/Admin/StudentAdmin"));
+const TeacherAdmin = lazy(() => import("./Pages/Admin/TeacherAdmin"));
+const ClassAdmin = lazy(() => import("./Pages/Admin/ClassAdmin"));
+const CreateMapelAdmin = lazy(() => import("./Pages/Admin/CreateMapel"));
+const MapelAdmin = lazy(() => import("./Pages/Admin/MapelAdmin"));
+const CalendarAdmin = lazy(() => import("./Pages/Admin/CalendarAdmin"));
+const SettingsAdmin = lazy(() => import("./Pages/Admin/SettingsAdmin"));
+const SuperAdminManageUsers = lazy(() => import("./Pages/Admin/SuperAdminManageUser"));
+const SuperAdminDashboard = lazy(() => import("./Pages/Admin/SuperadminDashboard"));
+const AdminStudentClasses = lazy(() => import("./Pages/Admin/Adminstudentclasses"));
+const AdminStudentClassTasks = lazy(() => import("./Pages/Admin/Adminstudenttask"));
 
-import TeacherDashboard from "./Pages/Teacher/TeacherDashboard";
-import ClassList from "./Pages/Teacher/ClassList";
-import ManageStudent from "./Pages/Teacher/ManageStudent";
-import UploadLessons from "./Pages/Teacher/UploadLessons";
-import CalendarTeacher from "./Pages/Teacher/CalendarTeacher";
-import SettingsTeacher from "./Pages/Teacher/SettingsTeacher";
-import ManageClass from "./Pages/Teacher/ManageClass";
-import UploadTask from "./Pages/Teacher/UploadTask";
-import TeacherAssignments from "./Pages/Teacher/TeacherAssignments";
-import GradeAssignment from "./Pages/Teacher/GradeAssignment";
-import StudentSubmissions from "./Pages/Teacher/StudentSubmissions";
+const HomeStudent = lazy(() => import("./Pages/Student/HomeStudent"));
+const ClassStudent = lazy(() => import("./Pages/Student/ClassStudent"));
+const TaskStudent = lazy(() => import("./Pages/Student/TaskStudent"));
+const CoursesStudent = lazy(() => import("./Pages/Student/CoursesStudent"));
+const LessonStudent = lazy(() => import("./Pages/Student/LessonStudent"));
+const MateriStudent = lazy(() => import("./Pages/Student/MateriStudent"));
+const PlustaskStudent = lazy(() => import("./Pages/Student/PlustaskStudent"));
+const CalendarStudent = lazy(() => import("./Pages/Student/CalendarStudent"));
+const SettingsStudent = lazy(() => import("./Pages/Student/SettingsStudent"));
+const JoinClass = lazy(() => import("./Pages/Student/JoinClass"));
+const ProgressStudent = lazy(() => import("./Pages/Student/ProgressStudent"));
+
+const TeacherDashboard = lazy(() => import("./Pages/Teacher/TeacherDashboard"));
+const ClassList = lazy(() => import("./Pages/Teacher/ClassList"));
+const ManageStudent = lazy(() => import("./Pages/Teacher/ManageStudent"));
+const UploadLessons = lazy(() => import("./Pages/Teacher/UploadLessons"));
+const CalendarTeacher = lazy(() => import("./Pages/Teacher/CalendarTeacher"));
+const SettingsTeacher = lazy(() => import("./Pages/Teacher/SettingsTeacher"));
+const ManageClass = lazy(() => import("./Pages/Teacher/ManageClass"));
+const UploadTask = lazy(() => import("./Pages/Teacher/UploadTask"));
+const TeacherAssignments = lazy(() => import("./Pages/Teacher/TeacherAssignments"));
+const GradeAssignment = lazy(() => import("./Pages/Teacher/GradeAssignment"));
+const StudentSubmissions = lazy(() => import("./Pages/Teacher/StudentSubmissions"));
+
+// Dipakai saat aplikasi masih memastikan status login, dan sebagai fallback
+// Suspense selagi chunk halaman yang dituju diunduh.
+const PageLoader = ({ message = "Memuat halaman..." }) => (
+  <div className="h-screen w-full flex flex-col items-center justify-center">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-2" />
+    <p className="text-gray-500 text-sm">{message}</p>
+  </div>
+);
 
 const normalizeRole = (role) => {
   if (role === "admin" || role === "superadmin" || role === "super_admin") {
@@ -58,6 +74,31 @@ const ROLE_DEST = {
   superAdmin: "/admin/super-dashboard",
   teacher: "/teacher/dashboard",
   student: "/student/home",
+};
+
+// Rute yang bisa dibuka tanpa login. Di sini /api/auth/check-me sengaja TIDAK
+// dipanggil: pengunjung publik tidak perlu menembak endpoint ber-proteksi
+// (dulu itulah yang memunculkan 401 di console) dan halaman bisa langsung
+// tampil tanpa sempat menampilkan spinner "Loading Application...".
+const PUBLIC_PATHS = ["/", "/create", "/forgot", "/verify", "/reset-password"];
+
+// /login tetap perlu dicek, tapi hanya kalau ada token tersimpan. Justru inilah
+// yang membuat pengguna dengan sesi masih hidup otomatis dilempar ke dashboard
+// sesuai perannya (lihat efek ROLE_DEST di bawah). Kalau belum pernah login,
+// tidak ada gunanya menembak check-me — hasilnya cuma 401.
+const LOGIN_PATHS = ["/login", "/admin/login"];
+
+const hasStoredToken = () =>
+  Boolean(localStorage.getItem("token") || localStorage.getItem("admin_token"));
+
+// true = route ini butuh kepastian status login sebelum dirender.
+const routeNeedsAuthCheck = (pathname) => {
+  const path = (pathname || "/").toLowerCase();
+
+  if (PUBLIC_PATHS.includes(path)) return false;
+  if (LOGIN_PATHS.includes(path)) return hasStoredToken();
+
+  return true;
 };
 
 const Guard = ({ allowedRoles, user, children }) => {
@@ -85,7 +126,15 @@ function App() {
     user: null,
   });
 
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Kalau halaman pertama yang dibuka memang publik, tidak ada yang perlu
+  // ditunggu — sehingga spinner tidak sempat berkedip sebelum landing tampil.
+  const [isInitialized, setIsInitialized] = useState(
+    () => !routeNeedsAuthCheck(window.location.pathname)
+  );
+
+  // verifyUser() cukup sekali per sesi (App.jsx tidak pernah remount selama
+  // sesi berjalan), sama seperti perilaku sebelumnya.
+  const hasVerifiedRef = useRef(false);
 
   // Ambil data profil lengkap (username, foto) sekali saja di sini.
   // /api/auth/check-me cuma balikin { id, role } — nggak cukup buat
@@ -161,8 +210,19 @@ function App() {
   }, [fetchFullProfile]);
 
   useEffect(() => {
+    if (!routeNeedsAuthCheck(location.pathname)) {
+      // Halaman publik: tidak ada request auth yang perlu ditunggu. Data user
+      // yang sudah ada sengaja dipertahankan supaya berpindah dari halaman
+      // dalam ke halaman publik tidak mengosongkan sesi yang sedang berjalan.
+      setAuthState((prev) => (prev.isLoading ? { ...prev, isLoading: false } : prev));
+      setIsInitialized(true);
+      return;
+    }
+
+    if (hasVerifiedRef.current) return;
+    hasVerifiedRef.current = true;
     verifyUser();
-  }, [verifyUser]);
+  }, [location.pathname, verifyUser]);
 
   useEffect(() => {
     const handleLogout = () => {
@@ -198,16 +258,12 @@ function App() {
   }, [isInitialized, authState.user, location.pathname, navigate]);
 
   if (!isInitialized) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-2" />
-        <p className="text-gray-500 text-sm">Loading Application...</p>
-      </div>
-    );
+    return <PageLoader message="Loading Application..." />;
   }
 
   return (
     <AuthProvider user={authState.user}>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/create" element={<Create />} />
@@ -261,6 +317,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </AuthProvider>
   );
 }

@@ -867,7 +867,7 @@ const extractDay = (item) => {
       <div className="animate-fade-in-up">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-800">Daftar Mapel</h2>
+            <h1 className="text-3xl font-bold text-gray-800">Daftar Mapel</h1>
             <p className="text-gray-500 mt-1">
               Lihat mapel yang telah dibuat.
             </p>
@@ -1057,7 +1057,7 @@ const extractDay = (item) => {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto custom-scrollbar"
           >
             <div className="w-full max-w-md my-8 rounded-2xl bg-white p-6 shadow-2xl">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Edit Mapel</h3>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Edit Mapel</h2>
               <form onSubmit={handleSaveEdit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1">Nama Mapel</label>
@@ -1193,7 +1193,10 @@ const extractDay = (item) => {
             <div className="w-full max-w-2xl my-8">
               <div className="bg-white border border-slate-200/80 rounded-3xl p-8 shadow-2xl">
                 <div className="border-b border-slate-200 pb-5 mb-6">
-                  <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Buat Mapel Baru</h1>
+                  {/* h2, bukan h1: ini judul dialog, bukan judul halaman. Dulu
+                      <h1>, sehingga MapelAdmin sempat punya dua <h1> begitu
+                      modal ini terbuka. */}
+                  <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Buat Mapel Baru</h2>
                   <p className="text-sm text-slate-500 font-medium">Lengkapi formulir di bawah ini untuk menambahkan mata pelajaran.</p>
                 </div>
 

@@ -57,29 +57,11 @@ export default function TopbarTeacher() {
           }
           return next;
         });
+      } else if (resUser.status === 401) {
+        // Belum login / sesi habis — kondisi wajar, bukan kegagalan.
+        // Cukup diabaikan tanpa mengotori console.
       } else {
         console.error("Gagal mengambil user data:", resUser.status);
-      }
-
-      const resPic = await fetch("/api/auth/profile-picture", {
-        method: "GET",
-        headers,
-        credentials: "include",
-      });
-      if (resPic.ok) {
-        const picResult = await resPic.json().catch(() => null);
-        if (picResult?.profile_picture_url) {
-          setUserData((prev) => {
-            if (prev.profile_picture_url === picResult.profile_picture_url) return prev;
-            const next = { ...prev, profile_picture_url: picResult.profile_picture_url };
-            try {
-              localStorage.setItem(TOPBAR_CACHE_KEY, JSON.stringify(next));
-            } catch {
-              // storage penuh / diblokir — abaikan
-            }
-            return next;
-          });
-        }
       }
     } catch (error) {
       console.error("Fetch Topbar Gagal:", error);
@@ -134,7 +116,11 @@ export default function TopbarTeacher() {
 
         <HamburgerButton />
 
-        <h1 className="font-bold text-xl text-slate-800 hidden sm:block">EduSpace Admin</h1>
+        {/* Dulu <h1>. Ini nama aplikasi + peran, bukan judul halaman — dibiarkan
+            <h1> membuat tiap halaman Admin punya dua <h1> (satu lagi judul asli
+            halaman di dalam konten), sehingga struktur heading-nya kabur buat
+            screen reader. */}
+        <span className="font-bold text-xl text-slate-800 hidden sm:block">EduSpace Admin</span>
       </div>
 
       <div className="flex items-center gap-4">
@@ -158,6 +144,10 @@ export default function TopbarTeacher() {
               src={profileSrc}
               alt="Profile"
               key={userData.profile_picture_url}
+              width={40}
+              height={40}
+              loading="eager"
+              decoding="async"
               className="h-10 w-10 rounded-full border-2 border-white shadow-md object-cover bg-slate-100 group-hover:scale-105 transition-transform duration-300"
             />
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>

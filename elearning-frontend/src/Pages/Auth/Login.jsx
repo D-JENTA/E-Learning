@@ -78,7 +78,7 @@ const InputField = ({
 }) => {
   return (
     <div className="mb-4 w-full relative group">
-      <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider text-left">
+      <label className="block text-[11px] font-bold text-gray-600 mb-1 ml-1 uppercase tracking-wider text-left">
         {label}
       </label>
 
@@ -308,10 +308,10 @@ export default function Login() {
       )}
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-[360px]">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 tracking-tight text-center">
+        <main className="w-full max-w-[360px]">
+          <h1 className="text-2xl font-bold text-gray-800 mb-6 tracking-tight text-center">
             Selamat Datang
-          </h2>
+          </h1>
 
           <form onSubmit={handleLogin} className="flex flex-col">
             <InputField
@@ -385,7 +385,7 @@ export default function Login() {
 
             <div className="flex items-center my-3">
               <div className="flex-1 h-px bg-gray-300" />
-              <span className="mx-3 text-[10px] text-gray-400 uppercase font-bold tracking-widest">
+              <span className="mx-3 text-[10px] text-gray-600 uppercase font-bold tracking-widest">
                 Atau
               </span>
               <div className="flex-1 h-px bg-gray-300" />
@@ -398,7 +398,7 @@ export default function Login() {
               </Link>
             </p>
           </form>
-        </div>
+        </main>
       </div>
 
       <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative overflow-hidden shadow-2xl z-20">
@@ -406,13 +406,15 @@ export default function Login() {
 
         <div className="relative z-10 flex flex-col items-center justify-center text-center p-8">
           <div className="animate-float">
-            <img src={imageBg} alt="Ilustrasi" className="w-80 drop-shadow-2xl" />
+            <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80 drop-shadow-2xl" />
           </div>
 
           <div className="-mt-8 px-6">
-            <h3 className="text-white text-xl font-semibold mb-2 tracking-tight">
+            <h2 className="text-white text-xl font-semibold mb-2 tracking-tight">
               Mulai Perjalananmu
-            </h3>
+            </h2>
+            {/* text-gray-400 di sini dibiarkan: latarnya navy gelap (#0d264f),
+                jadi kontrasnya sudah lolos ambang 4.5:1. */}
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
               Akses materi pembelajaran terbaik dan kembangkan skill Anda bersama kami.
             </p>

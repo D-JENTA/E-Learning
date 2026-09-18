@@ -46,7 +46,7 @@ export default function UploadLesson() {
         <Toast message={alertInfo.message} type={alertInfo.type} onClose={() => setAlertInfo({ ...alertInfo, show: false })} />
       )}
       <div className="animate-fade-in-up max-w-3xl mx-auto">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">Upload Lesson Material</h2>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Upload Lesson Material</h1>
         <p className="text-gray-500 mb-8">Add learning resources for your students.</p>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">

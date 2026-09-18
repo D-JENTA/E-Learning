@@ -131,22 +131,22 @@ export default function ResetPassword() {
       )}
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4">
-        <div className="w-full max-w-[360px]">
+        <main className="w-full max-w-[360px]">
           <div className="flex justify-center mb-6">
              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
-                <img src={lockIcon} alt="lock" className="w-10 h-10 object-contain" />
+                <img src={lockIcon} alt="lock" width={80} height={80} decoding="async" className="w-10 h-10 object-contain" />
              </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 uppercase text-center tracking-tight">Password Baru</h2>
-          <p className="text-[11px] text-gray-500 mb-8 text-center font-bold uppercase tracking-widest">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2 uppercase text-center tracking-tight">Password Baru</h1>
+          <p className="text-[11px] text-gray-600 mb-8 text-center font-bold uppercase tracking-widest">
             Email: <span className="text-blue-600">{email}</span>
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Input Password Baru */}
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 tracking-tighter">Password Baru</label>
+              <label className="text-[10px] font-bold text-gray-600 uppercase ml-1 mb-1 tracking-tighter">Password Baru</label>
               <div className="relative">
                 <input 
                   type={showNewPassword ? "text" : "password"} 
@@ -181,7 +181,7 @@ export default function ResetPassword() {
 
             {/* Input Konfirmasi Password */}
             <div className="flex flex-col">
-              <label className="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-1 tracking-tighter">Konfirmasi Password</label>
+              <label className="text-[10px] font-bold text-gray-600 uppercase ml-1 mb-1 tracking-tighter">Konfirmasi Password</label>
               <div className="relative">
                 <input 
                   type={showConfirmPassword ? "text" : "password"} 
@@ -223,15 +223,15 @@ export default function ResetPassword() {
             </button>
           </form>
 
-          <p className="text-center text-[10px] text-gray-400 mt-8 uppercase font-bold tracking-widest">
+          <p className="text-center text-[10px] text-gray-600 mt-8 uppercase font-bold tracking-widest">
             Ingat password? <button onClick={() => navigate("/login")} className="text-blue-600 hover:underline">Masuk</button>
           </p>
-        </div>
+        </main>
       </div>
 
       <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/40 opacity-50"></div>
-        <img src={imageBg} alt="Illustration" className="w-80 relative z-10" />
+        <img src={imageBg} alt="Illustration" width={623} height={1024} loading="lazy" decoding="async" className="w-80 relative z-10" />
       </div>
       
       <style>{` 

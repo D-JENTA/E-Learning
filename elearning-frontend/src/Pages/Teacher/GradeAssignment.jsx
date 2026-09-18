@@ -62,7 +62,7 @@ export default function GradeAssignment() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-slate-800">Input Nilai Siswa</h2>
+          <h1 className="text-xl font-bold text-slate-800">Input Nilai Siswa</h1>
           <div className="mt-2 inline-flex items-center gap-2 bg-slate-50 px-3 py-1 rounded-md border border-slate-100">
              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
              <span className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">ID: #{id_submission}</span>

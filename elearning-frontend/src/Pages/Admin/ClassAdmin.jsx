@@ -329,7 +329,7 @@ export default function ClassAdmin() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-800">manajemen Kelas</h2>
+            <h1 className="text-3xl font-bold text-gray-800">manajemen Kelas</h1>
             <p className="text-gray-500 mt-1">Atur atau edit Kelas.</p>
           </div>
 
@@ -472,7 +472,7 @@ function AddClassModal({ onClose, onSave, initialData, onNotify }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up overflow-hidden">
         <div className="bg-gradient-to-r from-[#0d264f] to-[#1a3a75] p-6 text-white">
-          <h3 className="text-xl font-bold">{isEdit ? "Edit Kelas" : "Tambah Kelas"}</h3>
+          <h2 className="text-xl font-bold">{isEdit ? "Edit Kelas" : "Tambah Kelas"}</h2>
           <p className="text-blue-200 text-sm mt-1">{isEdit ? "Update nama kelas di bawah." : "Masukkan nama kelas di bawah."}</p>
         </div>
         <div className="p-6">

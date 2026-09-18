@@ -40,7 +40,7 @@ const CustomAlert = ({ message, type, onClose }) => {
 
 const InputField = ({ label, type, value, onChange, placeholder, error, name }) => (
   <div className="mb-4 w-full relative text-left">
-    <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">{label}</label>
+    <label className="block text-[11px] font-bold text-gray-600 mb-1 ml-1 uppercase tracking-wider">{label}</label>
     <input
       type={type}
       name={name}
@@ -112,7 +112,7 @@ export default function Forgot() {
       )}
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4 z-10 text-center">
-        <div className="w-full max-w-[360px]">
+        <main className="w-full max-w-[360px]">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
               <svg className="w-10 h-10 text-[#0d264f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,8 +121,8 @@ export default function Forgot() {
             </div>
           </div>
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Lupa Password?</h2>
-            <p className="text-xs text-gray-500">Masukkan email akun Anda untuk menerima kode OTP.</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Lupa Password?</h1>
+            <p className="text-xs text-gray-600">Masukkan email akun Anda untuk menerima kode OTP.</p>
           </div>
           <form onSubmit={handleSubmit} className="flex flex-col">
             <InputField 
@@ -148,12 +148,12 @@ export default function Forgot() {
               Batal? <Link to="/login" className="text-blue-600 hover:underline">Masuk</Link>
             </p>
           </form>
-        </div>
+        </main>
       </div>
       
       <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative z-20 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/60 opacity-80"></div>
-        <img src={imageBg} alt="Ilustrasi" className="w-80 animate-float z-10" />
+        <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80 animate-float z-10" />
       </div>
 
       <style>{` 

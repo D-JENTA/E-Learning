@@ -70,11 +70,16 @@ export default function TopbarStudent() {
 
         setUserData(nextUserData);
         saveCachedUser(nextUserData);
+      } else if (response.status === 401) {
+        // Belum login / sesi habis — kondisi wajar, bukan kegagalan.
+        // Avatar fallback sudah otomatis dipakai, jadi cukup diabaikan.
       } else {
         console.error("Server return error:", response.status);
       }
     } catch (error) {
-      if (error.name !== "AbortError") {
+      // Abort karena komponen unmount dan timeout bukan kegagalan yang perlu
+      // dilaporkan ke console; tampilan sudah punya fallback-nya sendiri.
+      if (error.name !== "AbortError" && error.name !== "TimeoutError") {
         console.error("Fetch Topbar Gagal:", error);
       }
     } finally {
@@ -172,6 +177,10 @@ export default function TopbarStudent() {
             <img
               src={profileSrc}
               alt="Profile"
+              width={40}
+              height={40}
+              loading="eager"
+              decoding="async"
               className="relative h-10 w-10 rounded-full border-2 border-white shadow-md object-cover bg-slate-100 transition-transform group-hover:scale-105 cursor-pointer"
               onError={(e) => {
                 e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.username || 'U')}&background=0D264F&color=fff`;

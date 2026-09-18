@@ -219,10 +219,12 @@ const PreviewModal = ({ fileUrl, onClose }) => {
                 </div>
               </div>
             ) : isImage ? (
-              <img 
-                src={fileUrl} 
-                alt="Preview" 
-                className="max-h-[70vh] rounded-lg object-contain shadow-sm animate-fade-in" 
+              <img
+                src={fileUrl}
+                alt="Preview"
+                loading="lazy"
+                decoding="async"
+                className="max-h-[70vh] rounded-lg object-contain shadow-sm animate-fade-in"
               />
             ) : isVideo ? (
               <video controls className="w-full max-h-[70vh] rounded-lg bg-black">

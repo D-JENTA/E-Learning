@@ -143,9 +143,13 @@ function StudentClassCard({ data, onDelete, onOpen }) {
 
         <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <img 
-               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.teacher)}&background=random`} 
-               alt="Teacher" 
+             <img
+               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(data.teacher)}&background=random`}
+               alt="Teacher"
+               width={32}
+               height={32}
+               loading="lazy"
+               decoding="async"
                className="w-8 h-8 rounded-full border border-slate-200 shadow-sm object-cover"
              />
              <div className="hidden sm:block">

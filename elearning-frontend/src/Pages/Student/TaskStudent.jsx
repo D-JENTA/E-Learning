@@ -186,7 +186,7 @@ const FilePreview = ({ fileUrl }) => {
     );
   }
   if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
-    return <div className="flex justify-center bg-slate-50 rounded-xl p-2 border border-slate-200"><img src={fileUrl} alt="Preview" className="max-h-[50vh] sm:max-h-[65vh] rounded-lg object-contain shadow-sm" /></div>;
+    return <div className="flex justify-center bg-slate-50 rounded-xl p-2 border border-slate-200"><img src={fileUrl} alt="Preview" loading="lazy" decoding="async" className="max-h-[50vh] sm:max-h-[65vh] rounded-lg object-contain shadow-sm" /></div>;
   }
   if (['mp4', 'mov', 'webm'].includes(ext)) {
     return <div className="w-full rounded-xl overflow-hidden bg-black shadow-lg"><video controls className="w-full max-h-[50vh] sm:max-h-[65vh]"><source src={fileUrl} type="video/mp4" /><source src={fileUrl} type={`video/${ext}`} />Browser Anda tidak mendukung pemutaran video.</video></div>;

@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Variabel lingkungan — JANGAN pernah ikut ter-commit.
+# elearning-backend/.env berisi DB_PASSWORD, JWT_SECRET, EMAIL_PASS, dan
+# cloudinary_api_secret. Pola ".env" cocok di level mana pun, jadi file di
+# dalam subfolder juga terlindungi.
+.env
+.env.*
+!.env.example
+elearning-backend/

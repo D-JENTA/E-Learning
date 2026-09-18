@@ -101,7 +101,21 @@ export default function LandingPage() {
       <nav className="bg-white/80 backdrop-blur-md fixed w-full z-50 border-b border-slate-200/70 shadow-sm">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 h-20 flex items-center justify-between">
           <a href="#beranda" onClick={pergiKe("beranda")} className="flex items-center gap-2">
-            <img src={EduSpace} alt="Logo EduSpace" className="h-10 w-auto object-contain" />
+            {/* Logo di navbar: di atas fold, jadi jangan di-lazy. File-nya sudah
+                dikecilkan ke 80x80 (dari 2048x2048), jadi atribut width/height
+                di bawah harus ikut ukuran file — itulah yang dipakai browser
+                untuk tahu rasio sebelum gambarnya selesai diunduh, sehingga teks
+                "EduSpace" di sebelahnya tidak bergeser saat logo muncul. */}
+            <img
+              src={EduSpace}
+              alt="Logo EduSpace"
+              width={80}
+              height={80}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              className="h-10 w-auto object-contain"
+            />
             <span className="text-2xl font-bold text-[#0d264f] tracking-tight">
               Edu<span className="text-blue-600">Space</span>
             </span>
@@ -126,7 +140,11 @@ export default function LandingPage() {
       </nav>
 
       {/* ===== Bagian Utama ===== */}
-      <header id="beranda" className="relative pt-36 pb-24 lg:pt-44 lg:pb-32 overflow-hidden">
+      <main>
+      {/* Dulu <header>, tapi <header> yang berdiri langsung di bawah root
+          terbaca sebagai landmark "banner" yang menyesatkan — ini bukan header
+          halaman, melainkan bagian isi. */}
+      <section id="beranda" className="relative pt-36 pb-24 lg:pt-44 lg:pb-32 overflow-hidden">
         {/* Hiasan latar */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute inset-0 bg-gradient-to-b from-[#e0f2fe] via-white to-slate-50" />
@@ -176,7 +194,7 @@ export default function LandingPage() {
                 <span className="w-3 h-3 rounded-full bg-red-400" />
                 <span className="w-3 h-3 rounded-full bg-yellow-400" />
                 <span className="w-3 h-3 rounded-full bg-green-400" />
-                <span className="ml-3 text-xs text-slate-400 font-medium">eduspace — mata pelajaran</span>
+                <span className="ml-3 text-xs text-slate-500 font-medium">eduspace — mata pelajaran</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -201,12 +219,12 @@ export default function LandingPage() {
                 <p className="text-sm text-slate-600">
                   <span className="font-semibold text-slate-800">Rina</span> mengumpulkan tugas Aljabar — barusan
                 </p>
-                <span className="ml-auto text-xs text-slate-400 hidden sm:block">notifikasi langsung</span>
+                <span className="ml-auto text-xs text-slate-500 hidden sm:block">notifikasi langsung</span>
               </div>
             </div>
           </div>
         </div>
-      </header>
+      </section>
 
       {/* ===== Untuk Siapa ===== */}
       <section id="peran" className="py-20 lg:py-28 bg-white">
@@ -340,6 +358,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      </main>
 
       {/* ===== Bagian Kontak ===== */}
       <footer id="kontak" className="bg-white border-t border-slate-200 pt-16 pb-8">
@@ -347,7 +366,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-sm">
             <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <img src={EduSpace} alt="Logo EduSpace" className="w-9 h-9 object-contain" />
+                <img src={EduSpace} alt="Logo EduSpace" width={80} height={80} loading="lazy" decoding="async" className="w-9 h-9 object-contain" />
                 <span className="text-xl font-bold text-[#0d264f]">
                   Edu<span className="text-blue-600">Space</span>
                 </span>
@@ -359,7 +378,7 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h4 className="font-bold text-[#0d264f] mb-4">Jelajahi</h4>
+              <h3 className="font-bold text-[#0d264f] mb-4">Jelajahi</h3>
               <ul className="space-y-2.5 text-slate-500">
                 <li><a href="#fitur" onClick={pergiKe("fitur")} className="hover:text-[#0d264f] transition-colors">Fitur</a></li>
                 <li><a href="#peran" onClick={pergiKe("peran")} className="hover:text-[#0d264f] transition-colors">Untuk Siapa</a></li>
@@ -368,14 +387,14 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h4 className="font-bold text-[#0d264f] mb-4">Hubungi Kami</h4>
+              <h3 className="font-bold text-[#0d264f] mb-4">Hubungi Kami</h3>
               <p className="text-slate-500 mb-2 break-words">support@eduspace.com</p>
               <p className="text-slate-500">Butuh bantuan? Tim kami siap membantu.</p>
             </div>
           </div>
 
           <div className="border-t border-slate-200 mt-12 pt-8 text-center">
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-500 text-sm">
               &copy; 2026 EduSpace. Seluruh hak cipta dilindungi.
             </p>
           </div>

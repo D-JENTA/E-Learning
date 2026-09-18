@@ -90,6 +90,10 @@ export default function TopbarTeacher({ onToggleSidebar, isMobile, user: userPro
             <img
               src={profileSrc}
               alt="Profile"
+              width={40}
+              height={40}
+              loading="eager"
+              decoding="async"
               className="relative h-10 w-10 rounded-full border-2 border-white shadow-md object-cover bg-slate-100 transition-transform group-hover:scale-105 cursor-pointer"
               key={profileSrc}
             />

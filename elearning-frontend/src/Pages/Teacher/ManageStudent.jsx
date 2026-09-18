@@ -55,7 +55,7 @@ const ScoreDetailModal = ({ isOpen, onClose, summary, studentName }) => {
         <div className="p-8">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-2xl font-black text-slate-800">Detail Nilai</h3>
+              <h2 className="text-2xl font-black text-slate-800">Detail Nilai</h2>
               <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">{studentName}</p>
             </div>
           </div>
@@ -335,7 +335,7 @@ export default function ManageStudent() {
       <div className="pl-2 md:pl-4 pr-4 md:pr-8 py-6 md:py-10 max-w-7xl">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4">
           <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Kelola Siswa</h2>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Kelola Siswa</h1>
           </div>
           
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">

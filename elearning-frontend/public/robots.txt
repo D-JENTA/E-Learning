@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Halaman di balik login tidak ada gunanya dirayapi mesin pencari:
+# kontennya baru muncul setelah autentikasi, jadi perayap hanya akan
+# menemukan halaman kosong.
+Disallow: /admin/
+Disallow: /teacher/
+Disallow: /student/

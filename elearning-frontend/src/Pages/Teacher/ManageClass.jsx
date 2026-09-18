@@ -80,7 +80,7 @@ export default function ManageClass() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
           <div className="flex flex-col gap-1">
-            <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Manajemen Kelas</h2>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Manajemen Kelas</h1>
           </div>
         </div>
 
@@ -101,7 +101,10 @@ export default function ManageClass() {
                   </svg>
               </div>
               <div className="flex-1 z-10">
-                <h3 className="text-2xl font-bold text-slate-800 group-hover:text-[#0d264f] transition-colors mb-2">{item.title}</h3>
+                {/* h2, bukan h3: judul halaman di atasnya baru naik ke <h1>,
+                    jadi tingkat di bawahnya ikut naik satu supaya tidak muncul
+                    lompatan h1 -> h3. */}
+                <h2 className="text-2xl font-bold text-slate-800 group-hover:text-[#0d264f] transition-colors mb-2">{item.title}</h2>
                 <p className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-600">{item.desc}</p>
               </div>
               
@@ -113,7 +116,7 @@ export default function ManageClass() {
         </div>
 
         <div className="mt-10 bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-          <h3 className="text-2xl font-bold text-slate-900 mb-4">Mapel di {currentClass.name || `Kelas #${id}`}</h3>
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Mapel di {currentClass.name || `Kelas #${id}`}</h2>
 
           {isLoadingMapels ? (
             <div className="text-slate-500">Memuat mapel...</div>
@@ -145,9 +148,9 @@ export default function ManageClass() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-lg font-bold text-slate-900 group-hover:text-[#0d264f] transition-colors mb-2 truncate">
+                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-[#0d264f] transition-colors mb-2 truncate">
                           {mapel.mapel_name || "Nama Mapel"}
-                        </h4>
+                        </h3>
                         <p className="text-sm text-slate-500 group-hover:text-slate-700 transition-colors">
                           Klik untuk kelola tugas & materi
                         </p>

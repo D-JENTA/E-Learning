@@ -63,10 +63,13 @@ function SidebarContent() {
       >
         <div className="p-6 flex items-center justify-between border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 overflow-hidden">
-            <img src={logoEDUSpace} alt="Logo" className="h-9 w-9 object-contain shrink-0" />
-            <h1 className="text-xl font-bold tracking-wide text-white whitespace-nowrap">
+            <img src={logoEDUSpace} alt="Logo" width={42} height={72} decoding="async" className="h-9 w-9 object-contain shrink-0" />
+            {/* Dulu <h1>. Teks logo itu branding dekoratif, bukan judul halaman —
+                dibiarkan <h1> membuat tiap halaman punya dua <h1> (satu lagi di
+                Topbar), sehingga struktur heading-nya kabur buat screen reader. */}
+            <span className="text-xl font-bold tracking-wide text-white whitespace-nowrap">
               Edu<span className="text-blue-400">Space</span>
-            </h1>
+            </span>
           </div>
           <button 
             onClick={closeSidebar}

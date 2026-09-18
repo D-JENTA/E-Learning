@@ -27,6 +27,9 @@ const baseURL = import.meta.env.DEV
 const api = axios.create({
   baseURL,
   withCredentials: true,
+  // Samakan dengan batas waktu di setupFetchAuth.js supaya request axios pun
+  // tidak bisa menggantung selamanya.
+  timeout: 15000,
 });
 
 // Add request interceptor to include token in headers
@@ -43,19 +46,43 @@ api.interceptors.request.use(
   }
 );
 
+// Halaman yang boleh dibuka tanpa login. 401 di sini adalah kondisi wajar
+// ("belum login"), bukan sesi yang habis — jadi tidak boleh memicu logout paksa.
+const PUBLIC_PATHS = [
+  "/",
+  "/create",
+  "/forgot",
+  "/verify",
+  "/reset-password",
+  "/login",
+  "/admin/login",
+];
+
+const isOnPublicPath = () =>
+  typeof window !== "undefined" &&
+  PUBLIC_PATHS.includes(window.location.pathname.toLowerCase());
+
 // Add response interceptor to handle 401 errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // 401 baru berarti "sesi habis" kalau sebelumnya memang ada token. Kalau
+    // tidak ada token sama sekali, pengguna memang belum pernah login: tidak
+    // ada yang perlu dibersihkan, dan redirect hanya akan membuang pesan error
+    // yang sedang ditampilkan (mis. "email atau kata sandi salah").
+    const hadToken = Boolean(
+      localStorage.getItem("token") || localStorage.getItem("admin_token")
+    );
+
+    if (error.response?.status === 401 && hadToken && !isOnPublicPath()) {
       // ✅ Token expired atau invalid - clear semua storage dan cookies
       localStorage.clear();
       sessionStorage.clear();
       clearAllCookies();
-      
+
       // Dispatch logout event
       window.dispatchEvent(new Event('user-logout'));
-      
+
       // Redirect ke login
       window.location.href = '/login';
     }

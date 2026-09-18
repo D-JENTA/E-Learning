@@ -62,6 +62,8 @@ const FilePreview = ({ fileUrl }) => {
         <img
           src={fileUrl}
           alt="Preview"
+          loading="lazy"
+          decoding="async"
           className="max-h-[70vh] rounded-lg object-contain shadow-sm"
         />
       </div>

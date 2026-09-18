@@ -95,7 +95,7 @@ const CustomSelect = ({
   return (
     <div className="mb-3 w-full relative" ref={dropdownRef}>
       {label && (
-        <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+        <label className="block text-[11px] font-bold text-gray-600 mb-1 ml-1 uppercase tracking-wider">
           {label}
         </label>
       )}
@@ -109,7 +109,7 @@ const CustomSelect = ({
           error ? 'border-red-400 focus:border-red-500' : 'border-transparent focus:border-blue-500 hover:border-gray-200'
         }`}
       >
-        <span className={selectedOption ? "text-gray-800 font-medium" : "text-gray-400"}>
+        <span className={selectedOption ? "text-gray-800 font-medium" : "text-gray-500"}>
           {selectedOption ? selectedOption.label : placeholder || "Pilih..."}
         </span>
         <svg
@@ -173,7 +173,7 @@ const CustomSelect = ({
                 )}
               </div>
               {!normalizedQuery || options.length === 0 ? null : (
-                <p className="mt-1.5 px-1 text-[11px] font-medium text-gray-400">
+                <p className="mt-1.5 px-1 text-[11px] font-medium text-gray-500">
                   {filteredOptions.length} dari {options.length} opsi
                 </p>
               )}
@@ -199,12 +199,12 @@ const CustomSelect = ({
                 </div>
               ))
             ) : (
-              <div className="px-4 py-3 text-sm text-gray-400 text-center">
+              <div className="px-4 py-3 text-sm text-gray-500 text-center">
                 Tidak ada hasil untuk &ldquo;{query.trim()}&rdquo;
               </div>
             )
           ) : (
-            <div className="px-4 py-3 text-sm text-gray-400 text-center">Tidak ada data</div>
+            <div className="px-4 py-3 text-sm text-gray-500 text-center">Tidak ada data</div>
           )}
         </div>
       )}
@@ -218,7 +218,7 @@ const CustomSelect = ({
 const InputField = ({ label, type, value, onChange, placeholder, name, autoComplete, icon, onIconClick, error, maxLength, hint }) => {
   return (
     <div className="mb-3 w-full relative group">
-      <label className="block text-[11px] font-bold text-gray-500 mb-1 ml-1 uppercase tracking-wider">
+      <label className="block text-[11px] font-bold text-gray-600 mb-1 ml-1 uppercase tracking-wider">
         {label}
       </label>
       <div className="relative">
@@ -249,11 +249,11 @@ const InputField = ({ label, type, value, onChange, placeholder, name, autoCompl
         {error
           ? <p className="text-red-500 text-[10px] ml-1 font-medium">{error}</p>
           : hint
-            ? <p className="text-gray-400 text-[10px] ml-1">{hint}</p>
+            ? <p className="text-gray-600 text-[10px] ml-1">{hint}</p>
             : <span />
         }
         {maxLength && (
-          <p className={`text-[10px] mr-1 font-medium tabular-nums ${value.length >= maxLength ? 'text-red-400' : 'text-gray-300'}`}>
+          <p className={`text-[10px] mr-1 font-medium tabular-nums ${value.length >= maxLength ? 'text-red-400' : 'text-gray-600'}`}>
             {value.length}/{maxLength}
           </p>
         )}
@@ -447,9 +447,9 @@ export default function Create() {
       )}
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4 relative z-10">
-        <div className="w-full max-w-[360px] overflow-y-auto max-h-screen py-8 px-2 no-scrollbar">
-          <h2 className="text-3xl font-bold text-gray-800 mb-1 tracking-tight text-center">Buat Akun</h2>
-          <p className="text-gray-500 text-sm mb-6 text-center">Daftar sebagai siswa untuk mengakses materi pembelajaran.</p>
+        <main className="w-full max-w-[360px] overflow-y-auto max-h-screen py-8 px-2 no-scrollbar">
+          <h1 className="text-3xl font-bold text-gray-800 mb-1 tracking-tight text-center">Buat Akun</h1>
+          <p className="text-gray-600 text-sm mb-6 text-center">Daftar sebagai siswa untuk mengakses materi pembelajaran.</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col">
             <InputField
@@ -507,7 +507,7 @@ export default function Create() {
               placeholder="••••••••"
               error={errors.password}
               autoComplete="new-password"
-              icon={<img src={showPassword ? witness : hide} alt="toggle" className="w-5 h-5" />}
+              icon={<img src={showPassword ? witness : hide} alt="toggle" width={40} height={40} decoding="async" className="w-5 h-5" />}
               onIconClick={() => setShowPassword(!showPassword)}
             />
 
@@ -539,17 +539,19 @@ export default function Create() {
               </Link>
             </p>
           </form>
-        </div>
+        </main>
       </div>
 
       <div className="hidden md:flex w-[40%] h-full bg-[#0051ff] items-center justify-center relative overflow-hidden shadow-2xl z-20">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-800 to-black opacity-80"></div>
         <div className="relative z-10 flex flex-col items-center justify-center text-center">
           <div className="animate-float">
-            <img src={imageBg} alt="Ilustrasi" className="w-80" />
+            <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80" />
           </div>
           <div className="-mt-20 px-6 text-white">
-            <h3 className="text-xl font-semibold mb-2">Mulai Perjalananmu</h3>
+            <h2 className="text-xl font-semibold mb-2">Mulai Perjalananmu</h2>
+            {/* text-gray-400 di sini dibiarkan: latarnya gradien gelap,
+                jadi kontrasnya sudah lolos ambang 4.5:1. */}
             <p className="text-gray-400 text-sm">Bergabunglah dan mulai petualangan belajarmu sekarang.</p>
           </div>
         </div>

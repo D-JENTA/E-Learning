@@ -329,14 +329,14 @@ export default function Verify() {
       )}
 
       <div className="w-full md:w-[60%] h-full flex items-center justify-center p-4">
-        <div className="w-full max-w-[360px]">
+        <main className="w-full max-w-[360px]">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
-              <img src={lockIcon} alt="lock" className="w-10 h-10 object-contain" />
+              <img src={lockIcon} alt="lock" width={80} height={80} decoding="async" className="w-10 h-10 object-contain" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Verifikasi Kode</h2>
-          <p className="text-xs text-gray-500 mb-8 leading-relaxed">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Verifikasi Kode</h1>
+          <p className="text-xs text-gray-600 mb-8 leading-relaxed">
             Kode verifikasi telah dikirim ke <br />
             <span className="font-bold text-blue-600">{emailFromState || "Email Anda"}</span>
           </p>
@@ -378,7 +378,7 @@ export default function Verify() {
                   Kirim Ulang OTP
                 </button>
               ) : (
-                <p className="text-gray-400 text-xs font-bold uppercase tracking-tight">
+                <p className="text-gray-600 text-xs font-bold uppercase tracking-tight">
                   {isRateLimited
                     ? `Coba lagi dalam ${formatCooldown(rateLimitSeconds)}`
                     : `Tunggu ${timer} detik untuk kirim ulang`}
@@ -386,10 +386,10 @@ export default function Verify() {
               )}
             </div>
           </form>
-        </div>
+        </main>
       </div>
       <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative shadow-2xl">
-        <img src={imageBg} alt="Ilustrasi" className="w-80" />
+        <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80" />
       </div>
       
       <style>{`
