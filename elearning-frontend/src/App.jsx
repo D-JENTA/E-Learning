@@ -24,7 +24,7 @@ const CreateMapelAdmin = lazy(() => import("./Pages/Admin/CreateMapel"));
 const MapelAdmin = lazy(() => import("./Pages/Admin/MapelAdmin"));
 const CalendarAdmin = lazy(() => import("./Pages/Admin/CalendarAdmin"));
 const SettingsAdmin = lazy(() => import("./Pages/Admin/SettingsAdmin"));
-const SuperAdminManageUsers = lazy(() => import("./Pages/Admin/SuperAdminManageUser"));
+const SuperAdminManageUsers = lazy(() => import("./Pages/Admin/Superadminmanageuser"));
 const SuperAdminDashboard = lazy(() => import("./Pages/Admin/SuperadminDashboard"));
 const AdminStudentClasses = lazy(() => import("./Pages/Admin/Adminstudentclasses"));
 const AdminStudentClassTasks = lazy(() => import("./Pages/Admin/Adminstudenttask"));
@@ -122,7 +122,7 @@ function App() {
   const location = useLocation();
 
   const [authState, setAuthState] = useState({
-    isLoading: true,
+    isLoading: routeNeedsAuthCheck(window.location.pathname),
     user: null,
   });
 
@@ -141,6 +141,11 @@ function App() {
   // ditampilkan di topbar, jadi kita lengkapi dengan /api/auth/users/me.
   // Karena App.jsx tidak pernah remount selama sesi berjalan, fetch ini
   // hanya jalan SEKALI per sesi, bukan tiap kali pindah halaman.
+  //
+  // Fungsi ini sudah "aman dipanggil paralel": kalau gagal (401/network
+  // error), dia cuma return null lewat catch-nya sendiri, tidak pernah throw
+  // ke pemanggilnya. Makanya boleh dijalankan BERSAMAAN dengan check-me di
+  // verifyUser(), bukan menunggu check-me selesai dulu.
   const fetchFullProfile = useCallback(async () => {
     try {
       const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
@@ -168,16 +173,26 @@ function App() {
     }
   }, []);
 
+  // check-me dan users/me sekarang dikirim BERSAMAAN lewat Promise.all,
+  // bukan berurutan (dulu: await check-me, baru await users/me). users/me
+  // sama sekali tidak butuh data hasil check-me, cuma butuh token yang
+  // sudah tersedia sejak awal — jadi tidak ada alasan menunggu satu-satu.
+  // Ini memangkas total waktu tunggu verifikasi sesi jadi kira-kira separuh
+  // di kondisi jaringan yang lambat, karena dulu waktunya dijumlahkan
+  // (check-me + users/me), sekarang cuma diambil yang paling lama saja.
   const verifyUser = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/check-me", {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-      });
+      const [response, profile] = await Promise.all([
+        fetch("/api/auth/check-me", {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+        }),
+        fetchFullProfile(),
+      ]);
 
       if (response.ok) {
         const data = await response.json();
@@ -188,7 +203,6 @@ function App() {
             role: normalizeRole(data.user.role),
           };
 
-          const profile = await fetchFullProfile();
           if (profile) {
             normalizedUser = { ...normalizedUser, ...profile };
           }
@@ -202,7 +216,7 @@ function App() {
       }
 
       setAuthState({ isLoading: false, user: null });
-    } catch (err) {
+    } catch {
       setAuthState({ isLoading: false, user: null });
     } finally {
       setIsInitialized(true);
@@ -214,7 +228,6 @@ function App() {
       // Halaman publik: tidak ada request auth yang perlu ditunggu. Data user
       // yang sudah ada sengaja dipertahankan supaya berpindah dari halaman
       // dalam ke halaman publik tidak mengosongkan sesi yang sedang berjalan.
-      setAuthState((prev) => (prev.isLoading ? { ...prev, isLoading: false } : prev));
       setIsInitialized(true);
       return;
     }
