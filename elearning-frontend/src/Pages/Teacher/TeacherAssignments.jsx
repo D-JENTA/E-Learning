@@ -3,6 +3,9 @@ import { useParams, Link, useLocation } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 import MainLayoutAdmin from "../../components/Admin/MainLayout"; // TAMBAHAN
 import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
+import Breadcrumb from "../../components/Breadcrumb";
+import { Skeleton } from "../../components/Skeleton";
+import { downloadCsv } from "../../utils/exportCsv";
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -51,6 +54,10 @@ const IconEye = () => (
 
 const IconTrash = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+);
+
+const IconDownload = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 );
 
 const IconFileGeneric = () => (
@@ -192,7 +199,7 @@ const PreviewModal = ({ fileUrl, onClose }) => {
                 />
               ) : (
                 <div className="flex flex-col items-center gap-4 py-12 px-6 text-center">
-                  <div className="p-4 rounded-2xl bg-blue-50 text-[#0d264f]">
+                  <div className="p-4 rounded-2xl bg-blue-50 text-brand">
                     <IconLink />
                   </div>
                   {linkHostname && (
@@ -407,6 +414,35 @@ export default function TeacherAssignments({ user }) {
     return <IconFileGeneric />;
   };
 
+  // Unduh SELURUH daftar tugas, bukan hanya halaman yang sedang tampil —
+  // gunanya untuk arsip, jadi memotongnya per halaman justru menyusahkan.
+  // Tidak ada request tambahan ke server: datanya sudah ada di state.
+  const handleExportCsv = () => {
+    if (assignments.length === 0) return;
+
+    const rows = assignments.map((task, index) => {
+      const taskLink = getTaskLink(task);
+      const fileUrl = task.fileUrl || task.file_url;
+      const isLink = Boolean(taskLink) || isExternalLink(fileUrl);
+
+      return {
+        no: index + 1,
+        judul: task.title || "",
+        deskripsi: task.description || "",
+        jenis: isLink ? "Link" : fileUrl ? "Berkas" : "Tanpa berkas",
+        tautan: isLink ? taskLink || fileUrl || "" : buildFileUrl(fileUrl),
+      };
+    });
+
+    downloadCsv(`daftar-tugas-mapel-${id}`, rows, [
+      { key: "no", label: "No" },
+      { key: "judul", label: "Judul Tugas" },
+      { key: "deskripsi", label: "Deskripsi" },
+      { key: "jenis", label: "Jenis" },
+      { key: "tautan", label: "Tautan" },
+    ]);
+  };
+
   return (
     <Layout>
       {alertInfo.show && (
@@ -418,6 +454,14 @@ export default function TeacherAssignments({ user }) {
       )}
 
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+        <Breadcrumb
+          className="mb-1"
+          items={[
+            { label: "Daftar Kelas", to: "/teacher/classes" },
+            { label: "Daftar Tugas" },
+          ]}
+        />
+
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Tugas</h1>
@@ -430,20 +474,34 @@ export default function TeacherAssignments({ user }) {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <p className="text-slate-500 text-base font-medium">Kelola tugas dan materi untuk Mapel ini.</p>
-            {!isAdmin && (
-              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                {id_class && (
-                  <Link to={`/teacher/manage-students/${id_class}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-[#0d264f] bg-white border border-slate-200 hover:bg-slate-50 hover:border-[#0d264f] shadow-sm transition-all font-bold w-full md:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    Kelola Siswa
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              {/* Unduh tersedia juga untuk admin: mengunduh bukan mengubah data. */}
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={assignments.length === 0}
+                title={assignments.length === 0 ? "Belum ada tugas untuk diunduh" : "Unduh daftar tugas sebagai CSV"}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-brand hover:border-brand shadow-sm transition-all font-bold w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200"
+              >
+                <IconDownload />
+                Unduh CSV
+              </button>
+
+              {!isAdmin && (
+                <>
+                  {id_class && (
+                    <Link to={`/teacher/manage-students/${id_class}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-brand bg-white border border-slate-200 hover:bg-slate-50 hover:border-brand shadow-sm transition-all font-bold w-full md:w-auto">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      Kelola Siswa
+                    </Link>
+                  )}
+                  <Link to={`/teacher/upload-task/${id}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-brand hover:bg-blue-900 shadow-md hover:shadow-lg transition-all font-bold w-full md:w-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Buat Tugas Baru
                   </Link>
-                )}
-                <Link to={`/teacher/upload-task/${id}`} className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 shadow-md hover:shadow-lg transition-all font-bold w-full md:w-auto">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  Buat Tugas Baru
-                </Link>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -454,8 +512,28 @@ export default function TeacherAssignments({ user }) {
         )}
 
         {isLoading ? (
-          <div className="flex justify-center items-center py-20 text-slate-400">
-            <p>Memuat data tugas...</p>
+          // Kerangka kartu yang menyerupai kartu tugas aslinya (termasuk
+          // jumlahnya per halaman), supaya tata letak tidak melompat.
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+            {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+              >
+                <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start gap-3">
+                  <Skeleton className="h-5 w-full" />
+                  <Skeleton className="h-6 w-8 rounded-md shrink-0" />
+                </div>
+                <div className="p-5 flex-1 flex flex-col gap-4">
+                  <Skeleton className="h-24 rounded-2xl" />
+                  <Skeleton className="h-11 rounded-xl" />
+                </div>
+                <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between gap-2.5">
+                  <Skeleton className="h-9 flex-1 rounded-lg" />
+                  <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : assignments.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center text-slate-400">

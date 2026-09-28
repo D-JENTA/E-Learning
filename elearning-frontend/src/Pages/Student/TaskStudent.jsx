@@ -667,7 +667,7 @@ export default function TaskStudent() {
         {isLoading ? (
           <div className="py-24 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-slate-200 border-t-[#0d264f] rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
               <span className="text-xs font-semibold">Memuat daftar tugas...</span>
             </div>
           </div>
@@ -830,7 +830,7 @@ export default function TaskStudent() {
                       {!task.submission_id && !deadlinePassed && (
                         <button
                           onClick={() => handleOpenUploadModal(task)}
-                          className="w-full py-2.5 bg-[#0d264f] hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 truncate"
+                          className="w-full py-2.5 bg-brand hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 truncate"
                         >
                           <IconUpload />
                           <span className="truncate">Kumpulkan Tugas</span>
@@ -905,7 +905,7 @@ export default function TaskStudent() {
                     onClick={() => setAttachmentMode('file')}
                     className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       attachmentMode === 'file'
-                        ? 'bg-white text-[#0d264f] shadow-sm'
+                        ? 'bg-white text-brand shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -919,7 +919,7 @@ export default function TaskStudent() {
                     onClick={() => setAttachmentMode('link')}
                     className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       attachmentMode === 'link'
-                        ? 'bg-white text-[#0d264f] shadow-sm'
+                        ? 'bg-white text-brand shadow-sm'
                         : 'text-slate-500 hover:text-slate-700'
                     }`}
                   >
@@ -933,7 +933,7 @@ export default function TaskStudent() {
                 {attachmentMode === 'file' ? (
                   <div
                     className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 cursor-pointer group
-                      ${isDragging ? 'border-[#0d264f] bg-blue-50 scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'}
+                      ${isDragging ? 'border-brand bg-blue-50 scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'}
                       ${selectedFile ? 'border-green-500 bg-green-50' : ''}
                     `}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -953,7 +953,7 @@ export default function TaskStudent() {
                     />
                     <div className="flex flex-col items-center gap-4 relative z-0">
                       <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110
-                        ${selectedFile ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-[#0d264f]'}`}>
+                        ${selectedFile ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-brand'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
@@ -964,7 +964,7 @@ export default function TaskStudent() {
                             <span className="text-green-700 truncate max-w-[240px] block mx-auto">{selectedFile.name}</span>
                           ) : (
                             <>
-                              <span className="text-[#0d264f]">Klik untuk mengunggah</span> atau drag & drop
+                              <span className="text-brand">Klik untuk mengunggah</span> atau drag & drop
                             </>
                           )}
                         </p>
@@ -996,7 +996,7 @@ export default function TaskStudent() {
                                   ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
                                   : linkValid
                                     ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/10"
-                                    : "border-slate-200 focus:border-[#0d264f] focus:ring-[#0d264f]/10"
+                                    : "border-slate-200 focus:border-brand focus:ring-brand/10"
                                 }`}
                             />
                             {linkFilled && (
@@ -1034,7 +1034,7 @@ export default function TaskStudent() {
                 type="button"
                 onClick={handleUpload}
                 disabled={uploadLoading}
-                className="px-6 py-2.5 bg-[#0d264f] hover:bg-blue-900 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                className="px-6 py-2.5 bg-brand hover:bg-blue-900 text-white font-bold text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
                 {uploadLoading ? (
                   <>

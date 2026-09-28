@@ -116,7 +116,7 @@ export default function AdminStudentClasses() {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-[#0d264f] mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-brand mb-4"></div>
             <p className="text-slate-400 font-medium">Memuat kelas siswa...</p>
           </div>
         ) : classes.length === 0 ? (

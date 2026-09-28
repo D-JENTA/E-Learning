@@ -55,7 +55,7 @@ function SidebarContent() {
 
       <div 
         className={`
-          fixed md:static inset-y-0 left-0 z-50 w-60 h-screen bg-[#0d264f] text-white shadow-2xl
+          fixed md:static inset-y-0 left-0 z-50 w-60 h-screen bg-brand text-white shadow-2xl
           transform transition-transform duration-300 ease-in-out flex flex-col
           ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
           md:translate-x-0
@@ -132,7 +132,7 @@ function SidebarContent() {
 export const HamburgerButtonStudent = () => {
   const { toggleSidebar } = useStudentSidebar();
   return (
-    <button onClick={toggleSidebar} className="p-2 -ml-2 rounded-lg text-[#0d264f] hover:bg-slate-100 transition-colors">
+    <button onClick={toggleSidebar} className="p-2 -ml-2 rounded-lg text-brand hover:bg-slate-100 transition-colors">
       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
       </svg>

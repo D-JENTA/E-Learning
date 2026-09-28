@@ -115,7 +115,7 @@ export default function Forgot() {
         <main className="w-full max-w-[360px]">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm border">
-              <svg className="w-10 h-10 text-[#0d264f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
@@ -140,7 +140,7 @@ export default function Forgot() {
             <button 
               type="submit" 
               disabled={isLoading} 
-              className="w-full bg-[#0d264f] text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50 mt-2"
+              className="w-full bg-brand text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50 mt-2"
             >
               {isLoading ? 'Mengirim...' : 'Kirim OTP'}
             </button>
@@ -151,7 +151,7 @@ export default function Forgot() {
         </main>
       </div>
       
-      <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative z-20 shadow-2xl">
+      <div className="hidden md:flex w-[40%] h-full bg-brand items-center justify-center relative z-20 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/60 opacity-80"></div>
         <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80 animate-float z-10" />
       </div>

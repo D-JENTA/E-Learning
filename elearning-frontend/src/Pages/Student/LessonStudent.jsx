@@ -58,7 +58,7 @@ export default function LessonStudent() {
               </p>
               <button
                 onClick={() => setOpenJoin(true)}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 shadow-md hover:shadow-xl transition-all font-bold active:scale-95 w-full md:w-auto"
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-brand hover:bg-blue-900 shadow-md hover:shadow-xl transition-all font-bold active:scale-95 w-full md:w-auto"
               >
                 <IconPlus />
                 Gabung Kelas
@@ -73,7 +73,7 @@ export default function LessonStudent() {
                  <IconBook />
               </div>
               <p className="text-slate-400 font-medium">Belum ada kelas yang diikuti.</p>
-              <button onClick={() => setOpenJoin(true)} className="text-[#0d264f] font-bold text-sm mt-2 hover:underline">Gabung kelas sekarang</button>
+              <button onClick={() => setOpenJoin(true)} className="text-brand font-bold text-sm mt-2 hover:underline">Gabung kelas sekarang</button>
             </div>
           ) : (
             classes.map((item) => (
@@ -110,11 +110,11 @@ function StudentClassCard({ data, onDelete, onOpen }) {
       onClick={onOpen}
       className="group relative bg-white rounded-3xl shadow-sm border border-slate-100 p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer overflow-hidden"
     >
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0d264f] to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand to-blue-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
 
       <div className="relative z-10">
         <div className="flex justify-between items-start mb-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-[#0d264f] group-hover:text-white transition-all duration-300 flex items-center justify-center shadow-sm">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-brand group-hover:text-white transition-all duration-300 flex items-center justify-center shadow-sm">
              <IconBook />
           </div>
           <button 
@@ -130,7 +130,7 @@ function StudentClassCard({ data, onDelete, onOpen }) {
         </div>
 
         <div className="mb-2">
-          <h3 className="text-xl font-bold text-slate-800 group-hover:text-[#0d264f] transition-colors truncate">
+          <h3 className="text-xl font-bold text-slate-800 group-hover:text-brand transition-colors truncate">
             {data.title}
           </h3>
           <div className="flex items-center gap-2 mt-2">
@@ -158,7 +158,7 @@ function StudentClassCard({ data, onDelete, onOpen }) {
              </div>
           </div>
           
-          <div className="text-[#0d264f] font-bold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1">
+          <div className="text-brand font-bold text-sm opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 flex items-center gap-1">
             Buka
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -218,7 +218,7 @@ function JoinClassModal({ onClose, onNotify }) {
               maxLength={20}
               disabled={isJoining}
               autoFocus
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-[#0d264f] focus:ring-4 focus:ring-[#0d264f]/10 transition-all font-mono font-bold text-center text-lg tracking-widest placeholder:text-slate-400 disabled:bg-slate-100 disabled:opacity-60"
+              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all font-mono font-bold text-center text-lg tracking-widest placeholder:text-slate-400 disabled:bg-slate-100 disabled:opacity-60"
             />
           </div>
           
@@ -234,7 +234,7 @@ function JoinClassModal({ onClose, onNotify }) {
             <button 
               type="submit"
               disabled={isJoining}
-              className="flex-1 py-3.5 rounded-2xl bg-[#0d264f] text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 rounded-2xl bg-brand text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isJoining ? "Memproses..." : "Gabung Sekarang"}
             </button>

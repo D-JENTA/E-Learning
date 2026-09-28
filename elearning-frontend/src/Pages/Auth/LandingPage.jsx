@@ -116,22 +116,22 @@ export default function LandingPage() {
               decoding="async"
               className="h-10 w-auto object-contain"
             />
-            <span className="text-2xl font-bold text-[#0d264f] tracking-tight">
+            <span className="text-2xl font-bold text-brand tracking-tight">
               Edu<span className="text-blue-600">Space</span>
             </span>
           </a>
 
           <div className="hidden md:flex items-center gap-8 font-medium text-slate-600">
-            <a href="#peran" onClick={pergiKe("peran")} className="hover:text-[#0d264f] transition-colors">Untuk Siapa</a>
-            <a href="#fitur" onClick={pergiKe("fitur")} className="hover:text-[#0d264f] transition-colors">Fitur</a>
-            <a href="#langkah" onClick={pergiKe("langkah")} className="hover:text-[#0d264f] transition-colors">Cara Mulai</a>
-            <a href="#kontak" onClick={pergiKe("kontak")} className="hover:text-[#0d264f] transition-colors">Kontak</a>
+            <a href="#peran" onClick={pergiKe("peran")} className="hover:text-brand transition-colors">Untuk Siapa</a>
+            <a href="#fitur" onClick={pergiKe("fitur")} className="hover:text-brand transition-colors">Fitur</a>
+            <a href="#langkah" onClick={pergiKe("langkah")} className="hover:text-brand transition-colors">Cara Mulai</a>
+            <a href="#kontak" onClick={pergiKe("kontak")} className="hover:text-brand transition-colors">Kontak</a>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/login"
-              className="px-4 py-2.5 sm:px-5 rounded-xl border border-[#0d264f] text-[#0d264f] font-semibold hover:bg-[#0d264f] hover:text-white transition-all duration-300 text-sm sm:text-base"
+              className="px-4 py-2.5 sm:px-5 rounded-xl border border-brand text-brand font-semibold hover:bg-brand hover:text-white transition-all duration-300 text-sm sm:text-base"
             >
               Masuk
             </Link>
@@ -158,7 +158,7 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-[#0d264f] tracking-tight mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-brand tracking-tight mb-6 leading-tight">
             Belajar Jadi Lebih Rapi,
             <br />
             <span className="bg-gradient-to-r from-blue-600 to-indigo-500 bg-clip-text text-transparent">
@@ -174,14 +174,14 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/create"
-              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-[#0d264f] to-[#1a3a75] hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 shadow-xl"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-brand to-brand-light hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 shadow-xl"
             >
               Mulai Belajar Sekarang
             </Link>
             <a
               href="#fitur"
               onClick={pergiKe("fitur")}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-semibold text-[#0d264f] bg-white border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-semibold text-brand bg-white border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300"
             >
               Lihat Fiturnya
             </a>
@@ -231,7 +231,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-3">Untuk Siapa</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#0d264f] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-brand mb-4">
               Satu Aplikasi, Tiga Peran Penting
             </h2>
             <p className="text-slate-500 max-w-xl mx-auto text-lg">
@@ -251,7 +251,7 @@ export default function LandingPage() {
                   <Ikon d={p.icon} className="h-7 w-7" />
                 </div>
 
-                <h3 className="text-2xl font-bold text-[#0d264f] mb-3">{p.judul}</h3>
+                <h3 className="text-2xl font-bold text-brand mb-3">{p.judul}</h3>
                 <p className="text-slate-600 mb-6 leading-relaxed">{p.desc}</p>
 
                 <ul className="space-y-3">
@@ -276,7 +276,7 @@ export default function LandingPage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-3">Fitur Unggulan</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#0d264f] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-brand mb-4">
               Semua Kebutuhan Belajar Mengajar
             </h2>
             <p className="text-slate-500 max-w-xl mx-auto text-lg">
@@ -291,10 +291,10 @@ export default function LandingPage() {
                 key={f.judul}
                 className="w-full md:w-[calc(50%_-_1.25rem)] lg:w-[calc(33.333%_-_1.5rem)] p-8 rounded-2xl bg-white border border-slate-100 hover:border-blue-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center mb-6 shadow-sm text-[#0d264f]">
+                <div className="w-14 h-14 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center mb-6 shadow-sm text-brand">
                   <Ikon d={f.icon} className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold text-[#0d264f] mb-3">{f.judul}</h3>
+                <h3 className="text-xl font-bold text-brand mb-3">{f.judul}</h3>
                 <p className="text-slate-600 leading-relaxed">{f.desc}</p>
               </div>
             ))}
@@ -307,7 +307,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm font-bold tracking-widest text-blue-600 uppercase mb-3">Cara Mulai</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#0d264f] mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-brand mb-4">
               Tiga Langkah, Langsung Jalan
             </h2>
             <p className="text-slate-500 max-w-xl mx-auto text-lg">
@@ -326,7 +326,7 @@ export default function LandingPage() {
                     {l.nomor}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-[#0d264f] mb-3">{l.judul}</h3>
+                <h3 className="text-xl font-bold text-brand mb-3">{l.judul}</h3>
                 <p className="text-slate-600 leading-relaxed max-w-xs mx-auto">{l.desc}</p>
               </div>
             ))}
@@ -335,7 +335,7 @@ export default function LandingPage() {
       </section>
 
       {/* ===== Ajakan Penutup ===== */}
-      <section className="py-20 bg-gradient-to-r from-[#0d264f] to-[#1a3a75] relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-r from-brand to-brand-light relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)",
           backgroundSize: "24px 24px",
@@ -351,7 +351,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/create"
-              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-bold text-[#0d264f] bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 shadow-lg"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl text-lg font-bold text-brand bg-white hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 shadow-lg"
             >
               Daftar Sekarang
             </Link>
@@ -367,7 +367,7 @@ export default function LandingPage() {
             <div className="col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <img src={EduSpace} alt="Logo EduSpace" width={80} height={80} loading="lazy" decoding="async" className="w-9 h-9 object-contain" />
-                <span className="text-xl font-bold text-[#0d264f]">
+                <span className="text-xl font-bold text-brand">
                   Edu<span className="text-blue-600">Space</span>
                 </span>
               </div>
@@ -378,16 +378,16 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h3 className="font-bold text-[#0d264f] mb-4">Jelajahi</h3>
+              <h3 className="font-bold text-brand mb-4">Jelajahi</h3>
               <ul className="space-y-2.5 text-slate-500">
-                <li><a href="#fitur" onClick={pergiKe("fitur")} className="hover:text-[#0d264f] transition-colors">Fitur</a></li>
-                <li><a href="#peran" onClick={pergiKe("peran")} className="hover:text-[#0d264f] transition-colors">Untuk Siapa</a></li>
-                <li><a href="#langkah" onClick={pergiKe("langkah")} className="hover:text-[#0d264f] transition-colors">Cara Mulai</a></li>
+                <li><a href="#fitur" onClick={pergiKe("fitur")} className="hover:text-brand transition-colors">Fitur</a></li>
+                <li><a href="#peran" onClick={pergiKe("peran")} className="hover:text-brand transition-colors">Untuk Siapa</a></li>
+                <li><a href="#langkah" onClick={pergiKe("langkah")} className="hover:text-brand transition-colors">Cara Mulai</a></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-bold text-[#0d264f] mb-4">Hubungi Kami</h3>
+              <h3 className="font-bold text-brand mb-4">Hubungi Kami</h3>
               <p className="text-slate-500 mb-2 break-words">support@eduspace.com</p>
               <p className="text-slate-500">Butuh bantuan? Tim kami siap membantu.</p>
             </div>

@@ -58,7 +58,7 @@ const formatDateTime = (value) => {
 
 // Warna progress bar per mapel (dirotasi biar tidak monoton)
 const MAPEL_COLORS = [
-  { bar: "bg-[#0d264f]", soft: "bg-blue-100 text-blue-700" },
+  { bar: "bg-brand", soft: "bg-blue-100 text-blue-700" },
   { bar: "bg-emerald-500", soft: "bg-emerald-100 text-emerald-700" },
   { bar: "bg-amber-500", soft: "bg-amber-100 text-amber-700" },
   { bar: "bg-violet-500", soft: "bg-violet-100 text-violet-700" },
@@ -114,7 +114,7 @@ const StatusBadge = ({ status, deadlinePassed = false }) => {
   );
 };
 
-const ProgressBar = ({ persentase, barClass = "bg-[#0d264f]" }) => (
+const ProgressBar = ({ persentase, barClass = "bg-brand" }) => (
   <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
     <div
       className={`h-full rounded-full transition-all duration-700 ${barClass}`}
@@ -229,7 +229,7 @@ const MapelCard = ({ mapel, colorIndex }) => {
                           rel="noopener noreferrer"
                           title="Buka file jawaban yang dikumpulkan"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-[#0d264f] hover:border-[#0d264f] transition-colors"
+                          className="inline-flex items-center justify-center p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-brand hover:border-brand transition-colors"
                         >
                           <IconPaperclip />
                         </a>
@@ -245,7 +245,7 @@ const MapelCard = ({ mapel, colorIndex }) => {
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
-              className="w-full py-3 text-xs font-bold text-[#0d264f] hover:bg-slate-100 border-t border-slate-100 transition-colors"
+              className="w-full py-3 text-xs font-bold text-brand hover:bg-slate-100 border-t border-slate-100 transition-colors"
             >
               {showAll
                 ? "Tampilkan lebih sedikit"
@@ -376,7 +376,7 @@ export default function ProgressStudent() {
         {isLoading ? (
           <div className="py-24 text-center text-slate-400 bg-white rounded-2xl border border-slate-200">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-slate-200 border-t-[#0d264f] rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-slate-200 border-t-brand rounded-full animate-spin"></div>
               <span className="text-xs font-semibold">Memuat progres tugas...</span>
             </div>
           </div>
@@ -391,7 +391,7 @@ export default function ProgressStudent() {
             </div>
             <Link
               to="/student/join-class"
-              className="inline-block px-6 py-2.5 bg-[#0d264f] hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
+              className="inline-block px-6 py-2.5 bg-brand hover:bg-blue-900 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
             >
               Gabung Kelas
             </Link>
@@ -409,7 +409,7 @@ export default function ProgressStudent() {
         ) : (
           <>
             {/* Ringkasan Keseluruhan */}
-            <div className="bg-[#0d264f] text-white rounded-2xl sm:rounded-3xl shadow-sm p-5 sm:p-8 space-y-5">
+            <div className="bg-brand text-white rounded-2xl sm:rounded-3xl shadow-sm p-5 sm:p-8 space-y-5">
               <div className="flex items-end justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-blue-200 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
@@ -461,7 +461,7 @@ export default function ProgressStudent() {
                     <button
                       type="button"
                       onClick={resetFilters}
-                      className="text-[11px] sm:text-xs font-bold text-[#0d264f] hover:underline whitespace-nowrap"
+                      className="text-[11px] sm:text-xs font-bold text-brand hover:underline whitespace-nowrap"
                     >
                       Reset
                     </button>
@@ -489,7 +489,7 @@ export default function ProgressStudent() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="Cari mata pelajaran..."
                         aria-label="Cari mata pelajaran"
-                        className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-[#0d264f] focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-medium text-slate-700 placeholder:text-slate-400"
+                        className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-brand focus:ring-2 focus:ring-blue-100 outline-none transition-all text-sm font-medium text-slate-700 placeholder:text-slate-400"
                       />
                       {searchTerm && (
                         <button
@@ -514,8 +514,8 @@ export default function ProgressStudent() {
                             aria-pressed={active}
                             className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-colors ${
                               active
-                                ? "bg-[#0d264f] text-white border-[#0d264f]"
-                                : "bg-white text-slate-600 border-slate-200 hover:border-[#0d264f] hover:text-[#0d264f]"
+                                ? "bg-brand text-white border-brand"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-brand hover:text-brand"
                             }`}
                           >
                             {f.label}

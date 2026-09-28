@@ -907,7 +907,7 @@ const extractDay = (item) => {
                 type="button"
                 onClick={handlePrintJadwal}
                 disabled={isPrinting}
-                className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-[#0d264f] shadow-sm hover:bg-slate-50 transition-all whitespace-nowrap disabled:opacity-50"
+                className="flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-brand shadow-sm hover:bg-slate-50 transition-all whitespace-nowrap disabled:opacity-50"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
@@ -920,7 +920,7 @@ const extractDay = (item) => {
               <button
                 type="button"
                 onClick={openCreate}
-                className="flex items-center justify-center gap-2 rounded-xl bg-[#0d264f] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#081a38] transition-all whitespace-nowrap"
+                className="flex items-center justify-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-darker transition-all whitespace-nowrap"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -984,7 +984,7 @@ const extractDay = (item) => {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleViewTasks(item)}
-                              className="inline-flex items-center gap-1.5 text-[#0d264f] hover:text-white hover:bg-[#0d264f] border border-[#0d264f]/30 hover:border-[#0d264f] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150"
+                              className="inline-flex items-center gap-1.5 text-brand hover:text-white hover:bg-brand border border-brand/30 hover:border-brand rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150"
                               title="Lihat tugas untuk mapel ini"
                             >
                               <IconEye />
@@ -992,7 +992,7 @@ const extractDay = (item) => {
                             </button>
                             <button
                               onClick={() => openEdit(item)}
-                              className="text-[#0d264f] hover:text-white hover:bg-[#0d264f] border border-[#0d264f]/30 hover:border-[#0d264f] rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150"
+                              className="text-brand hover:text-white hover:bg-brand border border-brand/30 hover:border-brand rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150"
                             >
                               Edit
                             </button>
@@ -1065,7 +1065,7 @@ const extractDay = (item) => {
                     type="text"
                     value={editForm.mapel_name}
                     onChange={(e) => setEditForm({ ...editForm, mapel_name: e.target.value })}
-                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-700 focus:border-[#0d264f] focus:outline-none focus:ring-2 focus:ring-[#0d264f]/20"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2.5 text-gray-700 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                   />
                 </div>
                 <div>
@@ -1102,7 +1102,7 @@ const extractDay = (item) => {
                   <button
                     type="button"
                     onClick={() => setIsJpOpen((prev) => !prev)}
-                    className="w-full flex items-center justify-between rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-left text-gray-700 shadow-sm transition focus:border-[#0d264f] focus:outline-none focus:ring-2 focus:ring-[#0d264f]/20"
+                    className="w-full flex items-center justify-between rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-left text-gray-700 shadow-sm transition focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
                   >
                     <span className={editForm.jp.length ? 'text-gray-900 font-semibold' : 'text-gray-400'}>
                       {isLoadingJp
@@ -1175,7 +1175,7 @@ const extractDay = (item) => {
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-xl bg-[#0d264f] px-4 py-2 text-sm font-semibold text-white hover:bg-[#081a38] disabled:opacity-60"
+                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-darker disabled:opacity-60"
                   >
                     {isSaving ? "Menyimpan..." : "Simpan"}
                   </button>
@@ -1345,7 +1345,7 @@ const extractDay = (item) => {
                     <button
                       type="submit"
                       disabled={isCreateSaving}
-                      className="flex-[2] rounded-2xl bg-[#0d264f] py-4 text-white font-bold tracking-wide hover:bg-[#081a38] focus:ring-4 focus:ring-[#0d264f]/30 transition-all shadow-lg shadow-[#0d264f]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-[2] rounded-2xl bg-brand py-4 text-white font-bold tracking-wide hover:bg-brand-darker focus:ring-4 focus:ring-brand/30 transition-all shadow-lg shadow-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isCreateSaving ? (
                         <div className="flex items-center justify-center gap-2">

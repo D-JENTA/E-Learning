@@ -204,7 +204,7 @@ export default function AdminStudentClassTasks() {
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-[#0d264f] to-blue-800 rounded-2xl p-6 md:p-8 shadow-lg text-white">
+        <div className="bg-gradient-to-r from-brand to-blue-800 rounded-2xl p-6 md:p-8 shadow-lg text-white">
           <span className="text-sm font-medium">Total Tugas: <span className="font-bold text-white">{tasks.length}</span></span>
         </div>
 

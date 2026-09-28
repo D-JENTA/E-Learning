@@ -404,7 +404,7 @@ export default function CreateMapelAdmin() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-2xl bg-[#0d264f] py-4 text-white font-bold tracking-wide hover:bg-[#081a38] focus:ring-4 focus:ring-[#0d264f]/30 transition-all shadow-lg shadow-[#0d264f]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-2xl bg-brand py-4 text-white font-bold tracking-wide hover:bg-brand-darker focus:ring-4 focus:ring-brand/30 transition-all shadow-lg shadow-brand/10 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">

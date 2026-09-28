@@ -83,7 +83,7 @@ export default function JoinClass({ onClose, onJoinSuccess }) {
         onClick={handleBackdropClick}
       ></div>
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden animate-scale-up">
-        <div className="bg-gradient-to-r from-[#0d264f] to-[#1a3a75] p-6 text-center">
+        <div className="bg-gradient-to-r from-brand to-brand-light p-6 text-center">
           <h3 className="text-2xl font-extrabold text-white mb-1">Gabung Kelas</h3>
           <p className="text-blue-200 text-sm">Masukkan kode kelas dari gurumu.</p>
         </div>
@@ -107,7 +107,7 @@ export default function JoinClass({ onClose, onJoinSuccess }) {
                 className={`w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 outline-none font-mono font-bold text-center tracking-widest text-lg transition-all
                   ${error 
                     ? 'border-red-400 text-red-600 focus:bg-red-50' 
-                    : 'border-slate-200 focus:border-[#0d264f] focus:ring-4 focus:ring-[#0d264f]/10 focus:bg-white'
+                    : 'border-slate-200 focus:border-brand focus:ring-4 focus:ring-brand/10 focus:bg-white'
                   } disabled:bg-slate-100 disabled:opacity-60`}
               />
               {error && (
@@ -132,7 +132,7 @@ export default function JoinClass({ onClose, onJoinSuccess }) {
               <button 
                 type="submit"
                 disabled={isLoading || !classCode}
-                className="flex-1 py-3.5 rounded-2xl bg-[#0d264f] text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-2xl bg-brand text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

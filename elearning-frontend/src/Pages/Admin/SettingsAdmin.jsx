@@ -252,7 +252,7 @@ export default function Settings() {
         {/* Banner biru: -mt-20 menariknya ke paling atas area konten (menutup
             padding pt-20 milik <main>) sehingga latar biru menempel penuh di
             bawah topbar; kartu profil putih lalu menumpuk di bagian bawahnya. */}
-        <div className="-mt-20 bg-gradient-to-br from-[#0d264f] to-[#1a3a75] rounded-b-3xl px-6 md:px-10 pt-24 pb-20 md:pb-24 shadow-lg">
+        <div className="-mt-20 bg-gradient-to-br from-brand to-brand-light rounded-b-3xl px-6 md:px-10 pt-24 pb-20 md:pb-24 shadow-lg">
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Pengaturan</h1>
           <p className="text-blue-100/80 text-lg mt-1">Kelola identitas dan keamanan akun.</p>
         </div>
@@ -326,7 +326,7 @@ export default function Settings() {
                   type="text" 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400" 
+                  className="w-full px-5 py-3.5 rounded-xl border border-slate-200 focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400" 
                   placeholder="Masukkan username baru" 
                 />
               </div>
@@ -335,7 +335,7 @@ export default function Settings() {
                 <button 
                   type="submit"
                   disabled={isUpdating || !username.trim() || username === originalUsername}
-                  className="w-full md:w-auto px-10 py-3.5 bg-[#0d264f] hover:bg-[#1e3a8a] text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full md:w-auto px-10 py-3.5 bg-brand hover:bg-blue-900 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>

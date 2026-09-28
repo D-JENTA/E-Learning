@@ -359,7 +359,7 @@ export default function Verify() {
             <button
               type="submit"
               disabled={isLoading || isRateLimited}
-              className="w-full bg-[#0d264f] text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50"
+              className="w-full bg-brand text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50"
             >
               {isLoading
                 ? 'Memverifikasi...'
@@ -388,7 +388,7 @@ export default function Verify() {
           </form>
         </main>
       </div>
-      <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative shadow-2xl">
+      <div className="hidden md:flex w-[40%] h-full bg-brand items-center justify-center relative shadow-2xl">
         <img src={imageBg} alt="Ilustrasi" width={623} height={1024} loading="lazy" decoding="async" className="w-80" />
       </div>
       

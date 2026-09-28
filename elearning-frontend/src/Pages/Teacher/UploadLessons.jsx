@@ -58,7 +58,7 @@ export default function UploadLesson() {
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                 placeholder="e.g. Algebra Chapter 1"
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-[#0d264f] focus:ring-1 focus:ring-[#0d264f] transition-all"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all"
               />
             </div>
 
@@ -69,7 +69,7 @@ export default function UploadLesson() {
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 placeholder="Brief description of the lesson..."
                 rows="4"
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-[#0d264f] focus:ring-1 focus:ring-[#0d264f] transition-all"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-all"
               />
             </div>
 
@@ -95,7 +95,7 @@ export default function UploadLesson() {
                   {formData.file && <span className="text-xs ml-2 font-bold">✓</span>}
                 </div>
                 <p className="text-sm text-gray-500 font-medium">
-                  <span className="text-[#0d264f]">Click to upload</span> or drag and drop
+                  <span className="text-brand">Click to upload</span> or drag and drop
                 </p>
                 <p className="text-xs text-gray-400">PDF, DOCX, PPTX (Max 10MB)</p>
               </div>
@@ -108,7 +108,7 @@ export default function UploadLesson() {
               <button 
                 type="submit"
                 disabled={!formData.title || !formData.file}
-                className="bg-[#0d264f] text-white px-8 py-2.5 rounded-lg font-bold hover:bg-[#1a3a75] hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="bg-brand text-white px-8 py-2.5 rounded-lg font-bold hover:bg-brand-light hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 Upload Lesson
               </button>

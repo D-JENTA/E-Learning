@@ -15,7 +15,7 @@ export default function TaskNav({ activeFilter, setFilter }) {
           onClick={() => setFilter(tab.id)}
           className={`flex items-center px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
             activeFilter === tab.id
-              ? "bg-white text-[#0d264f] shadow-md scale-105"
+              ? "bg-white text-brand shadow-md scale-105"
               : "text-gray-500 hover:text-gray-800"
           }`}
         >

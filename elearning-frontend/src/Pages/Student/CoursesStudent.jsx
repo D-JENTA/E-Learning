@@ -119,7 +119,7 @@ export default function StudentClass() {
 
           <button 
             onClick={handleJoinAction}
-            className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 font-bold transition-all shadow-md hover:shadow-xl w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-white bg-brand hover:bg-blue-900 font-bold transition-all shadow-md hover:shadow-xl w-full sm:w-auto"
           >
             <IconPlus /> Gabung Kelas
           </button>
@@ -200,7 +200,7 @@ function JoinClassModal({ onClose, onNotify }) {
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="CONTOH: KLS-XYZ"
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-[#0d264f] focus:ring-4 focus:ring-[#0d264f]/10 transition-all font-mono font-bold text-center tracking-widest text-lg placeholder:text-slate-400"
+              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all font-mono font-bold text-center tracking-widest text-lg placeholder:text-slate-400"
             />
           </div>
           
@@ -214,7 +214,7 @@ function JoinClassModal({ onClose, onNotify }) {
             </button>
             <button 
               type="submit"
-              className="flex-1 py-3.5 rounded-2xl bg-[#0d264f] text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg"
+              className="flex-1 py-3.5 rounded-2xl bg-brand text-white font-bold hover:bg-blue-900 transition-all shadow-md hover:shadow-lg"
             >
               Gabung Sekarang
             </button>

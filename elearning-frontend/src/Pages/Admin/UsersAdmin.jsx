@@ -38,7 +38,7 @@ export default function HomeAdmin() {
       <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-10">
 
         {/* Hero */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0d264f] to-[#1a3a75] p-8 sm:p-10 text-white shadow-lg mb-10">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand to-brand-light p-8 sm:p-10 text-white shadow-lg mb-10">
           <div className="absolute -top-12 -right-8 h-44 w-44 rounded-full bg-white/5" />
           <div className="absolute -bottom-16 right-24 h-56 w-56 rounded-full bg-white/5" />
           <div className="relative max-w-2xl">
@@ -55,7 +55,7 @@ export default function HomeAdmin() {
 
         {/* User Management */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-1.5 h-6 rounded-full bg-[#0d264f]" />
+          <div className="w-1.5 h-6 rounded-full bg-brand" />
           <h2 className="text-lg font-bold text-gray-800 tracking-tight">User Management</h2>
         </div>
 
@@ -63,7 +63,7 @@ export default function HomeAdmin() {
           {management.map((stat, idx) => {
             const c = colorMap[stat.color];
             return (
-              <Link to={stat.path} key={idx} className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0d264f] rounded-2xl">
+              <Link to={stat.path} key={idx} className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-2xl">
                 <div className={`relative bg-white rounded-2xl border ${c.border} overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1`}>
                   <div className={`h-1 w-full ${c.accent} opacity-80`} />
                   <div className="p-5 sm:p-6">
@@ -73,14 +73,14 @@ export default function HomeAdmin() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={stat.icon} />
                         </svg>
                       </div>
-                      <span className="mt-1 text-gray-300 group-hover:text-[#0d264f] group-hover:translate-x-1 transition-all duration-200">
+                      <span className="mt-1 text-gray-300 group-hover:text-brand group-hover:translate-x-1 transition-all duration-200">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </span>
                     </div>
                     <div className="mt-4">
-                      <p className="text-base sm:text-lg font-bold text-gray-800 group-hover:text-[#0d264f] transition-colors">{stat.label}</p>
+                      <p className="text-base sm:text-lg font-bold text-gray-800 group-hover:text-brand transition-colors">{stat.label}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{stat.description}</p>
                     </div>
                   </div>

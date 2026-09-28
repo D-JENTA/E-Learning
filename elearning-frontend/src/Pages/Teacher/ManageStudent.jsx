@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MainLayoutTeacher from '../../components/Teacher/MainLayout';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -85,7 +86,7 @@ const ScoreDetailModal = ({ isOpen, onClose, summary, studentName }) => {
 
           <button 
             onClick={onClose}
-            className="w-full mt-8 py-4 bg-[#0D264F] text-white rounded-2xl font-bold hover:bg-blue-900 transition-all shadow-lg active:scale-95"
+            className="w-full mt-8 py-4 bg-brand text-white rounded-2xl font-bold hover:bg-blue-900 transition-all shadow-lg active:scale-95"
           >
             Tutup Rincian
           </button>
@@ -333,6 +334,14 @@ export default function ManageStudent() {
       )}
 
       <div className="pl-2 md:pl-4 pr-4 md:pr-8 py-6 md:py-10 max-w-7xl">
+        <Breadcrumb
+          className="mb-4"
+          items={[
+            { label: 'Daftar Kelas', to: '/teacher/classes' },
+            { label: 'Kelola Siswa' },
+          ]}
+        />
+
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-8 gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Kelola Siswa</h1>
@@ -426,7 +435,7 @@ export default function ManageStudent() {
                     <td className="px-2 sm:px-6 py-4 text-right">
                       <button
                         onClick={() => handleCopyNis(s)}
-                        className="inline-flex items-center justify-center p-2 lg:px-3 lg:py-1.5 rounded-lg text-slate-500 hover:text-[#0d264f] hover:bg-slate-50 border border-slate-200 text-xs font-bold transition-all active:scale-95"
+                        className="inline-flex items-center justify-center p-2 lg:px-3 lg:py-1.5 rounded-lg text-slate-500 hover:text-brand hover:bg-slate-50 border border-slate-200 text-xs font-bold transition-all active:scale-95"
                         title="Salin NIS"
                       >
                         <IconCopy />

@@ -336,7 +336,7 @@ export default function ClassAdmin() {
           <div className="flex gap-3 mt-4 md:mt-0">
             <button 
               onClick={() => setOpenModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white bg-gradient-to-r from-[#0d264f] to-[#1a3a75] hover:shadow-lg hover:scale-[1.02] transition-all duration-300 font-bold shadow-md"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white bg-gradient-to-r from-brand to-brand-light hover:shadow-lg hover:scale-[1.02] transition-all duration-300 font-bold shadow-md"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -471,7 +471,7 @@ function AddClassModal({ onClose, onSave, initialData, onNotify }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0d264f] to-[#1a3a75] p-6 text-white">
+        <div className="bg-gradient-to-r from-brand to-brand-light p-6 text-white">
           <h2 className="text-xl font-bold">{isEdit ? "Edit Kelas" : "Tambah Kelas"}</h2>
           <p className="text-blue-200 text-sm mt-1">{isEdit ? "Update nama kelas di bawah." : "Masukkan nama kelas di bawah."}</p>
         </div>
@@ -482,12 +482,12 @@ function AddClassModal({ onClose, onSave, initialData, onNotify }) {
             value={formData.className}
             onChange={(e) => setFormData({...formData, className: e.target.value})}
             placeholder="e.g., XI PPLG 2"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#0d264f] focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand focus:ring-2 focus:ring-blue-100 outline-none transition-all"
           />
         </div>
         <div className="p-6 pt-0 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl bg-[#0d264f] text-white font-bold hover:bg-[#1a3a75] shadow-lg">{isEdit ? "Update Class" : "Save Class"}</button>
+          <button onClick={handleSubmit} className="flex-1 py-3 rounded-xl bg-brand text-white font-bold hover:bg-brand-light shadow-lg">{isEdit ? "Update Class" : "Save Class"}</button>
         </div>
       </div>
     </div>

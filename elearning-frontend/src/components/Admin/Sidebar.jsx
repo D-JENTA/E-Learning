@@ -122,7 +122,7 @@ function SidebarContent() {
       />
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-60 bg-[#0d264f] text-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-60 bg-brand text-white shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0`}
       >
@@ -188,7 +188,7 @@ function SidebarContent() {
                         className={({ isActive }) =>
                           `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 text-sm ${
                             isActive
-                              ? 'bg-white text-[#0d264f] font-bold shadow-md'
+                              ? 'bg-white text-brand font-bold shadow-md'
                               : 'text-blue-200 hover:text-white hover:bg-white/10'
                           }`
                         }
@@ -210,7 +210,7 @@ function SidebarContent() {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                     isActive
-                      ? 'bg-white text-[#0d264f] font-bold shadow-md'
+                      ? 'bg-white text-brand font-bold shadow-md'
                       : 'text-blue-200 hover:text-white hover:bg-white/10'
                   }`
                 }
@@ -248,7 +248,7 @@ export const HamburgerButton = () => {
   return (
     <button
       onClick={toggleSidebar}
-      className="p-2 -ml-2 rounded-lg text-[#0d264f] md:hidden hover:bg-slate-100 transition-colors"
+      className="p-2 -ml-2 rounded-lg text-brand md:hidden hover:bg-slate-100 transition-colors"
       aria-label="Open sidebar"
     >
       <svg

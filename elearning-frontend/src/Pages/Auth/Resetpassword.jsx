@@ -217,7 +217,7 @@ export default function ResetPassword() {
             <button 
               type="submit" 
               disabled={isLoading} 
-              className="w-full bg-[#0d264f] text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50 mt-2 shadow-md"
+              className="w-full bg-brand text-white py-3 rounded-lg font-bold hover:shadow-xl transition-all uppercase text-xs tracking-widest disabled:opacity-50 mt-2 shadow-md"
             >
               {isLoading ? 'Memperbarui...' : 'Perbarui Password'}
             </button>
@@ -229,7 +229,7 @@ export default function ResetPassword() {
         </main>
       </div>
 
-      <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative">
+      <div className="hidden md:flex w-[40%] h-full bg-brand items-center justify-center relative">
         <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-black/40 opacity-50"></div>
         <img src={imageBg} alt="Illustration" width={623} height={1024} loading="lazy" decoding="async" className="w-80 relative z-10" />
       </div>

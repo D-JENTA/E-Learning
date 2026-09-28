@@ -131,7 +131,7 @@ export default function BuatKelas({ user }) {
             </label>
             <input 
               type="text" 
-              className="w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-[#0d264f] focus:border-transparent transition-all" 
+              className="w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all" 
               placeholder="Contoh: XII dkv 6"
               value={formData.nama}
               onChange={(e) => setFormData({...formData, nama: e.target.value})}
@@ -143,7 +143,7 @@ export default function BuatKelas({ user }) {
             <button type="button" onClick={() => navigate(-1)} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200">
               Batal
             </button>
-            <button type="submit" disabled={isLoading} className="flex-1 bg-[#0d264f] text-white py-3 rounded-xl font-bold">
+            <button type="submit" disabled={isLoading} className="flex-1 bg-brand text-white py-3 rounded-xl font-bold">
               {isLoading ? 'Membuat...' : 'Buat Kelas'}
             </button>
           </div>

@@ -10,7 +10,7 @@ export default function LessonStudent() {
         <div className="mb-6">
           <Link 
             to="/student/ClassStudent"
-            className="inline-flex items-center gap-2 text-gray-500 hover:text-[#0d264f] transition-colors font-medium mb-2 group"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-brand transition-colors font-medium mb-2 group"
           >
             <div className="p-2 rounded-full hover:bg-blue-50 transition-colors group-hover:bg-blue-50">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,7 +59,7 @@ export default function LessonStudent() {
               </div>
             </div>
             
-            <button className="p-2 text-[#0d264f] hover:bg-blue-50 rounded-lg transition-colors">
+            <button className="p-2 text-brand hover:bg-blue-50 rounded-lg transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>

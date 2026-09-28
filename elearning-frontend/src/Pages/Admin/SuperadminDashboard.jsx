@@ -1,34 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../../components/Admin/MainLayout";
+import LoadError from "../../components/LoadError";
+import { Skeleton, StatGridSkeleton } from "../../components/Skeleton";
+import useApiResource from "../../hooks/useApiResource";
+import { apiGet, asArray, errorMessage } from "../../services/apiClient";
 
 export default function SuperAdminDashboard() {
-  const [stats, setStats] = useState({ totalUsers: 0, totalTeachers: 0, totalStudents: 0 });
-  const [totalClasses, setTotalClasses] = useState(null);
+  // Sebelumnya dua request terpisah dengan `.catch(() => {})`: kalau gagal,
+  // dashboard diam-diam menampilkan 0 user / 0 kelas seolah datanya memang
+  // kosong. Sekarang kegagalan jadi state error yang terlihat dan bisa
+  // dicoba ulang, dan kedua request dijalankan bersamaan.
+  const { data, isLoading, error, reload } = useApiResource(async ({ signal }) => {
+    const [users, classes] = await Promise.all([
+      apiGet("/api/auth/users", { signal }).then(asArray),
+      apiGet("/api/classes", { signal }).then(asArray),
+    ]);
 
-  useEffect(() => {
-    fetch("/api/auth/users")
-      .then(res => res.json())
-      .then(data => {
-        setStats({
-          totalUsers: data.length,
-          totalTeachers: data.filter(u => u.role === 'teacher').length,
-          totalStudents: data.filter(u => u.role === 'student').length,
-        });
-      })
-      .catch(() => {});
-  }, []);
+    return {
+      totalUsers: users.length,
+      totalTeachers: users.filter((u) => u.role === "teacher").length,
+      totalStudents: users.filter((u) => u.role === "student").length,
+      totalClasses: classes.length,
+    };
+  }, "superadmin-dashboard-stats");
 
-  // Total kelas untuk stat card "Kelas".
-  useEffect(() => {
-    fetch("/api/classes", { credentials: "include" })
-      .then(res => res.json())
-      .then(result => {
-        const raw = result.data ?? result;
-        setTotalClasses(Array.isArray(raw) ? raw.length : 0);
-      })
-      .catch(() => {});
-  }, []);
+  // Dipakai sebelum data ada (null) maupun saat gagal, supaya perhitungan
+  // turunan di bawah tidak perlu memeriksa null satu per satu.
+  const stats = data ?? { totalUsers: 0, totalTeachers: 0, totalStudents: 0, totalClasses: 0 };
 
   const cardsData = [
     {
@@ -36,6 +35,7 @@ export default function SuperAdminDashboard() {
       value: stats.totalUsers,
       color: "bg-slate-800",
       textAccent: "text-slate-800",
+      hoverText: "group-hover:text-slate-900",
       bgSoft: "bg-slate-100",
     },
     {
@@ -43,6 +43,7 @@ export default function SuperAdminDashboard() {
       value: stats.totalTeachers,
       color: "bg-emerald-500",
       textAccent: "text-emerald-600",
+      hoverText: "group-hover:text-emerald-600",
       bgSoft: "bg-emerald-50",
       path: "/admin/teachers"
     },
@@ -51,14 +52,16 @@ export default function SuperAdminDashboard() {
       value: stats.totalStudents,
       color: "bg-blue-500",
       textAccent: "text-blue-600",
+      hoverText: "group-hover:text-blue-600",
       bgSoft: "bg-blue-50",
       path: "/admin/students"
     },
     {
       title: "Kelas",
-      value: totalClasses ?? "...",
+      value: stats.totalClasses,
       color: "bg-violet-500",
       textAccent: "text-violet-600",
+      hoverText: "group-hover:text-violet-600",
       bgSoft: "bg-violet-50",
       path: "/admin/classes"
     },
@@ -87,6 +90,26 @@ export default function SuperAdminDashboard() {
           </p>
         </div>
 
+        {isLoading ? (
+          // Kerangka yang menyerupai tata letak akhirnya, supaya halaman tidak
+          // melompat saat angka dan donut muncul.
+          <>
+            <StatGridSkeleton cards={4} columns="sm:grid-cols-2 lg:grid-cols-4" />
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <Skeleton className="lg:col-span-3 h-72 rounded-2xl" />
+              <Skeleton className="lg:col-span-2 h-72 rounded-2xl" />
+            </div>
+          </>
+        ) : error ? (
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm">
+            <LoadError
+              message="Gagal memuat data pengguna dan kelas."
+              hint={errorMessage(error)}
+              onRetry={reload}
+            />
+          </div>
+        ) : (
+          <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {cardsData.map((card, index) => (
             <StatCard key={index} data={card} />
@@ -154,6 +177,8 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
         </div>
+          </>
+        )}
 
       </div>
     </MainLayout>
@@ -250,7 +275,7 @@ function StatCard({ data }) {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
               {data.title}
             </p>
-            <h3 className={`text-4xl font-black text-slate-800 group-hover:${data.textAccent} transition-colors duration-300`}>
+            <h3 className={`text-4xl font-black text-slate-800 transition-colors duration-300 ${data.hoverText}`}>
               {data.value}
             </h3>
           </div>

@@ -35,3 +35,40 @@
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Hormati preferensi "kurangi gerakan" di sistem pengguna.
+   Halaman ini banyak memakai hover:-translate-y-1, transisi warna, dan
+   animate-pulse — semua itu dekoratif, jadi aman dimatikan.
+
+   animate-spin sengaja TIDAK dimatikan: itu satu-satunya penanda
+   "sedang memuat", bukan hiasan, dan tanpa itu halaman terlihat menggantung. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-delay: 0ms !important;
+  }
+
+  /* Animasi berulang yang murni hiasan (titik berkedip di sidebar, pulse
+     pada skeleton). Skeleton tetap terbaca sebagai blok abu-abu statis. */
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping {
+    animation: none !important;
+  }
+
+  /* Efek angkat/putar saat hover tidak perlu saat gerakan dikurangi. */
+  .hover\:-translate-y-1:hover,
+  .hover\:-translate-y-0\.5:hover,
+  .hover\:scale-\[1\.02\]:hover,
+  .group:hover .group-hover\:scale-110,
+  .group:hover .group-hover\:rotate-3 {
+    transform: none !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}

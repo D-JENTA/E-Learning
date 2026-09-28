@@ -20,7 +20,7 @@ export default function Clock() {
 
   return (
     <div className="inline-flex items-center gap-3 bg-white rounded-2xl shadow-sm border border-slate-100 px-5 py-3">
-      <div className="p-2 rounded-xl bg-slate-100 text-[#0d264f]">
+      <div className="p-2 rounded-xl bg-slate-100 text-brand">
         <IconClock />
       </div>
       <div className="leading-tight">

@@ -9,7 +9,7 @@ export default function LessonStudent() {
         <div className="flex items-center gap-3 mb-6">
           <Link 
             to="/student/ClassStudent"
-            className="p-2 rounded-full hover:bg-blue-50 text-gray-500 hover:text-[#0d264f] transition-colors"
+            className="p-2 rounded-full hover:bg-blue-50 text-gray-500 hover:text-brand transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -33,7 +33,7 @@ export default function LessonStudent() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-8 pt-8 border-t border-gray-100">
             <div className="flex-1">
               <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#0d264f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Files :
@@ -52,7 +52,7 @@ export default function LessonStudent() {
               </div>
             </div>
 
-            <button className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-gradient-to-r from-[#0d264f] to-[#1a3a75] hover:shadow-lg hover:scale-[1.02] transition-all duration-300 font-bold shadow-md">
+            <button className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white bg-gradient-to-r from-brand to-brand-light hover:shadow-lg hover:scale-[1.02] transition-all duration-300 font-bold shadow-md">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>

@@ -145,7 +145,7 @@ const CustomSelect = ({
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={searchPlaceholder}
-                  className={`w-full pl-9 ${query ? "pr-8" : "pr-3"} py-2 text-sm text-gray-700 bg-white outline-none transition rounded-lg bg-white border border-gray-200 shadow-sm focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20`}
+                  className={`w-full pl-9 ${query ? "pr-8" : "pr-3"} py-2 text-sm text-gray-700 bg-white outline-none transition rounded-lg bg-white border border-gray-200 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20`}
                 />
                 {query && (
                   <button
@@ -525,8 +525,8 @@ export default function Create() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full bg-[#0d264f] text-white py-3 rounded-lg mb-5 font-medium transition-all duration-200
-                ${isLoading ? 'opacity-80 cursor-not-allowed' : 'hover:bg-[#0d203f] hover:shadow-xl active:scale-[0.98]'}
+              className={`w-full bg-brand text-white py-3 rounded-lg mb-5 font-medium transition-all duration-200
+                ${isLoading ? 'opacity-80 cursor-not-allowed' : 'hover:bg-brand-dark hover:shadow-xl active:scale-[0.98]'}
               `}
             >
               {isLoading ? 'Membuat Akun...' : 'Daftar'}

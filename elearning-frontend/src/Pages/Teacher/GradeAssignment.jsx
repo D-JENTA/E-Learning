@@ -42,7 +42,7 @@ export default function GradeAssignment() {
       navigate(-1);
     } catch (error) {
       console.error("DEBUG FETCH:", error);
-      setErrorMessage(error.message);
+      setErrorMessage(error.message);1
     } finally {
       setIsSubmitting(false);
     }
@@ -54,7 +54,7 @@ export default function GradeAssignment() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
-      <div className="absolute top-0 left-0 w-full h-48 bg-[#0D264F] z-0 shadow-lg"></div>
+      <div className="absolute top-0 left-0 w-full h-48 bg-brand z-0 shadow-lg"></div>
       <div className="relative z-10 bg-white rounded-[2rem] shadow-xl p-8 md:p-10 w-full max-w-md border border-slate-100">
         <div className="text-center mb-8">
           <div className="bg-blue-50 w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
@@ -108,7 +108,7 @@ export default function GradeAssignment() {
               disabled={isSubmitting || !isValidScore}
               className={`w-full py-4 rounded-xl font-bold transition-all duration-200 shadow-md active:scale-[0.98]
                 ${isValidScore 
-                  ? "bg-[#0D264F] text-white hover:bg-blue-900" 
+                  ? "bg-brand text-white hover:bg-blue-900" 
                   : "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none"
                 }`}
             >

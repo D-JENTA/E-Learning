@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import MainLayoutTeacher from '../../components/Teacher/MainLayout';
+import Breadcrumb from '../../components/Breadcrumb';
 
 const CustomAlert = ({ message, type, onClose }) => {
   useEffect(() => {
@@ -290,7 +291,14 @@ export default function UploadTask() {
       )}
 
       <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 animate-fade-in-up">
-        
+        <Breadcrumb
+          className="mb-1"
+          items={[
+            { label: 'Daftar Kelas', to: '/teacher/classes' },
+            { label: 'Buat Tugas Baru' },
+          ]}
+        />
+
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Buat Tugas Baru</h1>
           <div>
@@ -319,7 +327,7 @@ export default function UploadTask() {
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
                 placeholder="Contoh: Kuis Matematika Bab 1"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-bold text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-bold text-slate-800 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
 
@@ -340,7 +348,7 @@ export default function UploadTask() {
                 placeholder="Apa yang harus dilakukan siswa?"
                 rows="5"
                 maxLength={255}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-medium text-slate-800 focus:bg-white focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all placeholder:text-slate-400 resize-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-base font-medium text-slate-800 focus:bg-white focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none transition-all placeholder:text-slate-400 resize-none"
               />
             </div>
 
@@ -374,28 +382,28 @@ export default function UploadTask() {
                 <button
                   type="button"
                   onClick={() => setQuickDate(0)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-[#0d264f] hover:text-[#0d264f] transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-brand hover:text-brand transition-all cursor-pointer shadow-2xs"
                 >
                   Hari Ini
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickDate(1)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-[#0d264f] hover:text-[#0d264f] transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-brand hover:text-brand transition-all cursor-pointer shadow-2xs"
                 >
                   Besok
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickDate(3)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-[#0d264f] hover:text-[#0d264f] transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-brand hover:text-brand transition-all cursor-pointer shadow-2xs"
                 >
                   3 Hari Lagi
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickDate(7)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-[#0d264f] hover:text-[#0d264f] transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white hover:border-brand hover:text-brand transition-all cursor-pointer shadow-2xs"
                 >
                   1 Minggu
                 </button>
@@ -408,7 +416,7 @@ export default function UploadTask() {
                   <button
                     type="button"
                     onClick={() => setShowDatePicker(!showDatePicker)}
-                    className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 hover:border-[#0d264f] focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all cursor-pointer shadow-2xs"
+                    className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 hover:border-brand focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none transition-all cursor-pointer shadow-2xs"
                   >
                     <span className={formData.date ? "text-slate-800 font-bold" : "text-slate-400 font-normal"}>
                       {formatDisplayDate(formData.date)}
@@ -459,8 +467,8 @@ export default function UploadTask() {
                               disabled={disabled}
                               onClick={() => handleSelectCalendarDate(dateObj)}
                               className={`h-8 rounded-lg text-xs font-semibold transition-all flex items-center justify-center
-                                ${selected ? 'bg-[#0d264f] text-white shadow-md font-bold' : ''}
-                                ${!selected && today ? 'border border-[#0d264f] text-[#0d264f]' : ''}
+                                ${selected ? 'bg-brand text-white shadow-md font-bold' : ''}
+                                ${!selected && today ? 'border border-brand text-brand' : ''}
                                 ${!selected && !today && !disabled ? 'hover:bg-slate-100 text-slate-700' : ''}
                                 ${disabled ? 'text-slate-300 cursor-not-allowed opacity-40' : 'cursor-pointer'}
                               `}
@@ -480,7 +488,7 @@ export default function UploadTask() {
                   <button
                     type="button"
                     onClick={() => setShowTimePicker(!showTimePicker)}
-                    className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 hover:border-[#0d264f] focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/10 outline-none transition-all cursor-pointer shadow-2xs"
+                    className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 hover:border-brand focus:border-brand focus:ring-2 focus:ring-brand/10 outline-none transition-all cursor-pointer shadow-2xs"
                   >
                     <span className="text-slate-800 font-bold">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -506,7 +514,7 @@ export default function UploadTask() {
                                 onClick={() => setFormData({ ...formData, time: `${hh}:${formData.time.slice(3, 5)}` })}
                                 className={`h-8 rounded-lg text-xs font-bold transition-all ${
                                   formData.time.slice(0, 2) === hh
-                                    ? "bg-[#0d264f] text-white shadow-md"
+                                    ? "bg-brand text-white shadow-md"
                                     : "hover:bg-slate-100 text-slate-600"
                                 }`}
                               >
@@ -525,7 +533,7 @@ export default function UploadTask() {
                                 onClick={() => setFormData({ ...formData, time: `${formData.time.slice(0, 2)}:${mm}` })}
                                 className={`h-8 rounded-lg text-xs font-bold transition-all ${
                                   formData.time.slice(3, 5) === mm
-                                    ? "bg-[#0d264f] text-white shadow-md"
+                                    ? "bg-brand text-white shadow-md"
                                     : "hover:bg-slate-100 text-slate-600"
                                 }`}
                               >
@@ -538,11 +546,11 @@ export default function UploadTask() {
 
                       {/* Preview jam terpilih + tombol konfirmasi */}
                       <div className="mt-3 flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
-                        <span className="text-sm font-black text-[#0d264f] tracking-wide">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>
+                        <span className="text-sm font-black text-brand tracking-wide">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>
                         <button
                           type="button"
                           onClick={() => setShowTimePicker(false)}
-                          className="px-3 py-1.5 rounded-lg bg-[#0d264f] text-white text-xs font-bold hover:bg-blue-900 transition-all active:scale-95 cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-bold hover:bg-blue-900 transition-all active:scale-95 cursor-pointer"
                         >
                           Gunakan
                         </button>
@@ -564,13 +572,13 @@ export default function UploadTask() {
                               }}
                               className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between ${
                                 formData.time === preset.value
-                                  ? 'bg-blue-50 text-[#0d264f] font-bold'
+                                  ? 'bg-blue-50 text-brand font-bold'
                                   : 'hover:bg-slate-50 text-slate-700'
                               }`}
                             >
                               <span>{preset.label}</span>
                               {formData.time === preset.value && (
-                                <svg className="w-4 h-4 text-[#0d264f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                                 </svg>
                               )}
@@ -593,7 +601,7 @@ export default function UploadTask() {
                 <div className="text-xs">
                   {formData.date ? (
                     <p className="text-slate-700 font-medium">
-                      Tugas dikumpulkan paling lambat <span className="font-bold text-[#0d264f]">{formData.date}</span> pukul <span className="font-bold text-[#0d264f]">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>.
+                      Tugas dikumpulkan paling lambat <span className="font-bold text-brand">{formData.date}</span> pukul <span className="font-bold text-brand">{formData.time}{timezoneLabel ? ` ${timezoneLabel}` : ""}</span>.
                     </p>
                   ) : (
                     <p className="text-slate-400">
@@ -619,7 +627,7 @@ export default function UploadTask() {
                   onClick={() => setAttachmentMode('file')}
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
                     attachmentMode === 'file'
-                      ? 'bg-white text-[#0d264f] shadow-sm'
+                      ? 'bg-white text-brand shadow-sm'
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
@@ -633,7 +641,7 @@ export default function UploadTask() {
                   onClick={() => setAttachmentMode('link')}
                   className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
                     attachmentMode === 'link'
-                      ? 'bg-white text-[#0d264f] shadow-sm'
+                      ? 'bg-white text-brand shadow-sm'
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
@@ -647,7 +655,7 @@ export default function UploadTask() {
               {attachmentMode === 'file' ? (
               <div
                 className={`relative border-2 border-dashed rounded-2xl p-8 md:p-12 text-center transition-all duration-300 cursor-pointer group
-                  ${isDragging ? 'border-[#0d264f] bg-blue-50 scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'}
+                  ${isDragging ? 'border-brand bg-blue-50 scale-[1.01]' : 'border-slate-200 hover:bg-slate-50'}
                   ${formData.file ? 'border-green-500 bg-green-50' : ''}
                 `}
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -666,7 +674,7 @@ export default function UploadTask() {
                 />
                 <div className="flex flex-col items-center gap-4 relative z-0">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110
-                    ${formData.file ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-[#0d264f]'}`}>
+                    ${formData.file ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-brand'}`}>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -677,7 +685,7 @@ export default function UploadTask() {
                         <span className="text-green-700 truncate max-w-xs block">{formData.file.name}</span>
                       ) : (
                         <>
-                          <span className="text-[#0d264f]">Klik untuk mengunggah</span> atau drag & drop
+                          <span className="text-brand">Klik untuk mengunggah</span> atau drag & drop
                         </>
                       )}
                     </p>
@@ -709,7 +717,7 @@ export default function UploadTask() {
                               ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10"
                               : linkValid
                                 ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/10"
-                                : "border-slate-200 focus:border-[#0d264f] focus:ring-[#0d264f]/10"
+                                : "border-slate-200 focus:border-brand focus:ring-brand/10"
                             }`}
                         />
                         {linkFilled && (
@@ -745,7 +753,7 @@ export default function UploadTask() {
               <button 
                 type="submit"
                 disabled={isLoading}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-xl text-white bg-[#0d264f] hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl font-bold flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl text-white bg-brand hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl font-bold flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

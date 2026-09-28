@@ -6,14 +6,14 @@ import React, { useState, useRef, useEffect } from "react";
 const VARIANTS = {
   navy: {
     button:
-      "rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-700 shadow-sm hover:border-[#0d264f]/40 hover:bg-slate-50 focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20",
+      "rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-gray-700 shadow-sm hover:border-brand/40 hover:bg-slate-50 focus:border-brand focus:ring-2 focus:ring-brand/20",
     placeholder: "text-gray-400",
     panel: "rounded-xl border border-gray-100",
-    panelHeader: "bg-[#0d264f]/[0.04] border-b border-gray-200/80",
-    optionActive: "bg-[#0d264f]/10 text-[#0d264f] font-semibold",
+    panelHeader: "bg-brand/[0.04] border-b border-gray-200/80",
+    optionActive: "bg-brand/10 text-brand font-semibold",
     optionIdle: "text-gray-700 hover:bg-gray-50",
-    check: "text-[#0d264f]",
-    search: "rounded-lg bg-white border border-gray-200 shadow-sm focus:border-[#0d264f] focus:ring-2 focus:ring-[#0d264f]/20",
+    check: "text-brand",
+    search: "rounded-lg bg-white border border-gray-200 shadow-sm focus:border-brand focus:ring-2 focus:ring-brand/20",
   },
   sky: {
     button:

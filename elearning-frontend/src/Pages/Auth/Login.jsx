@@ -370,10 +370,10 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading || isRateLimited}
-              className={`w-full bg-[#0d264f] text-white py-3 rounded-lg mb-4 font-medium transition-all duration-200 ${
+              className={`w-full bg-brand text-white py-3 rounded-lg mb-4 font-medium transition-all duration-200 ${
                 isLoading || isRateLimited
                   ? 'opacity-80 cursor-not-allowed'
-                  : 'hover:bg-[#0d203f] hover:shadow-xl active:scale-[0.98]'
+                  : 'hover:bg-brand-dark hover:shadow-xl active:scale-[0.98]'
               }`}
             >
               {isLoading
@@ -401,7 +401,7 @@ export default function Login() {
         </main>
       </div>
 
-      <div className="hidden md:flex w-[40%] h-full bg-[#0d264f] items-center justify-center relative overflow-hidden shadow-2xl z-20">
+      <div className="hidden md:flex w-[40%] h-full bg-brand items-center justify-center relative overflow-hidden shadow-2xl z-20">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-black/80 opacity-90" />
 
         <div className="relative z-10 flex flex-col items-center justify-center text-center p-8">

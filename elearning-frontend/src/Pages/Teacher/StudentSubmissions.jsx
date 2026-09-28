@@ -1,7 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useId } from "react";
 import { useParams, Link } from "react-router-dom";
 import MainLayoutTeacher from "../../components/Teacher/MainLayout";
 import MainLayoutAdmin from "../../components/Admin/MainLayout";
+import useModalA11y from "../../hooks/useModalA11y";
+import { downloadCsv, slugifyFilename } from "../../utils/exportCsv";
+import Breadcrumb from "../../components/Breadcrumb";
+import { Skeleton } from "../../components/Skeleton";
+
+const IconDownload = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+);
 
 const IconX = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -151,17 +159,28 @@ const PreviewModal = ({ fileUrl, onClose }) => {
   );
 };
 
+// Pembungkus: hook a11y hanya boleh hidup saat modalnya benar-benar tampil,
+// jadi bagian yang memakai hook dipisah ke komponen dalam (pola yang sama
+// dengan ConfirmDeleteModal).
 const GradeModal = ({ isOpen, submission, onClose, onSave }) => {
+  if (!isOpen || !submission) return null;
+
+  return <GradeDialog submission={submission} onClose={onClose} onSave={onSave} />;
+};
+
+const GradeDialog = ({ submission, onClose, onSave }) => {
   const [score, setScore] = useState(submission?.score ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const scoreInputRef = useRef(null);
+  const titleId = useId();
+  // Fokus awal ke kolom nilai — modal ini memang untuk mengisinya.
+  const containerRef = useModalA11y({ onClose, initialFocusRef: scoreInputRef });
 
   useEffect(() => {
     setScore(submission?.score ?? "");
     setErrorMessage("");
   }, [submission]);
-
-  if (!isOpen || !submission) return null;
 
   const submitScore = async () => {
     const id_submission = submission.id || submission.id_assignmentStudent;
@@ -201,14 +220,28 @@ const GradeModal = ({ isOpen, submission, onClose, onSave }) => {
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <div
+        ref={containerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 focus:outline-none"
+      >
         <div className="text-center mb-4">
-          <h3 className="text-lg font-bold">Input Nilai Siswa</h3>
+          <h3 id={titleId} className="text-lg font-bold">Input Nilai Siswa</h3>
         </div>
 
         <div className="mb-4">
-          <label className="block text-[11px] font-black uppercase text-slate-400 mb-2">Skor Akhir (0-100)</label>
+          <label
+            htmlFor={`${titleId}-score`}
+            className="block text-[11px] font-black uppercase text-slate-400 mb-2"
+          >
+            Skor Akhir (0-100)
+          </label>
           <input
+            id={`${titleId}-score`}
+            ref={scoreInputRef}
             type="number"
             min="0"
             max="100"
@@ -220,14 +253,14 @@ const GradeModal = ({ isOpen, submission, onClose, onSave }) => {
         </div>
 
         {errorMessage && (
-          <p className="text-red-500 text-sm font-bold mb-3">{errorMessage}</p>
+          <p role="alert" className="text-red-500 text-sm font-bold mb-3">{errorMessage}</p>
         )}
 
         <div className="flex gap-3">
           <button
             onClick={submitScore}
             disabled={isSubmitting}
-            className={`flex-1 py-3 rounded-xl font-bold ${isSubmitting ? 'bg-slate-100 text-slate-300' : 'bg-[#0D264F] text-white hover:bg-blue-900'}`}>
+            className={`flex-1 py-3 rounded-xl font-bold ${isSubmitting ? 'bg-slate-100 text-slate-300' : 'bg-brand text-white hover:bg-brand-dark'}`}>
             {isSubmitting ? 'Menyimpan...' : 'Simpan Nilai'}
           </button>
           <button onClick={onClose} className="flex-0 px-4 py-3 rounded-xl font-bold text-slate-500 bg-slate-50">Batal</button>
@@ -274,7 +307,7 @@ const getStudentName = (item) => {
 };
 
 export default function StudentSubmissions({ user }) {
-  const { id_assignment } = useParams();
+  const { id, id_assignment } = useParams();
 
   const isAdmin = user?.role === "superAdmin";
   const Layout = isAdmin ? MainLayoutAdmin : MainLayoutTeacher;
@@ -373,9 +406,42 @@ export default function StudentSubmissions({ user }) {
     }));
   };
 
+  // Rekap nilai untuk diarsipkan / diolah di Excel. Memakai data yang sudah
+  // dimuat, jadi tidak ada request tambahan dan tidak ada waktu tunggu.
+  // Seluruh siswa diekspor, bukan hanya halaman yang sedang tampil.
+  const handleExportCsv = () => {
+    if (submissions.length === 0) return;
+
+    const rows = submissions.map((item, index) => ({
+      no: index + 1,
+      nama: getStudentName(item),
+      skor: item.score ?? "",
+      // Dibedakan dari skor 0: nilai 0 berarti sudah dinilai, bukan belum.
+      status: item.score == null ? "Belum dinilai" : "Sudah dinilai",
+      berkas: item.fileUrl || item.file_url || "",
+    }));
+
+    downloadCsv(`rekap-nilai-${slugifyFilename(taskTitle)}`, rows, [
+      { key: "no", label: "No" },
+      { key: "nama", label: "Nama Siswa" },
+      { key: "skor", label: "Skor" },
+      { key: "status", label: "Status" },
+      { key: "berkas", label: "Berkas" },
+    ]);
+  };
+
   return (
     <Layout>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in-up">
+
+        <Breadcrumb
+          className="mb-1"
+          items={[
+            { label: "Daftar Kelas", to: "/teacher/classes" },
+            { label: "Daftar Tugas", to: `/teacher/assignments/${id}` },
+            { label: taskTitle },
+          ]}
+        />
 
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
@@ -391,10 +457,21 @@ export default function StudentSubmissions({ user }) {
              <p className="text-slate-500 text-base font-medium">
                {isAdmin ? "Lihat pengumpulan tugas siswa untuk tugas ini." : "Lihat dan beri nilai untuk tugas ini."}
              </p>
+             {/* Admin juga boleh mengunduh — mengunduh bukan mengubah data. */}
+             <button
+               type="button"
+               onClick={handleExportCsv}
+               disabled={submissions.length === 0}
+               title={submissions.length === 0 ? "Belum ada pengumpulan untuk diunduh" : "Unduh rekap nilai sebagai CSV"}
+               className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-brand hover:border-brand shadow-sm transition-all font-bold w-full md:w-auto disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-600 disabled:hover:border-slate-200"
+             >
+               <IconDownload />
+               Unduh Rekap CSV
+             </button>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-[#0d264f] to-blue-800 rounded-2xl p-6 md:p-8 shadow-lg text-white">
+        <div className="bg-gradient-to-r from-brand to-blue-800 rounded-2xl p-6 md:p-8 shadow-lg text-white">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="max-w-full md:max-w-[70%]">
                     <span className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-1 block">Judul Tugas</span>
@@ -420,14 +497,43 @@ export default function StudentSubmissions({ user }) {
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-sm">
                   {isLoading ? (
-                    <tr>
-                      <td colSpan={isAdmin ? 4 : 5} className="py-24 text-center text-slate-400">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="w-8 h-8 border-4 border-slate-100 border-t-[#0d264f] rounded-full animate-spin"></div>
-                          <span>Memuat data pengumpulan...</span>
-                        </div>
-                      </td>
-                    </tr>
+                    // Kerangka baris tabel: jumlah dan tinggi barisnya dibuat
+                    // menyerupai isi aslinya supaya tabel tidak melompat saat
+                    // data tiba.
+                    Array.from({ length: 5 }).map((_, rowIndex) => (
+                      <tr key={`skeleton-${rowIndex}`} className="border-b border-slate-100 last:border-0">
+                        <td className="p-4 md:hidden block w-full">
+                          <div className="flex items-center justify-between mb-3">
+                            <Skeleton className="h-4 w-8" />
+                            <Skeleton className="h-7 w-24 rounded-lg" />
+                          </div>
+                          <Skeleton className="h-3 w-20 mb-2" />
+                          <Skeleton className="h-5 w-32" />
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100">
+                            <Skeleton className="h-6 w-16" />
+                            <Skeleton className="h-9 w-24 rounded-xl" />
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 hidden md:table-cell">
+                          <Skeleton className="h-4 w-6 mx-auto" />
+                        </td>
+                        <td className="px-6 py-4 hidden md:table-cell">
+                          <Skeleton className="h-4 w-40" />
+                        </td>
+                        <td className="px-6 py-4 hidden md:table-cell">
+                          <Skeleton className="h-8 w-28 rounded-lg" />
+                        </td>
+                        <td className="px-6 py-4 hidden md:table-cell">
+                          <Skeleton className="h-6 w-16 mx-auto rounded-full" />
+                        </td>
+                        {!isAdmin && (
+                          <td className="px-6 py-4 hidden md:table-cell">
+                            <Skeleton className="h-9 w-24 mx-auto rounded-xl" />
+                          </td>
+                        )}
+                      </tr>
+                    ))
                   ) : submissions.length === 0 ? (
                     <tr>
                       <td colSpan={isAdmin ? 4 : 5} className="py-24 text-center text-slate-400">
@@ -481,7 +587,7 @@ export default function StudentSubmissions({ user }) {
                                 {!isAdmin && (
                                   <button
                                     onClick={() => openGradeModal(item)}
-                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm"
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-brand text-white hover:bg-blue-900 transition-all shadow-sm"
                                   >
                                     {item.score ? "Edit Nilai" : "Beri Nilai"}
                                   </button>
@@ -525,7 +631,7 @@ export default function StudentSubmissions({ user }) {
                           <td className="px-6 py-4 text-center hidden md:table-cell">
                             <button
                               onClick={() => openGradeModal(item)}
-                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs bg-[#0d264f] text-white hover:bg-blue-900 transition-all shadow-sm hover:shadow-md"
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs bg-brand text-white hover:bg-blue-900 transition-all shadow-sm hover:shadow-md"
                             >
                               {item.score ? "Edit Nilai" : "Beri Nilai"}
                             </button>

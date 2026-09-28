@@ -2,6 +2,8 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-
 import { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
 
 import { AuthProvider } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
+import RouteEffects from "./components/RouteEffects";
 
 // LandingPage sengaja TIDAK di-lazy: itu halaman pertama yang dilihat
 // pengunjung publik, jadi menundanya hanya menambah waktu tampil.
@@ -274,9 +276,20 @@ function App() {
     return <PageLoader message="Loading Application..." />;
   }
 
+  // Tujuan tombol "Kembali ke Dashboard" di fallback ErrorBoundary, sesuai role
+  // yang sedang login. Pengunjung publik (belum login) diarahkan ke landing.
+  const roleHomePath = authState.user
+    ? ROLE_DEST[normalizeRole(authState.user.role)] || "/"
+    : "/";
+
   return (
     <AuthProvider user={authState.user}>
+      <RouteEffects />
       <Suspense fallback={<PageLoader />}>
+      {/* Satu halaman yang error tidak boleh menjatuhkan seluruh aplikasi.
+          resetKey = pathname, jadi pindah halaman otomatis membersihkan
+          fallback tanpa perlu reload. */}
+      <ErrorBoundary resetKey={location.pathname} fallbackPath={roleHomePath}>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/create" element={<Create />} />
@@ -330,6 +343,7 @@ function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
       </Suspense>
     </AuthProvider>
   );

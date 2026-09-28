@@ -532,7 +532,7 @@ export default function TeacherAdmin() {
           <button
             type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#0d264f] text-white font-semibold shadow-sm hover:bg-[#0d203f] hover:shadow-md active:scale-[0.98] transition-all"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-brand text-white font-semibold shadow-sm hover:bg-brand-dark hover:shadow-md active:scale-[0.98] transition-all"
           >
             <IconPlus />
             Tambah Guru
@@ -596,7 +596,7 @@ export default function TeacherAdmin() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleEditClick(t)}
-                            className="p-2 text-slate-400 hover:text-[#0d264f] hover:bg-slate-100 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-brand hover:bg-slate-100 rounded-lg transition-colors"
                             title="Edit Guru"
                           >
                             <IconEdit />
@@ -715,7 +715,7 @@ export default function TeacherAdmin() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-3 rounded-xl bg-[#0d264f] text-white font-semibold shadow-sm hover:bg-[#0d203f] disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+                  className="px-5 py-3 rounded-xl bg-brand text-white font-semibold shadow-sm hover:bg-brand-dark disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
                 >
                   {isSubmitting ? "Menyimpan..." : "Buat Akun"}
                 </button>
@@ -771,7 +771,7 @@ export default function TeacherAdmin() {
                 <button
                   type="submit"
                   disabled={isEditSubmitting}
-                  className="px-5 py-3 rounded-xl bg-[#0d264f] text-white font-semibold shadow-sm hover:bg-[#0d203f] disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+                  className="px-5 py-3 rounded-xl bg-brand text-white font-semibold shadow-sm hover:bg-brand-dark disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
                 >
                   {isEditSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>

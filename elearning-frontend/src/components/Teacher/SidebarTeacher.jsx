@@ -1,18 +1,11 @@
-import React, { useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React from 'react';
+import { NavLink } from 'react-router-dom';
 import logoEDUSpace from '../../assets/logoEDUSpace.png';
 
-// Judul tab tetap mengenali halaman Settings walau menunya sudah pindah ke dropdown Topbar.
-const PAGE_TITLES = {
-  '/teacher/dashboard': 'Home',
-  '/teacher/classes': 'Classes',
-  '/teacher/calendar': 'Calendar',
-  '/teacher/settings': 'Settings',
-};
+// Judul tab tiap halaman kini diurus terpusat oleh components/RouteEffects.jsx
+// (mencakup semua role), jadi tabel judul yang dulu ada di sini sudah dihapus.
 
 export default function SidebarTeacher({ isOpen, onClose, isMobile }) {
-  const location = useLocation();
-
   const menuItems = [
     {
       name: 'Home',
@@ -32,11 +25,6 @@ export default function SidebarTeacher({ isOpen, onClose, isMobile }) {
   ];
   // Menu "Settings" dipindahkan ke dropdown profil di Topbar.
   // Logout dipindahkan ke dropdown profil di Topbar.
-
-  useEffect(() => {
-    const pageName = PAGE_TITLES[location.pathname];
-    document.title = pageName ? `Edu Space | ${pageName}` : "EduSpace Teacher";
-  }, [location]);
 
   return (
     <>
@@ -64,7 +52,7 @@ export default function SidebarTeacher({ isOpen, onClose, isMobile }) {
       <div 
         className={`
           fixed md:static inset-y-0 left-0 z-50 
-          w-60 h-screen bg-[#0d264f] text-white shadow-2xl
+          w-60 h-screen bg-brand text-white shadow-2xl
           transform transition-transform duration-300 ease-in-out flex flex-col
           ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
           md:translate-x-0

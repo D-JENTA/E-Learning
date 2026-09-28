@@ -123,7 +123,7 @@ const EditUserModal = ({ form, onChange, onSubmit, onClose, isSubmitting }) => (
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-5 py-3 rounded-xl bg-[#0d264f] text-white font-semibold shadow-sm hover:bg-[#0d203f] disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+            className="px-5 py-3 rounded-xl bg-brand text-white font-semibold shadow-sm hover:bg-brand-dark disabled:opacity-70 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
           >
             {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
           </button>
@@ -437,7 +437,7 @@ export default function StudentAdmin() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleEditClick(s)}
-                            className="p-2 text-slate-400 hover:text-[#0d264f] hover:bg-slate-100 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-brand hover:bg-slate-100 rounded-lg transition-colors"
                             title="Edit Siswa"
                           >
                             <IconEdit />

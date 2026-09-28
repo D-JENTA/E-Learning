@@ -346,7 +346,7 @@ export default function ClassStudent() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
                 </svg>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">Kelas</span>
-                <span className="text-base font-extrabold text-[#0d264f]">{studentClassName}</span>
+                <span className="text-base font-extrabold text-brand">{studentClassName}</span>
               </span>
             )}
           </div>
@@ -360,7 +360,7 @@ export default function ClassStudent() {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-[#0d264f] mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-brand mb-4"></div>
             <p className="text-slate-400 font-medium">Memuat daftar mapel...</p>
           </div>
         ) : classes.length === 0 ? (
@@ -369,7 +369,7 @@ export default function ClassStudent() {
               <IconBook />
             </div>
             <p className="text-slate-400 font-medium">Belum ada mata pelajaran yang diikuti.</p>
-            <button onClick={() => setOpenJoin(true)} className="text-[#0d264f] font-bold text-sm mt-2 hover:underline">Gabung sekarang</button>
+            <button onClick={() => setOpenJoin(true)} className="text-brand font-bold text-sm mt-2 hover:underline">Gabung sekarang</button>
           </div>
         ) : (
           <>
@@ -383,8 +383,8 @@ export default function ClassStudent() {
                     onClick={() => handleSelectDay(day)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 shadow-sm ${
                       isActive
-                        ? 'bg-[#0d264f] text-white shadow-lg'
-                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-[#0d264f] border border-slate-200'
+                        ? 'bg-brand text-white shadow-lg'
+                        : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-brand border border-slate-200'
                     }`}
                   >
                     {day}
@@ -569,7 +569,7 @@ function JoinModal({ onClose, onJoinSuccess, setParentAlert }) {
               maxLength={20}
               disabled={isJoining}
               autoFocus
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-[#0d264f] focus:ring-4 focus:ring-[#0d264f]/10 transition-all font-mono font-bold text-center tracking-widest text-sm placeholder:text-slate-400 disabled:bg-slate-100 disabled:opacity-60"
+              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 outline-none focus:border-brand focus:ring-4 focus:ring-brand/10 transition-all font-mono font-bold text-center tracking-widest text-sm placeholder:text-slate-400 disabled:bg-slate-100 disabled:opacity-60"
             />
           </div>
 

@@ -39,7 +39,7 @@ export default function LoadError({
           type="button"
           onClick={onRetry}
           disabled={isRetrying}
-          className="mt-5 px-5 py-2.5 rounded-xl bg-[#0d264f] text-white font-semibold shadow-sm hover:bg-[#0d203f] disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+          className="mt-5 px-5 py-2.5 rounded-xl bg-brand text-white font-semibold shadow-sm hover:bg-brand-dark disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
         >
           {isRetrying ? "Mencoba lagi..." : "Coba Lagi"}
         </button>

@@ -39,6 +39,55 @@ const CustomAlert = ({ message, type, onClose }) => {
   );
 };
 
+// Aksen warna untuk kartu mapel. Hue-nya diambil dari kosakata warna yang sudah
+// dipakai halaman lain — mapel/kelas navy (dashboard guru), siswa emerald, tugas
+// amber, kelas violet (dashboard admin) — jadi tidak ada warna baru yang terasa
+// asing. Dipakai bergilir per kartu supaya guru yang mengampu banyak mapel bisa
+// membedakannya sekilas.
+//
+// PENTING: setiap kelas Tailwind ditulis lengkap sebagai literal. Kelas yang
+// dirangkai dari variabel (mis. `group-hover:${x}`) tidak ikut dipindai
+// Tailwind dan diam-diam tidak berfungsi — jadi jangan disederhanakan jadi
+// potongan string yang digabung di runtime.
+const CARD_ACCENTS = [
+  {
+    tint: "to-blue-50/60",
+    bar: "from-brand via-brand-light to-transparent",
+    glow: "bg-brand",
+    chip: "bg-blue-50 text-brand group-hover:bg-brand",
+    border: "hover:border-blue-200",
+    badge: "border-blue-100 bg-blue-50/80 text-blue-700",
+    title: "group-hover:text-brand",
+  },
+  {
+    tint: "to-emerald-50/60",
+    bar: "from-emerald-500 via-emerald-400 to-transparent",
+    glow: "bg-emerald-500",
+    chip: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600",
+    border: "hover:border-emerald-200",
+    badge: "border-emerald-100 bg-emerald-50/80 text-emerald-700",
+    title: "group-hover:text-emerald-700",
+  },
+  {
+    tint: "to-amber-50/60",
+    bar: "from-amber-500 via-amber-400 to-transparent",
+    glow: "bg-amber-500",
+    chip: "bg-amber-50 text-amber-600 group-hover:bg-amber-600",
+    border: "hover:border-amber-200",
+    badge: "border-amber-100 bg-amber-50/80 text-amber-700",
+    title: "group-hover:text-amber-700",
+  },
+  {
+    tint: "to-violet-50/60",
+    bar: "from-violet-500 via-violet-400 to-transparent",
+    glow: "bg-violet-500",
+    chip: "bg-violet-50 text-violet-600 group-hover:bg-violet-600",
+    border: "hover:border-violet-200",
+    badge: "border-violet-100 bg-violet-50/80 text-violet-700",
+    title: "group-hover:text-violet-700",
+  },
+];
+
 export default function ClassList({ user }) {
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +167,7 @@ export default function ClassList({ user }) {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-[#0d264f] mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-brand mb-4"></div>
             <p className="text-slate-400 font-medium">Memuat data kelas...</p>
           </div>
         ) : (
@@ -132,6 +181,11 @@ export default function ClassList({ user }) {
                     <TeacherClassCard
                       key={mapelId || index}
                       data={item}
+                      // Indeks global (bukan indeks di halaman ini) supaya satu
+                      // mapel tetap memakai warna yang sama saat guru berpindah
+                      // halaman — kalau memakai `index` saja, warnanya berubah
+                      // tiap kali pindah halaman.
+                      accent={CARD_ACCENTS[(indexOfFirstItem + index) % CARD_ACCENTS.length]}
                       onManage={() => {
                         if (mapelId) {
                           navigate(`/teacher/assignments/${mapelId}`, {
@@ -201,34 +255,38 @@ export default function ClassList({ user }) {
   );
 }
 
-function TeacherClassCard({ data, onManage }) {
+function TeacherClassCard({ data, onManage, accent }) {
   const mapelName = data.mapel_name || data.class_name || "Mata Pelajaran";
   const className = data.class_name || "-";
 
   return (
     <div
       onClick={onManage}
-      className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl flex flex-col justify-between"
+      className={`group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br from-white p-5 sm:p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${accent.tint} ${accent.border}`}
     >
-      <div className="pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full bg-blue-500/10 blur-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"></div>
-      <div className="absolute inset-x-0 top-0 h-1 origin-left scale-x-0 bg-gradient-to-r from-[#0d264f] to-blue-500 transition-transform duration-300 group-hover:scale-x-100"></div>
+      {/* Semburat dan garis aksen sekarang terlihat sejak kartu tampil, bukan
+          hanya saat disentuh kursor — supaya kartunya mengenali warnanya sendiri.
+          Resepnya sama dengan kartu statistik di dashboard (semburat 7% yang
+          menguat jadi 14% saat hover), jadi tidak mencolok. */}
+      <div className={`pointer-events-none absolute -right-12 -top-12 h-36 w-36 rounded-full blur-2xl opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.14] ${accent.glow}`}></div>
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r opacity-80 transition-opacity duration-300 group-hover:opacity-100 ${accent.bar}`}></div>
 
       <div>
         {/* Header: Ikon Buku + Nama Mapel (Geser kanan dengan ml-2) */}
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0d264f] shadow-xs transition-all duration-300 group-hover:bg-[#0d264f] group-hover:text-white">
+          <div className={`flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-xl shadow-xs transition-all duration-300 group-hover:text-white ${accent.chip}`}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h3 className="ml-2 text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight line-clamp-2 leading-tight group-hover:text-[#0d264f] transition-colors">
+          <h3 className={`ml-2 text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight line-clamp-2 leading-tight transition-colors ${accent.title}`}>
             {mapelName}
           </h3>
         </div>
 
         {/* Badge Nama Kelas (Diperbesar: text-sm sm:text-base) */}
         <div className="mb-4">
-          <span className="inline-block rounded-full border border-blue-100 bg-blue-50/80 px-4 py-1 text-sm sm:text-base font-bold text-blue-700 tracking-wide uppercase">
+          <span className={`inline-block rounded-full border px-4 py-1 text-sm sm:text-base font-bold tracking-wide uppercase ${accent.badge}`}>
             {className}
           </span>
         </div>
@@ -236,11 +294,11 @@ function TeacherClassCard({ data, onManage }) {
 
       {/* Footer Card: Aksi */}
       <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-2">
-        <span className="text-sm sm:text-base font-semibold text-slate-600 truncate mr-2 group-hover:text-[#0d264f] transition-colors">
+        <span className={`text-sm sm:text-base font-semibold text-slate-600 truncate mr-2 transition-colors ${accent.title}`}>
           Lihat Tugas &amp; Materi
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#0d264f]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 text-slate-400 transition-all duration-300 group-hover:translate-x-1 ${accent.title}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
         </div>
